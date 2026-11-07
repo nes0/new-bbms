@@ -10,12 +10,18 @@ django==5.2.19
     # via -r requirements.txt
 django-environ==0.14.0
     # via -r requirements.txt
+greenlet==3.5.6
+    # via playwright
 gunicorn==26.2.0
     # via -r requirements.txt
+playwright==1.64.1
+    # via -r requirements-dev.in
 psycopg==3.3.8
     # via -r requirements.txt
 psycopg-binary==3.3.8
     # via -r requirements.txt
+pyee==14.0.0
+    # via playwright
 pymysql==1.2.3
     # via -r requirements.txt
 ruff==0.17.4
@@ -30,5 +36,6 @@ typing-extensions==4.16.0
     # via
     #   -r requirements.txt
     #   psycopg
+    #   pyee
 whitenoise==6.12.0
     # via -r requirements.txt
