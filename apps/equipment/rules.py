@@ -11,7 +11,9 @@ from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 
-from .models import Equipment, Induction, TrainingCompletion, UsageSession
+from apps.payments import credit, services
+
+from .models import Equipment, Induction, MeterReading, TrainingCompletion, UsageSession
 
 logger = logging.getLogger(__name__)
 
@@ -20,14 +22,15 @@ MINIMUM_CHARGE = timedelta(minutes=15)
 ALLOWED_NEGATIVE_CREDIT_PENCE = 500  # credit must be above -£5 to start a session
 SHORT_SESSION = timedelta(seconds=60)  # this short or less: removed, not charged
 MERGE_GAP = timedelta(seconds=60)  # back-to-back sessions this close are merged
+MERGE_WINDOW = timedelta(days=2)  # the tidy-up only looks this far back for sessions to merge
 STALE_AFTER = timedelta(hours=1)  # an open session with no heartbeat for this long is closed
 
 UNCHARGED_REASONS = (UsageSession.Reason.TRAINING, UsageSession.Reason.TESTING, UsageSession.Reason.MAINTENANCE)
 
 
 def member_credit_pence(member) -> int:
-    # TODO(payments app): the member's credit, worked out from the ledger (04 §4.7).
-    return 0
+    """The member's credit, worked out from the ledger (04 §4.7)."""
+    return credit.credit_pence(member)
 
 
 def notify_team(equipment: Equipment, message: str):
@@ -140,14 +143,15 @@ def heartbeat(session: UsageSession):
     session.save(update_fields=["last_heartbeat_at"])
 
 
+@transaction.atomic
 def end_session(session: UsageSession, *, when=None, ended_by: str) -> UsageSession:
-    """End a session and work out its fee straight away (charging: payments app)."""
+    """End a session and charge its fee to the member's credit straight away (05 §5.4)."""
     session.ended_at = when or timezone.now()
     session.ended_by = ended_by
     session.removed = (session.ended_at - session.started_at) <= SHORT_SESSION
     session.fee_pence = session_fee_pence(session.equipment, session)
     session.save(update_fields=["ended_at", "ended_by", "removed", "fee_pence"])
-    # TODO(payments app): take fee_pence from the member's credit and set charged_at.
+    services.settle_session(session)
     return session
 
 
@@ -243,9 +247,12 @@ def tidy_up(now=None) -> dict:
             end_session(session, when=end_at, ended_by=UsageSession.EndedBy.TIDY_UP)
             counts["closed"] += 1
 
-    # 2. Merge back-to-back uncharged sessions by the same member on the same machine, with the same reason.
+    # 2. Merge back-to-back sessions by the same member on the same machine, with the same reason, so a member who
+    #    taps out and straight back in pays one minimum charge, not two. Only recent sessions, and never ones the
+    #    legacy system settled. The fees are put right with a correcting ledger row (settle_session).
     finished = (
-        UsageSession.objects.filter(ended_at__isnull=False, charged_at__isnull=True)
+        UsageSession.objects.filter(ended_at__isnull=False, ended_at__gte=now - MERGE_WINDOW)
+        .exclude(legacy_id__isnull=False, charged_at__isnull=False)
         .select_related("equipment")
         .order_by("equipment_id", "member_id", "reason", "started_at")
     )
@@ -265,7 +272,11 @@ def tidy_up(now=None) -> dict:
             previous.removed = (previous.ended_at - previous.started_at) <= SHORT_SESSION
             previous.fee_pence = session_fee_pence(previous.equipment, previous)
             previous.save(update_fields=["ended_at", "ended_by", "motor_on_seconds", "removed", "fee_pence"])
+            # Keep the merged session's charges and meter readings with the session that carries on.
+            session.payments.update(usage_session=previous)
+            MeterReading.objects.filter(session=session).update(session=previous)
             session.delete()
+            services.settle_session(previous)
             counts["merged"] += 1
         else:
             previous = session

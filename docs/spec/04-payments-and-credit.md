@@ -50,6 +50,27 @@
 **Paying from credit** is refused if it would take credit below the allowed minimum: **£0** for everything,
 except **equipment fees, which may take credit down to −£5**.
 
+### Build status (2026-11-07)
+
+Built in `apps/payments`: the ledger (`Payment`), credit worked out from it, paying from credit with its minimum, the
+machine-fee charging and corrections, cash and manual payments in the admin ("Record a payment"), the member's credit
+page with withdrawal requests, and finance's handling of those requests. Choices made while building:
+
+- **Amounts are signed.** A correction that gives money back is a new row with a negative amount, linked to the row it
+  corrects; the credit rule above handles it without special cases. Rows are read-only in the admin.
+- **Machine fees go through one function**, `settle_session`: when a session ends, and again after its times are
+  adjusted, it's reclassified, or the tidy-up merges it with the next one. It posts only the difference, so running
+  it twice changes nothing.
+- The hourly tidy-up only merges sessions from the **last two days**, now that sessions are charged straight away.
+- Sessions the **legacy system billed** are history: adjusting one moves no money (the admin says so).
+- The v1 device API now sends the real credit as `cash_balance` (pence), so the laser's screen shows it.
+- Consumables use the reason `consumable`, with the service in the reference.
+- Withdrawal requests keep the bank details only until finance marks the request paid or rejected.
+
+Still to build: GoCardless, Stripe, subscription charges and billing (03), the statement import (4.6), the finance
+overview and money summary (4.8, 4.9), member-facing top-ups and paying fees from the credit page, and importing the
+legacy payments (08 §8.2). Prices are constants in `apps/payments/prices.py` until the settings app exists.
+
 ## 4.2 GoCardless (Direct Debit)
 
 **Set-up:** redirect flow pre-filled with name, email and address → member authorises → return URL confirms

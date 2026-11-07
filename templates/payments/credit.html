@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Your credit · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<h1>Your credit</h1>
+<p class="balance">You have <strong>{{ balance|pounds }}</strong> in credit.</p>
+<p class="muted">Credit pays for machine time and can pay for inductions, the key deposit and a box.
+  Machine time can take it down to −£5.</p>
+
+<h2>History</h2>
+{% if page.object_list %}
+  <table class="ledger">
+    <thead><tr><th>Date</th><th>What</th><th class="money">Amount</th></tr></thead>
+    <tbody>
+      {% for payment in page.object_list %}
+        <tr>
+          <td>{{ payment.created_at|date:"j M Y H:i" }}</td>
+          <td>
+            {% if payment.usage_session %}{{ payment.usage_session.equipment.name }}{% if payment.corrects_id %} (correction){% endif %}
+            {% else %}{{ payment.get_reason_display }}{% if payment.reason == "balance" %} · {{ payment.get_source_display }}{% endif %}{% endif %}
+            {% if payment.status != "paid" %} · {{ payment.get_status_display|lower }}{% endif %}
+          </td>
+          <td class="money">{{ payment.credit_effect_pence|pounds }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if page.has_other_pages %}
+    <p>
+      {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">Newer</a>{% endif %}
+      Page {{ page.number }} of {{ page.paginator.num_pages }}
+      {% if page.has_next %}<a href="?page={{ page.next_page_number }}">Older</a>{% endif %}
+    </p>
+  {% endif %}
+{% else %}
+  <p>Nothing yet.</p>
+{% endif %}
+
+<h2>Withdraw credit</h2>
+{% for withdrawal in withdrawals %}
+  {% if forloop.first %}<ul>{% endif %}
+  <li>{{ withdrawal.requested_at|date:"j M Y" }}: {{ withdrawal.amount_pence|pounds }}, {{ withdrawal.get_status_display|lower }}</li>
+  {% if forloop.last %}</ul>{% endif %}
+{% endfor %}
+{% if balance > 0 %}
+  <p>Ask for some of your credit to be paid into your bank account. A trustee pays it; your bank details are
+    deleted once it's done.</p>
+  <form method="post" class="stack">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      <label>{{ field.label }} {{ field }}</label>
+      {% for error in field.errors %}<span class="error">{{ error }}</span>{% endfor %}
+    {% endfor %}
+    <button type="submit">Ask for a withdrawal</button>
+  </form>
+{% else %}
+  <p>You have no credit to withdraw.</p>
+{% endif %}
+{% endblock %}
