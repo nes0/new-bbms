@@ -117,6 +117,10 @@ def decide(device: Device, raw_tag: str, occurred_at=None, *, fob: KeyFob | None
     fob = fob or find_fob(raw_tag)
     if fob is None:
         # Unknown fob. Not logged: today's door firmware sends up to 13 guesses per tap for an unknown fob.
+        from .fobs import capture_v1_tag
+
+        if raw_tag and capture_v1_tag(device, raw_tag):
+            return Decision(Outcome.REFUSED, "enrolled")  # captured for a member (05 §5.1); confirmed in the admin
         return Decision(Outcome.REFUSED, "unknown_fob")
 
     member = fob.member

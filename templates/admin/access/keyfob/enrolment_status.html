@@ -1,0 +1,31 @@
+{# The part of the waiting page that HTMX refreshes while nothing has been tapped. #}
+<div id="enrolment" class="module aligned"
+  {% if enrolment.state == "waiting" %}hx-get="{{ request.path }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+  <p>Reader: <strong>{{ enrolment.device.name }}</strong>. Opened by {{ enrolment.opened_by }}.</p>
+  {% if enrolment.state == "waiting" %}
+    <p style="font-size: 1.4em">Tap the new fob on {{ enrolment.device.name }} now
+      ({{ enrolment.seconds_left }} seconds left)…</p>
+    <noscript><p><a href="{{ request.path }}">Check again</a></p></noscript>
+  {% elif enrolment.state == "captured" %}
+    <p style="font-size: 1.4em">Captured card number <strong>{{ enrolment.captured_label }}</strong>
+      {% if enrolment.captured_tag_id %}(tag {{ enrolment.captured_tag_id }}){% endif %}.</p>
+    <p>Check it matches the number printed on the fob, then confirm.</p>
+  {% else %}
+    <p style="font-size: 1.4em">{{ enrolment.get_state_display }}.</p>
+    {% if enrolment.fob %}<p>Fob {{ enrolment.captured_label }} was issued to {{ enrolment.member }}.</p>{% endif %}
+  {% endif %}
+  <form method="post" action="{{ request.path }}" class="submit-row">
+    {% csrf_token %}
+    {% if enrolment.state == "captured" %}
+      <button type="submit" name="action" value="confirm" class="default">Confirm: issue it to {{ enrolment.member }}</button>
+    {% endif %}
+    {% if enrolment.state == "waiting" or enrolment.state == "captured" %}
+      <button type="submit" name="action" value="cancel">Cancel</button>
+    {% else %}
+      <a class="button" href="{% url 'admin:members_member_change' enrolment.member.pk %}">Back to {{ enrolment.member }}</a>
+      {% if enrolment.state != "confirmed" %}
+        <a class="button" href="{% url 'admin:access_keyfob_enrol' %}?member={{ enrolment.member.pk }}">Try again</a>
+      {% endif %}
+    {% endif %}
+  </form>
+</div>

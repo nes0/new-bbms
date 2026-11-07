@@ -48,7 +48,7 @@ def _locked_equipment(equipment: Equipment) -> Equipment:
     return Equipment.objects.select_for_update().get(pk=equipment.pk)
 
 
-def equipment_access(device, fob, reason, *, enabled=True) -> dict:
+def equipment_access(device, fob, reason, *, enabled=True, enrolment=None) -> dict:
     """A tap at a machine reader (spec 09 §9.5)."""
     equipment = equipment_or_error(device)
     if not enabled:
@@ -59,6 +59,9 @@ def equipment_access(device, fob, reason, *, enabled=True) -> dict:
             "machine": machine_payload(equipment),
         }
     if fob is None:
+        if enrolment is not None:  # captured for a member during an enrolment window (spec 05 §5.1)
+            name = enrolment.member.display_name
+            return {"allowed": False, "reason": "enrolled", "display_name": name, "machine": machine_payload(equipment)}
         return {"allowed": False, "reason": reason, "display_name": None, "machine": machine_payload(equipment)}
 
     member = fob.member

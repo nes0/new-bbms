@@ -27,6 +27,8 @@ DEFAULTS = {
     "reader_check_in_seconds": "300",
     "session_heartbeat_seconds": "60",
     "id_document_max_age_days": "30",
+    "max_active_fobs": "2",
+    "fob_enrolment_seconds": "60",
 }
 
 

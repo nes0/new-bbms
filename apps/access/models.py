@@ -134,3 +134,64 @@ class AccessEvent(models.Model):
 
     def __str__(self):
         return f"{self.get_kind_display()} · {self.member or 'unknown'} · {self.occurred_at:%Y-%m-%d %H:%M}"
+
+
+class FobEnrolment(models.Model):
+    """A window in which the next unknown fob tapped on a reader is captured for a member (05 §5.1).
+
+    Also the audit record: who opened it, on which reader, what was captured, and who confirmed it.
+    """
+
+    class State(models.TextChoices):
+        WAITING = "waiting", "Waiting for a tap"
+        CAPTURED = "captured", "Captured; waiting for confirmation"
+        CONFIRMED = "confirmed", "Confirmed: fob issued"
+        CANCELLED = "cancelled", "Cancelled"
+        EXPIRED = "expired", "Nothing tapped in time"
+
+    member = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="fob_enrolments")
+    device = models.ForeignKey(Device, on_delete=models.PROTECT, related_name="fob_enrolments")
+    opened_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    opened_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField()
+    # What the reader sent. A v1 door only gives a card number we can trust (it guesses the vendor prefix).
+    captured_card_number = models.PositiveBigIntegerField(null=True, blank=True)
+    captured_tag_id = models.CharField(max_length=12, blank=True)
+    captured_at = models.DateTimeField(null=True, blank=True)
+    confirmed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    fob = models.OneToOneField(KeyFob, on_delete=models.PROTECT, null=True, blank=True, related_name="enrolment")
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-opened_at"]
+
+    def __str__(self):
+        return f"Fob enrolment for {self.member} on {self.device.device_id} ({self.opened_at:%Y-%m-%d %H:%M})"
+
+    @property
+    def state(self) -> str:
+        if self.confirmed_at:
+            return self.State.CONFIRMED
+        if self.cancelled_at:
+            return self.State.CANCELLED
+        if self.captured_at:
+            return self.State.CAPTURED
+        if timezone.now() >= self.expires_at:
+            return self.State.EXPIRED
+        return self.State.WAITING
+
+    def get_state_display(self):
+        return self.State(self.state).label
+
+    @property
+    def seconds_left(self) -> int:
+        return max(0, int((self.expires_at - timezone.now()).total_seconds()))
+
+    @property
+    def captured_label(self) -> str:
+        if self.captured_card_number is None:
+            return ""
+        return tags.format_card_number(self.captured_card_number)

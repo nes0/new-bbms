@@ -6,8 +6,9 @@
 - **Who gets a fob** (decided 2026-11-07): **every new member, free, on their first visit** after joining. Before
   they're a keyholder, the fob lets them **tap in at the door** to record their visit (5.2) and use the machines
   they're trained on (5.3), for example during supervised sessions. Supervision is a matter of space policy;
-  BBMS doesn't enforce it. ❓ Who may issue fobs? Suggested: admins and the `comms` role (who meet new members).
-  ❓ Is a replacement for a lost fob also free? Suggested: yes, unless an admin decides otherwise.
+  BBMS doesn't enforce it. **Who may issue fobs** (decided 2026-11-07): today only trustees, at the same time as
+  keys; kept as a permission so it can be given to a role later. A member must be **active** to get a fob.
+  A **replacement for a lost fob is free too** (decided 2026-11-07).
 - **24-hour access needs a physical key**, with a **£15 key deposit** (a setting; the legacy `door-key` deposit).
   See 5.2.
 - A member may hold up to **2** active fobs (legacy limit; a setting).
@@ -47,6 +48,22 @@
 - Only one enrolment window per reader at a time. Known fobs tapped during the window are handled normally. Each
   enrolment is audit-logged (who opened it, which reader, what was captured, who confirmed).
 - Typing the id (or reading it on the reader with a screen) stays available.
+
+**Build status (2026-11-07):** built in `apps/access/fobs.py` (the rules), the admin (`Issue a fob` and `Tap new fob
+on a reader` on a member's page; the enrolment log at Access › Fob enrolments) and the v1/v2 tap handlers. Choices made:
+- **Who may issue:** anyone with the permission "access | key fob | Can add key fob": trustees (admins) today. To let
+  a role issue fobs later, give its group that permission (its members also need "staff" to use the admin). Marking
+  lost and reactivating need "Can change key fob".
+- **Only active members** get a fob (status active or honorary, not banned). Members setting up, leaving, suspended
+  or left are refused; a new member gets theirs once their membership is active.
+- Typed ids: the full 12-hex tag (the checksum is checked, and a typo names the expected checksum) or the decimal
+  number printed on the fob. No other formats; legacy `BB…` ids are only kept for imported fobs.
+- A tag or card number belongs to one fob for ever, lost ones included. A lost fob that turns up is **reactivated**
+  (admin action "Found again"), subject to the 2-fob limit, not issued again.
+- A lost fob tapped during an enrolment window isn't captured.
+- Every reader can be used for enrolment, including v1 machine readers (the tap is refused as usual: 404).
+- The v1 door's reply during a window is unchanged (404), so the door stays shut and caches nothing.
+- Replacement fobs are free: BBMS records no charge.
 
 ## 5.2 Who may open the door
 

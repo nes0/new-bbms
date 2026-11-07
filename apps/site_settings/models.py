@@ -82,6 +82,20 @@ class SiteSettings(models.Model):
         validators=[MinValueValidator(15), MaxValueValidator(600)],
     )
 
+    # --- key fobs (05 §5.1) ---
+    max_active_fobs = models.PositiveIntegerField(
+        "active fobs a member may hold",
+        default=2,
+        validators=[MinValueValidator(1), MaxValueValidator(10)],
+        help_text="Fobs are free. A lost fob doesn't count.",
+    )
+    fob_enrolment_seconds = models.PositiveIntegerField(
+        "how long a reader waits for a new fob to be tapped (seconds)",
+        default=60,
+        validators=[MinValueValidator(15), MaxValueValidator(600)],
+        help_text='The window opened by "Tap new fob on a reader" on a member\'s admin page.',
+    )
+
     # --- privacy (03 §3.1) ---
     id_document_max_age_days = models.PositiveIntegerField(
         "delete unchecked proofs of identity after (days)",
@@ -96,6 +110,7 @@ class SiteSettings(models.Model):
         ("Membership", ("minimum_subscription_pence",)),
         ("Prices", ("key_deposit_pence", "box_fee_pence")),
         ("Machines", ("minimum_session_minutes", "machine_credit_limit_pence")),
+        ("Key fobs", ("max_active_fobs", "fob_enrolment_seconds")),
         ("Fob readers", ("reader_check_in_seconds", "session_heartbeat_seconds")),
         ("Privacy", ("id_document_max_age_days",)),
     )

@@ -149,7 +149,8 @@ row a new field whose default is the starting value.
 | Setting | Legacy value |
 |---|---|
 | Key deposit (physical key for 24-hour access; legacy door-key deposit) | £15. **Built** |
-| Active fobs per member (fobs are free) | 2 (not enforced yet: arrives with fob issuing, 06 §6.10) |
+| Active fobs per member (fobs are free) | 2, 1–10. **Built** |
+| How long a reader waits for a new fob to be tapped | new; 60 seconds (05 §5.1), 15 seconds–10 minutes. **Built** |
 | Occupancy timeout (no tap-out) | new; default 4 hours after last fob activity, everyone cleared at 4am |
 | Public occupancy count on the website | new; on/off |
 | Attendance threshold for the trusted-status review list | new; ❓ suggested 8 visits over 4 weeks (05 §5.10) |

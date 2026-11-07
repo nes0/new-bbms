@@ -12,6 +12,9 @@ The membership system for Build Brighton: members, payments, door and machine ac
   details, address (approved by a trustee), monthly amount and password; deleting an account that's still setting up;
 - key fobs, devices and the v1 device API, so the current front-door firmware works unchanged, plus a QR-code call
   for reader screens;
+- **issuing fobs** from a member's admin page: type or USB-read the fob's id, or **tap the new fob on any reader**
+  (v1 or v2) and confirm the captured number. The 2-fob limit, mark lost and found again, and an audit log of
+  enrolments;
 - the **v2 device API** (`/api/devices/v2/`, built to [the brief](docs/spec/09-device-api-v2-build.md)): check-in,
   access for doors and machines, session heartbeat and end, out-of-order button, hour meter with idle auto-end and
   service reminders, offline fob lists and offline events. Reference for the firmware team:
