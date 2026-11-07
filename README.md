@@ -83,6 +83,37 @@ GitHub Actions runs the same checks, against PostgreSQL, on every push (`.github
 The front-door compatibility suite talks to a real server over SSH, so it isn't part of `manage.py test`; see
 [`tests/door_compat/README.md`](tests/door_compat/README.md).
 
+### Trying pages in a headless browser (optional)
+
+[Playwright](https://playwright.dev/python/) (in `requirements-dev.txt`) drives a real Chromium without a screen,
+for clicking through pages and taking screenshots. It isn't part of `manage.py test`. Set it up once:
+
+```bash
+.venv/bin/playwright install --only-shell chromium   # downloads Chromium to ~/.cache/ms-playwright (no root needed)
+```
+
+Chromium needs some system libraries. On Ubuntu 24.04 (needs `sudo`):
+
+```bash
+sudo apt-get install -y libatk1.0-0t64 libatk-bridge2.0-0t64 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
+    libgbm1 libasound2t64 libatspi2.0-0t64
+```
+
+To see what's still missing, run `ldd` on the downloaded `chrome-headless-shell` and look for "not found". On other
+systems, `sudo .venv/bin/playwright install-deps chromium` installs everything it needs (a longer list, including
+fonts). Then, with `manage.py runserver` running:
+
+```python
+from playwright.sync_api import sync_playwright
+
+with sync_playwright() as p:
+    browser = p.chromium.launch()
+    page = browser.new_page()
+    page.goto("http://127.0.0.1:8000/register")
+    page.screenshot(path="register.png", full_page=True)
+    browser.close()
+```
+
 ## Settings
 
 All settings come from environment variables (or `.env` locally); see `.env.example` and `bbms/settings.py`.
