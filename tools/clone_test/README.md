@@ -11,6 +11,7 @@ Docker, next to the legacy one, with the clone's data imported. Set up on 2026-1
 | Docker 25 (static binaries, so the old apt sources aren't involved) | `/opt/docker-static`, linked into `/usr/local/bin`; service `docker.service` |
 | Docker settings: doesn't touch the firewall (`iptables`, `ip-forward`, `ip-masq` off) | `/etc/docker/daemon.json` |
 | Secrets for the test site (generated there, readable by root only) | `/root/bbms-test/env`, `/root/bbms-test/pg.env` |
+| The key that encrypts proofs of identity, `ID_DOCUMENT_KEYS` (spec 03 §3.1); without it, uploads are switched off | in `env` (add it if it's missing) |
 | Read-only MySQL user `bbms_readonly@127.0.0.1` (SELECT on `bbms` only) | its password is in `env` |
 | Postgres 16 container `bbms-db`, data in volume `bbms-pgdata` | `127.0.0.1:5433` |
 | The new site, container `bbms-web` (image `bbms:test`) | `127.0.0.1:8001` |

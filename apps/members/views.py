@@ -18,6 +18,7 @@ from .models import IdDocument, Member
 
 logger = logging.getLogger(__name__)
 review_permission = permission_required("members.review_id_documents", raise_exception=True)
+UPLOADS_OFF = "Uploading isn't switched on yet. Please try again later, or ask a trustee."
 
 
 @require_http_methods(["GET", "POST"])
@@ -41,6 +42,9 @@ def register(request):
 @never_cache
 @require_http_methods(["GET", "POST"])
 def id_documents_page(request):
+    if request.method == "POST" and not id_documents.encryption_ready():
+        messages.error(request, UPLOADS_OFF)
+        return redirect("members:id-documents")
     if request.method == "POST":
         if int(request.META.get("CONTENT_LENGTH") or 0) > id_documents.MAX_REQUEST_BYTES:
             messages.error(request, "Those files are too big: the limit is 10 MB each.")
@@ -63,6 +67,7 @@ def _id_documents_page(request):
         "id_status": id_documents.status(member),
         "id_check": member.id_checks.first(),
         "max_age_days": id_documents.max_age_days(),
+        "uploads_off": UPLOADS_OFF if not id_documents.encryption_ready() else "",
     }
     return render(request, "members/id_documents.html", context)
 
@@ -119,8 +124,19 @@ def id_check(request, member_id):
 @never_cache
 def id_document_file(request, document_id):
     document = get_object_or_404(IdDocument, pk=document_id)
+    try:
+        data = id_documents.decrypt(document.data)
+    except id_documents.CannotDecrypt:
+        logger.error(
+            "ID document %s (member %s) can't be decrypted with ID_DOCUMENT_KEYS", document.pk, document.member_id
+        )
+        message = (
+            "This document can't be opened: the key it was encrypted with is no longer set. "
+            "Record it as not accepted and ask the member to send it again."
+        )
+        return HttpResponse(message, status=410, content_type="text/plain; charset=utf-8")
     logger.info("ID document %s (member %s) viewed by %s", document.pk, document.member_id, request.user.pk)
-    response = HttpResponse(bytes(document.data), content_type=document.content_type)
+    response = HttpResponse(data, content_type=document.content_type)
     disposition = "inline" if document.content_type in id_documents.SHOWN_INLINE else "attachment"
     response["Content-Disposition"] = f'{disposition}; filename="{document.filename}"'
     response["Cache-Control"] = "no-store, private"

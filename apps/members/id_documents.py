@@ -5,11 +5,16 @@ The rules in one place:
 - PDF, JPEG, PNG, WebP or HEIC (iPhone photos), recognised from the file's contents, not its name;
 - at most MAX_FILE_BYTES each;
 - uploads are held in memory while the request is handled, never in a temporary file on disk;
+- encrypted before they reach the database (Fernet, keys in settings.ID_DOCUMENT_KEYS), so backups and dumps hold
+  only ciphertext; no key, no uploads;
 - deleted as soon as a trustee has checked them, or after max_age_days() if nobody does (a setting, 02 §2.8).
 """
 
 import re
 
+from cryptography.fernet import Fernet, InvalidToken, MultiFernet
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.core.files.uploadhandler import MemoryFileUploadHandler
 from django.db import transaction
 from django.utils import timezone
@@ -20,6 +25,45 @@ from .models import IdCheck, IdDocument
 
 MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_REQUEST_BYTES = 2 * MAX_FILE_BYTES + 64 * 1024  # two files plus the form fields
+
+
+class CannotDecrypt(Exception):
+    """None of the keys in settings.ID_DOCUMENT_KEYS opens this document (the key was changed or lost)."""
+
+
+def encryption_ready() -> bool:
+    """Whether there's a key to encrypt with. Production has none until ID_DOCUMENT_KEYS is set."""
+    return bool(settings.ID_DOCUMENT_KEYS)
+
+
+def _fernet() -> MultiFernet:
+    # The first key encrypts; every key is tried when decrypting.
+    return MultiFernet([Fernet(key) for key in settings.ID_DOCUMENT_KEYS])
+
+
+def encrypt(data: bytes) -> bytes:
+    return _fernet().encrypt(data)
+
+
+def decrypt(token: bytes) -> bytes:
+    try:
+        return _fernet().decrypt(bytes(token))
+    except InvalidToken as error:
+        raise CannotDecrypt from error
+
+
+def rotate_keys() -> int:
+    """Re-encrypt every stored document with the first key, so older keys can be removed. Returns how many."""
+    fernet = _fernet()
+    count = 0
+    for document in IdDocument.objects.only("pk", "data").iterator(chunk_size=10):
+        try:
+            data = fernet.rotate(bytes(document.data))
+        except InvalidToken as error:
+            raise CannotDecrypt(f"document {document.pk}") from error
+        IdDocument.objects.filter(pk=document.pk).update(data=data)
+        count += 1
+    return count
 
 
 def max_age_days() -> int:
@@ -65,7 +109,9 @@ class InMemoryUploadHandler(MemoryFileUploadHandler):
 
 @transaction.atomic
 def save_document(member, kind: str, upload, data: bytes, content_type: str) -> IdDocument:
-    """Store (or replace) the member's document of this kind."""
+    """Store (or replace) the member's document of this kind, encrypted. `size` is the size before encrypting."""
+    if not encryption_ready():
+        raise ImproperlyConfigured("Set ID_DOCUMENT_KEYS before accepting proofs of identity (03 §3.1).")
     IdDocument.objects.filter(member=member, kind=kind).delete()
     return IdDocument.objects.create(
         member=member,
@@ -73,7 +119,7 @@ def save_document(member, kind: str, upload, data: bytes, content_type: str) -> 
         filename=safe_filename(upload.name),
         content_type=content_type,
         size=len(data),
-        data=data,
+        data=encrypt(data),
     )
 
 

@@ -34,6 +34,9 @@
       <p class="hint">Uploading a document again replaces the one waiting.</p>
     {% endif %}
 
+    {% if uploads_off %}
+      <p class="error">{{ uploads_off }}</p>
+    {% else %}
     <form method="post" enctype="multipart/form-data" class="stack form" novalidate>
       {% csrf_token %}
       {% if form.non_field_errors %}<div class="error">{{ form.non_field_errors|join:" " }}</div>{% endif %}
@@ -46,6 +49,7 @@
       {% endfor %}
       <button type="submit">Send</button>
     </form>
+    {% endif %}
   {% endif %}
   <p><a href="{% url 'members:account' %}">Back to your account</a></p>
 {% endblock %}

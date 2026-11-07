@@ -4,14 +4,23 @@ from datetime import timedelta
 from io import StringIO
 from unittest import mock
 
+from cryptography.fernet import Fernet
+from django.apps import apps
 from django.contrib.auth.models import Permission
+from django.core import checks
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.management import call_command
-from django.test import TestCase
+from django.core.management import CommandError, call_command
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from . import id_documents
+from .checks import id_document_keys_are_set, id_document_keys_are_valid
 from .models import IdCheck, IdDocument, Member
+
+# The tests bring their own key, so they pass wherever they run (a laptop, CI, the clone droplet).
+TEST_KEY = Fernet.generate_key()
+OLD_KEY = Fernet.generate_key()
+NEW_KEY = Fernet.generate_key()
 
 PDF = b"%PDF-1.7\n" + b"x" * 100
 JPEG = b"\xff\xd8\xff\xe0" + b"x" * 100
@@ -50,6 +59,7 @@ class SniffingTests(TestCase):
         self.assertEqual(id_documents.safe_filename(""), "document")
 
 
+@override_settings(ID_DOCUMENT_KEYS=[TEST_KEY])
 class MemberUploadTests(TestCase):
     def setUp(self):
         self.member = person("kim@example.com")
@@ -63,7 +73,7 @@ class MemberUploadTests(TestCase):
         self.assertRedirects(response, "/account/id-documents/")
         stored = {d.kind: d for d in IdDocument.objects.all()}
         self.assertEqual(stored["photo_id"].content_type, "image/jpeg")
-        self.assertEqual(bytes(stored["proof_of_address"].data), PDF)
+        self.assertEqual(id_documents.decrypt(stored["proof_of_address"].data), PDF)
         self.assertEqual(id_documents.status(self.member), "waiting")
 
     def test_one_can_be_sent_at_a_time_and_sending_again_replaces_it(self):
@@ -132,6 +142,7 @@ class MemberUploadTests(TestCase):
         self.assertContains(self.client.get("/account/"), "Send your proof of identity")
 
 
+@override_settings(ID_DOCUMENT_KEYS=[TEST_KEY])
 class TrusteeCheckTests(TestCase):
     def setUp(self):
         self.member = person("kim@example.com")
@@ -194,6 +205,7 @@ class TrusteeCheckTests(TestCase):
         self.assertFalse(IdDocument.objects.exists())
 
 
+@override_settings(ID_DOCUMENT_KEYS=[TEST_KEY])
 class StaleShreddingTests(TestCase):
     def test_unchecked_uploads_are_deleted_after_the_time_limit(self):
         member = person("kim@example.com")
@@ -204,3 +216,97 @@ class StaleShreddingTests(TestCase):
         call_command("shred_stale_id_documents", stdout=out)
         self.assertEqual(list(IdDocument.objects.values_list("kind", flat=True)), ["proof_of_address"])
         self.assertIn("Deleted 1", out.getvalue())
+
+
+@override_settings(ID_DOCUMENT_KEYS=[TEST_KEY])
+class EncryptionTests(TestCase):
+    """Documents are encrypted in the database, so backups and dumps hold only ciphertext (03 §3.1)."""
+
+    def setUp(self):
+        self.member = person("kim@example.com")
+
+    def save(self, data=JPEG):
+        return id_documents.save_document(self.member, "photo_id", upload("passport.jpg", data), data, "image/jpeg")
+
+    def stored(self, document):
+        return bytes(IdDocument.objects.get(pk=document.pk).data)
+
+    def test_the_database_never_holds_the_file_itself(self):
+        secret = b"\xff\xd8\xff" + b"PASSPORT NUMBER 123456789" * 10
+        document = self.save(secret)
+        self.assertNotIn(b"PASSPORT NUMBER", self.stored(document))
+        self.assertEqual(id_documents.decrypt(self.stored(document)), secret)
+        self.assertEqual(document.size, len(secret))  # the size of the file, not of the ciphertext
+
+    def test_a_trustee_sees_the_file_decrypted(self):
+        document = self.save()
+        trustee = person("trustee@example.com")
+        trustee.user_permissions.add(Permission.objects.get(codename="review_id_documents"))
+        self.client.force_login(trustee)
+        self.assertEqual(self.client.get(f"/id-checks/documents/{document.pk}").content, JPEG)
+
+    @override_settings(ID_DOCUMENT_KEYS=[OLD_KEY])
+    def test_a_document_no_key_opens_says_so_instead_of_failing(self):
+        document = self.save()
+        trustee = person("trustee@example.com")
+        trustee.user_permissions.add(Permission.objects.get(codename="review_id_documents"))
+        self.client.force_login(trustee)
+        with override_settings(ID_DOCUMENT_KEYS=[NEW_KEY]), self.assertLogs("apps.members.views", "ERROR"):
+            response = self.client.get(f"/id-checks/documents/{document.pk}")
+        self.assertEqual(response.status_code, 410)
+        self.assertContains(response, "ask the member to send it again", status_code=410)
+
+    @override_settings(ID_DOCUMENT_KEYS=[])
+    def test_without_a_key_uploads_are_refused_and_nothing_is_stored(self):
+        self.client.force_login(self.member)
+        page = self.client.get("/account/id-documents/")
+        self.assertContains(page, "switched on yet")
+        self.assertNotContains(page, 'type="file"')
+        response = self.client.post("/account/id-documents/", {"photo_id": upload("passport.jpg", JPEG)}, follow=True)
+        self.assertContains(response, "switched on yet")
+        self.assertFalse(IdDocument.objects.exists())
+        with self.assertRaises(id_documents.ImproperlyConfigured):
+            self.save()
+
+    def test_changing_the_key_re_encrypts_with_the_new_one(self):
+        with override_settings(ID_DOCUMENT_KEYS=[OLD_KEY]):
+            document = self.save()
+        with override_settings(ID_DOCUMENT_KEYS=[NEW_KEY, OLD_KEY]):
+            self.assertEqual(id_documents.decrypt(self.stored(document)), JPEG)  # both keys open it meanwhile
+            out = StringIO()
+            call_command("rotate_id_document_key", stdout=out)
+            self.assertIn("Re-encrypted 1", out.getvalue())
+        with override_settings(ID_DOCUMENT_KEYS=[NEW_KEY]):
+            self.assertEqual(id_documents.decrypt(self.stored(document)), JPEG)
+        with override_settings(ID_DOCUMENT_KEYS=[OLD_KEY]), self.assertRaises(id_documents.CannotDecrypt):
+            id_documents.decrypt(self.stored(document))
+
+    def test_changing_the_key_stops_if_no_key_opens_a_document(self):
+        with override_settings(ID_DOCUMENT_KEYS=[OLD_KEY]):
+            self.save()
+        with override_settings(ID_DOCUMENT_KEYS=[NEW_KEY]), self.assertRaises(CommandError):
+            call_command("rotate_id_document_key", stdout=StringIO())
+
+    def test_uploads_from_before_encryption_are_encrypted_by_the_migration(self):
+        migration = __import__("apps.members.migrations.0004_encrypt_id_documents", fromlist=["encrypt_existing"])
+        plain = IdDocument.objects.create(
+            member=self.member,
+            kind="proof_of_address",
+            filename="b.pdf",
+            content_type="application/pdf",
+            size=1,
+            data=PDF,
+        )
+        encrypted = self.save()
+        before = self.stored(encrypted)
+        migration.encrypt_existing(apps, None)
+        self.assertEqual(id_documents.decrypt(self.stored(plain)), PDF)
+        self.assertEqual(self.stored(encrypted), before)  # already encrypted: left alone
+
+    def test_startup_checks_catch_a_bad_or_missing_key(self):
+        with override_settings(ID_DOCUMENT_KEYS=["not-a-key"]):
+            self.assertEqual([e.id for e in id_document_keys_are_valid(None)], ["members.E001"])
+        with override_settings(ID_DOCUMENT_KEYS=[]):
+            warnings = id_document_keys_are_set(None)
+            self.assertEqual([(w.id, w.level) for w in warnings], [("members.W001", checks.WARNING)])
+        self.assertEqual(id_document_keys_are_valid(None) + id_document_keys_are_set(None), [])  # TEST_KEY

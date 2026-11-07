@@ -6,6 +6,8 @@ variables (or a `.env` file in the project root when developing). See `.env.exam
 The defaults are safe for local development only.
 """
 
+import base64
+import hashlib
 from pathlib import Path
 
 import environ
@@ -131,6 +133,18 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="BBMS <noreply@bbms.build
 # The space's name is an admin setting (apps/site_settings, 02 §2.8), not an environment variable.
 # The site's public address, for links that leave the site: emails, QR codes on device screens.
 SITE_URL = env("SITE_URL", default="http://localhost:8000").rstrip("/")
+
+# Keys that encrypt proofs of identity in the database (spec 03 §3.1), so backups and dumps hold only ciphertext.
+# One or more Fernet keys, comma-separated: the first encrypts, all of them decrypt (for changing keys; see
+# `manage.py rotate_id_document_key`). Make one with:
+#   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# Keep it only in the app's environment: never in the repo, the database or the shadow site (08). Without it,
+# production refuses uploads. When developing, a key is worked out from SECRET_KEY instead.
+ID_DOCUMENT_KEYS = env.list("ID_DOCUMENT_KEYS", default=[])
+if not ID_DOCUMENT_KEYS and DEBUG:
+    ID_DOCUMENT_KEYS = [
+        base64.urlsafe_b64encode(hashlib.sha256(b"bbms id documents, development only:" + SECRET_KEY.encode()).digest())
+    ]
 
 # Security settings for production (behind DigitalOcean App Platform's HTTPS proxy).
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

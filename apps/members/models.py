@@ -185,8 +185,8 @@ class IdDocument(models.Model):
     filename = models.CharField(max_length=255)
     content_type = models.CharField(max_length=50)
     size = models.PositiveIntegerField()
-    # TODO(encryption): encrypt with a key from the environment (e.g. Fernet, `cryptography` package) so database
-    # backups and dumps only ever hold ciphertext. See 03 §3.1.
+    # Encrypted (Fernet, with the keys in settings.ID_DOCUMENT_KEYS), so database backups and dumps only ever hold
+    # ciphertext. Read and write it through id_documents.save_document() and id_documents.decrypt(). See 03 §3.1.
     data = models.BinaryField()
     uploaded_at = models.DateTimeField(default=timezone.now)
 

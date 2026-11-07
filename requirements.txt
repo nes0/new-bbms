@@ -4,6 +4,10 @@ asgiref==3.13.0
     # via django
 bcrypt==5.0.0
     # via -r requirements.in
+cffi==2.1.1
+    # via cryptography
+cryptography==50.0.2
+    # via -r requirements.in
 django==5.2.19
     # via -r requirements.in
 django-environ==0.14.0
@@ -14,6 +18,8 @@ psycopg==3.3.8
     # via -r requirements.in
 psycopg-binary==3.3.8
     # via psycopg
+pycparser==3.12
+    # via cffi
 pymysql==1.2.3
     # via -r requirements.in
 segno==1.6.6
