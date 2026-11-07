@@ -7,3 +7,4 @@ whitenoise>=6.9         # serves static files without a separate web server
 gunicorn>=23            # production web server
 bcrypt>=4.2             # checks passwords migrated from the legacy system ($2y$ bcrypt)
 segno>=1.6              # QR codes for device screens (pure Python, no dependencies)
+pymysql>=1.1            # reads the legacy MySQL database during migration (pure Python)
