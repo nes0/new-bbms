@@ -1,0 +1,38 @@
+{% load static %}<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ SITE_NAME }} members{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/site.css' %}">
+  {# HTMX 2.0.4, kept in static/js so the site has no external dependencies. #}
+  <script src="{% static 'js/htmx.min.js' %}" defer></script>
+</head>
+{# Every HTMX request sends the CSRF token, so forms and buttons using hx-post just work. #}
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  <header class="site-header">
+    <a class="site-name" href="{% url 'home' %}">{{ SITE_NAME }}</a>
+    <nav>
+      {% if user.is_authenticated %}
+        <span>{{ user.get_short_name }}</span>
+        {% if user.is_staff %}<a href="{% url 'admin:index' %}">Admin</a>{% endif %}
+        <form method="post" action="{% url 'logout' %}" class="inline">
+          {% csrf_token %}
+          <button type="submit" class="link">Log out</button>
+        </form>
+      {% else %}
+        <a href="{% url 'login' %}">Log in</a>
+      {% endif %}
+    </nav>
+  </header>
+
+  <main>
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

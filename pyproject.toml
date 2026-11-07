@@ -1,0 +1,16 @@
+[project]
+name = "bbms"
+version = "0.1.0"
+description = "Build Brighton Member System"
+requires-python = ">=3.12"
+
+# Dependencies are listed in requirements.in / requirements.txt (pinned), not here.
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["BBMSDoorEntry", "*/migrations/*"]
+
+[tool.ruff.lint]
+# pycodestyle, pyflakes, import order, bugbear, pyupgrade, Django-specific checks
+select = ["E", "W", "F", "I", "B", "UP", "DJ"]

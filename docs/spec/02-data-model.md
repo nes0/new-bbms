@@ -1,0 +1,160 @@
+# 2. Data model
+
+Legacy table names are shown in `code`. "New" notes describe how the rewrite should differ.
+All money in the new system is **integer pence**; all timestamps are timezone-aware (Europe/London for display).
+
+## 2.1 Entity overview
+
+```
+User ─┬─< KeyFob ─┬─< AccessLog (door / status events)
+      │           └─< EquipmentSession (equipment_log)
+      ├─< Payment
+      ├─< SubscriptionCharge
+      ├─< Induction >── Equipment.induction_category
+      ├─< LockerRental >── Locker
+      ├─< ProposalVote >── Proposal
+      ├─< Expense
+      ├─< Notification
+      ├── ProfileData (1:1)
+      ├─< Address (pending + approved)
+      └─>< Role (role_user)
+Equipment ── managed by Role; optional permaloan User
+AcsNode (devices)   Settings (key/value)   AuditLog
+```
+
+## 2.2 Users (`users`)
+
+| Field | Meaning / rules | New |
+|---|---|---|
+| `given_name`, `family_name` | Required. | |
+| `email` | Required, unique. Login identifier. | |
+| `secondary_email` | Optional, unique. Used to match PayPal payments. | **Drop** (PayPal dropped) |
+| `email_verified` | Set via link `account/confirm-email/{id}/{hash}`. | Use framework's verification |
+| `hash` | Random 30-char string. Used for email confirmation and **photo file names**. | Replace with signed tokens; photo keys use random UUID |
+| `password` | bcrypt. Min 8 chars. | Framework default (argon2/bcrypt) |
+| `phone` | Required (min 10) for self-registration; optional for admins. | |
+| `emergency_contact` | Required for self-registration. Free text. | |
+| `address_*` | **Legacy duplicate** of `user_address`; unused by current code. ⚠️ Verify | Drop |
+| `notes` | Admin notes. | Admin-only |
+| `status` | See 03 §3.2. | Enum |
+| `active` | Boolean "has access to the space". Kept in sync with status. | Derive from status ❓ |
+| `founder` | Display flag. | |
+| `trusted` | Granted by admin. Prereq for keyholder. Triggers email + notification. | |
+| `key_holder` | Granted by admin to a trusted member with a photo, a fob and a physical key (key deposit paid). | |
+| `key_deposit_payment_id` | Payment that paid the £15 door-key deposit. | Keep as the **key deposit** (physical key). **New:** key issued date, key number (optional), returned date |
+| `storage_box_payment_id` | Legacy; storage now derived from payments. | Drop |
+| `induction_completed` | Member completed the online general induction / agreed rules. | |
+| `inducted_by` | User id of the `comms` member who confirmed the general induction. | |
+| `rules_agreed` | Timestamp the rules were accepted. | |
+| `payment_method` | `gocardless-variable`, `balance`, `standing-order`, `paypal`, `gocardless` (old), `cash`, `''`. | Enum: `gocardless-variable`, `balance`, `standing-order`, `cash`, none |
+| `secondary_payment_method` | Backup when `balance` is insufficient (only `gocardless-variable`). | |
+| `payment_day` | 1–28 (values > 28 become 1). | |
+| `monthly_subscription` | **Whole pounds**. Min 20 self-service / 5 admin. | Store pence; minimums are settings |
+| `subscription_id` | GoCardless subscription id (old method). | **Drop** (old method dropped) |
+| `mandate_id` | GoCardless mandate id (variable method). | |
+| `gocardless_setup_id` | Transient during setup. | |
+| `last_subscription_payment` | Legacy, unused. ⚠️ Verify | Drop |
+| `subscription_expires` | Date membership is paid until. Central to the status rules. | |
+| `cash_balance` | **Pence**. Cached member credit; recomputed from payments. | **Drop**: credit is calculated from the ledger when needed (04 §4.7) |
+| `profile_private` | Hide from public member list. | |
+| `banned`, `banned_date`, `banned_reason` | Banned users are refused every role-protected page. | |
+| `slack_username` | Unused (Slack disabled). | Drop |
+| `import_match_string` | Text to match this member in bank-statement imports. | Keep if statement import kept |
+
+## 2.3 Related member data
+
+- **`profile_data`** (1:1): social links (twitter, facebook, google_plus, github, irc, website), `tagline`, `description`, `skills_array` (JSON list of skill keys), and photo flags:
+  `profile_photo` (approved photo exists), `new_profile_photo` (awaiting approval), `profile_photo_private` (only show to members), `profile_photo_on_wall` (physical photo on the wall — counts instead of an online photo for door access).
+- **`user_address`**: `line_1..4`, `postcode`, `approved`. A member edit creates an **unapproved** row; an admin approves/declines it. Admin edits are approved immediately.
+- **`notifications`**: in-app messages `message`, `type`, `hash` (dedupe key, e.g. `trusted_status`, `<expenseId>-expense_approved`), `unread`, `notified_at/method`.
+- **`audit_log`**: `admin_id`, `user_id`, `action`, `description`. Written when audited fields (`induction_completed`, `trusted`, `key_holder`) change.
+
+## 2.4 Money
+
+- **`payments`** — the **ledger**. One row per money movement.
+  - `reason`: what it's for — `subscription`, `induction`, `door-key` (legacy; new: `key-deposit`), `storage-box` (box fee), `locker-rent` (new), `balance` (credit top-up), `equipment-fee`, `withdrawal`, `donation`, `transfer`, `costs`, or a consumable service name (e.g. printer).
+  - `source`: where the money came from — `gocardless`, `gocardless-variable`, `stripe`, `paypal`, `cash`, `standing-order`, `balance` (paid from member credit), `reimbursement` (approved expense), `transfer`.
+  - `source_id`: provider id (GoCardless payment id, Stripe charge id, PayPal txn id, `cash:<ts>`). `(source, source_id, user_id)` is used for de-duplication.
+  - `reference`: context — subscription charge id, induction key, `<sessionId>:<device>` for equipment fees, expense id, etc.
+  - `amount`, `fee`, `amount_minus_fee` — **pounds, float** in legacy.
+  - `status`: `pending`, `paid`, `failed`, `cancelled`, `withdrawn`, … (GoCardless statuses are passed through).
+  - `paid_at`.
+- **New** (04 §4.9, 06 §6.13): `gocardless_payouts` and `stripe_payouts` (id, amount, fees, arrival date) with
+  their line items linked to payments; bank statement lines (date, amount, description, matched to); member
+  **status history** (member, from, to, when, by); a daily **membership snapshot** (date, counts by status).
+- **`subscription_charge`** — one row per member per billing month: `charge_date`, `payment_date`, `amount` (pence, filled when paid), `status` ∈ `pending → due → processing → paid`, or `failed` (new: GoCardless gave up), or `cancelled`.
+
+## 2.5 Access control
+
+- **`key_fobs`**: `user_id`, `key_id` (RFID tag string, legacy ones prefixed `BB`, max 12 chars), `active`, `lost`. Marking lost deactivates.
+  **New:** store the full hex tag *and* the decimal card number (the last 8 hex digits of the 10, as a number),
+  each unique, so a device can identify a fob by either. Format confirmed: `700012d68733` → card 0001234567 (05 §5.1).
+- **`acs_nodes`**: `name`, `device_id` (matches equipment `slug` for equipment nodes), `api_key`, `entry_device` (door vs equipment; **new:** a `role` of `entry`, `exit` or `equipment`), `monitor_heartbeat`, `last_boot`, `last_heartbeat`, `queued_command` (one pending command delivered on next check-in).
+- **New** (05 §5.1–5.2): `fob_enrolments` (reader, member, opened by, opens at, expires at, captured card number and
+  hex id, confirmed by/at); access log events gain a `kind`: `entry`, `check-in`, `exit`, `refused`.
+- **`access_log`** (`Activity`): `user_id`, `key_fob_id`, `service` (e.g. `main-door`, `status`, device id), `response` (e.g. 402 = refused), `delayed` (event reported late by the device).
+- **`equipment_log`** (usage sessions): `user_id`, `key_fob_id`, `device` (equipment slug), `active`, `started`, `last_update` (heartbeat), `finished`, `removed` (≤ 60 s, ignored), `billed`, `processed`, `reason` (`''`, `training`, `testing`), `notes`.
+
+## 2.6 Equipment & inductions
+
+- **`equipment`**: `name`, `slug` (unique, used as device key and induction key), `manufacturer`, `model_number`, `serial_number`, `colour`, `room`, `detail`, `description`, `help_text` (markdown), `ppe` (JSON list), `managing_role_id`, `requires_induction`, `induction_category` (groups machines sharing one induction), `working`, `permaloan` + `permaloan_user_id`, `access_fee` (**whole pounds** induction fee), `usage_cost` (**pence per hour**), `usage_cost_per`, `photos` (JSON list of S3 keys), `archive`, `asset_tag_id`, `obtained_at`, `removed_at`.
+- **New** (05 §5.4, equipment readers): equipment status history (status, note, reported by, when); `meter_readings`
+  (equipment, seq, active seconds, session, received at; unique per equipment + seq); `equipment_services` (date, note,
+  by); per-equipment admin settings `meter_mode` (`current` or `session`), `current_threshold_amps` (current mode only),
+  `idle_auto_end_minutes` (empty = off; current mode only) and `service_interval_hours` (empty = no reminders); sessions gain `ended_by`
+  (`tap`, `button`, `idle`, `tidy-up`, `admin`), `original_started` / `original_finished`, `adjusted_by`, `adjusted_reason`, `motor_on_seconds`, `charged_at`, and reason `maintenance`.
+- **New** (06 §6.12): `equipment.moodle_course_id` (optional), `equipment.course_required_for_existing` (flag),
+  `members.moodle_user_id` (found via web services), and `training_completions` (member, Moodle course id,
+  completed at, last checked, cleared by/at).
+- **`inductions`**: `user_id`, `key` (= `induction_category`), `paid`, `payment_id`, `trained` (timestamp), `trainer_user_id`, `is_trainer`, `active`.
+
+## 2.7 Other
+
+- **`storage_boxes`**: `size` (volume units), `user_id` (0 = free), `active`. Boxes have no name or location, only an id.
+  Boxes are now all 19 L; the volume field is obsolete.
+  **Not migrated:** boxes are no longer tracked individually (06 §6.2).
+  **New** (06 §6.2): on members, a **box paid** flag + date + payment; `storage_locations` (name); `locker_sizes` (name,
+  default monthly rent in pence); `lockers` (location, number, size, status: available / rented / reserved for
+  trustees / out of use, status note, rent override in pence + reason); `locker_rentals` (locker, member, started,
+  ended, monthly rent); `locker_rent_charges` (rental, charge date, amount, status, like subscription charges);
+  and on members, an optional **locker limit override** + reason. Location + number is unique for lockers.
+- **`proposals`**: `title`, `description` (markdown), `user_id`, `start_date`, `end_date`, results (`votes_cast`, `votes_for`, `votes_against`, `abstentions`, `quorum`, `result`, `processed`).
+- **`proposal_votes`**: `proposal_id`, `user_id`, `vote` (+1/0/−1), `abstain`.
+- **`expenses`**: `user_id`, `category`, `description`, `amount` (**pence**), `expense_date`, `file` (receipt on S3), `approved`, `declined`, `approved_by_user`.
+- **`settings`**: key/value. Legacy's only key, `emergency_door_key_storage_pin`, is defunct and is not migrated. See §2.8 for the new system's settings.
+- **`roles`**, **`role_user`**: see 01 §1.3.
+- **`detected_devices`**: `type`, `mac_address`, `display_name`. **Dropped**; not migrated.
+
+## 2.8 Settings (new system)
+
+Values that legacy hard-coded become admin-editable settings (one typed row each, changes audit-logged):
+
+| Setting | Legacy value |
+|---|---|
+| Key deposit (physical key for 24-hour access; legacy door-key deposit) | £15 |
+| Active fobs per member (fobs are free) | 2 |
+| Occupancy timeout (no tap-out) | new; default 4 hours after last fob activity, everyone cleared at 4am |
+| Public occupancy count on the website | new; on/off |
+| Attendance threshold for the trusted-status review list | new; ❓ suggested 8 visits over 4 weeks (05 §5.10) |
+| Box fee (one-off, non-refundable) | £15 (charged outside BBMS today) |
+| Lockers allowed per member (admins can override per member) | new; ❓ suggested 1 |
+| Locker rents | per size, in the locker size list (06 §6.2) |
+| Minimum monthly subscription (self-service) | £20 |
+| Minimum monthly subscription (set by admin) | £5 |
+| Suspension before a member is marked left | new; 30 days (decided provisionally) |
+| Failed Direct Debit retries | new; "BBMS retries" (default) or "let GoCardless retry" (Success+); BBMS mode: retries (default 1) and days between (default 5) |
+| Grace period per payment method | DD 10 days, standing order 6 months, other 7 days (03 §3.5) |
+| Minimum billable equipment session | 15 minutes |
+| Allowed negative credit for equipment fees | £5 |
+| Trustees' contact email | `trustees@buildbrighton.com` |
+| Space name (used in emails and pages) | "Build Brighton" |
+
+## 2.9 Files
+
+Stored on S3 (bucket per environment):
+- Member photos: `<env>/user-photo/<md5(hash)>.png` + thumbnail (500px / 200px square crops), pending ones under a `new` prefix until approved.
+- Equipment photos: under `equipment.getPhotoBasePath()`.
+- Expense receipts: `<env>/expenses/<random>.<ext>`.
+
+**New:** a private DigitalOcean Spaces bucket; serve through signed URLs or through the app with permission checks.
+Member photos must not be guessable (md5 of a short value is guessable).

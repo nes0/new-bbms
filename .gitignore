@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Django
+db.sqlite3
+staticfiles/
+media/
+
+# Local configuration and secrets: never commit these
+.env
+
+# The front-door firmware is its own git repository (github.com/nes0/BBMSDoorEntry),
+# cloned here so tests/door_compat can run it.
+BBMSDoorEntry/

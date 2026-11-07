@@ -1,0 +1,16 @@
+"""Top-level URLs. Each app adds its own pages here as it is built."""
+
+from django.contrib import admin
+from django.urls import include, path
+
+from apps.core import views as core_views
+
+admin.site.site_header = "BBMS administration"
+admin.site.site_title = "BBMS admin"
+
+urlpatterns = [
+    path("", core_views.home, name="home"),
+    path("healthz", core_views.healthz, name="healthz"),
+    path("accounts/", include("django.contrib.auth.urls")),
+    path("admin/", admin.site.urls),
+]

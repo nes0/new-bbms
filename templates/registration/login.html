@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Log in · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Log in</h1>
+  <form method="post" class="stack">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<p class="error">Your email address and password didn't match. Please try again.</p>{% endif %}
+    <label for="id_username">Email address</label>
+    <input type="email" name="username" id="id_username" autocomplete="email" required autofocus
+           value="{{ form.username.value|default:'' }}">
+    <label for="id_password">Password</label>
+    <input type="password" name="password" id="id_password" autocomplete="current-password" required>
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit">Log in</button>
+  </form>
+  <p><a href="{% url 'password_reset' %}">Forgotten your password?</a></p>
+{% endblock %}

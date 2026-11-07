@@ -1,0 +1,8 @@
+# Top-level runtime dependencies. Edit this file, then run:
+#   uv pip compile requirements.in -o requirements.txt
+django>=5.2,<5.3        # LTS release, supported until April 2028
+psycopg[binary]>=3.2    # PostgreSQL driver
+django-environ>=0.12    # settings from environment variables
+whitenoise>=6.9         # serves static files without a separate web server
+gunicorn>=23            # production web server
+bcrypt>=4.2             # checks passwords migrated from the legacy system ($2y$ bcrypt)
