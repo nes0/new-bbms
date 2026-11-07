@@ -195,4 +195,4 @@ class TidyUpTests(TestCase):
     def test_tidy_up_twice_changes_nothing_more(self):
         self.session(timedelta(hours=3), heartbeat_ago=timedelta(hours=2))
         rules.tidy_up(self.now)
-        self.assertEqual(rules.tidy_up(self.now), {"closed": 0, "merged": 0})
+        self.assertEqual(rules.tidy_up(self.now), {"closed": 0, "merged": 0, "idle": 0, "reminders": 0})

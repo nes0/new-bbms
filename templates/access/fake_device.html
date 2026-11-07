@@ -1,0 +1,70 @@
+{% load static %}<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fake machine reader</title>
+  {# A pretend machine fob reader that talks to this server through the v2 device API. Local development only. #}
+  <link rel="stylesheet" href="{% static 'access/fake_device.css' %}">
+</head>
+<body>
+<main class="bench">
+  <section class="device" aria-label="The device">
+    <div class="device-top">
+      <span class="maker">BBMS reader</span>
+      <span class="led-wrap" title="On while the relay is on (the machine has power)">
+        <span id="led" class="led"></span> Relay
+      </span>
+    </div>
+
+    <div class="screen-wrap">
+      <canvas id="screen" width="296" height="128" aria-label="e-paper screen"></canvas>
+    </div>
+
+    <div class="reader">
+      <label for="card">Fob</label>
+      <input id="card" inputmode="numeric" autocomplete="off" placeholder="card number or 12-hex tag">
+      <button id="tap" class="tap" type="button">Tap</button>
+    </div>
+
+    <div class="buttons">
+      <button id="stop" class="round red" type="button" title="End the session">Stop</button>
+      <button id="fault" class="round blue" type="button" title="Report out of order, or fixed">Fault</button>
+    </div>
+  </section>
+
+  <section class="controls" aria-label="Test bench">
+    <h1>Fake machine reader</h1>
+    <p class="hint">
+      Talks to this server through the v2 device API (<code>/api/devices/v2/</code>), as new firmware would.
+      Create a demo machine, reader and fobs with
+      <code>DEBUG=True .venv/bin/python manage.py create_demo_device</code>, then paste the key it prints.
+    </p>
+
+    <label class="field">Device API key
+      <input id="key" type="password" autocomplete="off" spellcheck="false">
+    </label>
+
+    <div class="switches">
+      <label class="switch"><input id="power" type="checkbox" checked> Reader power</label>
+      <label class="switch"><input id="network" type="checkbox" checked> BBMS reachable</label>
+    </div>
+
+    <label class="field">Machine current: <output id="amps">0.0</output> A
+      <span class="muted" id="threshold"></span>
+      <input id="current" type="range" min="0" max="20" step="0.1" value="0">
+    </label>
+    <p class="muted small">The relay cuts the machine's supply, so the reader only measures current while it's on.</p>
+
+    <div class="row">
+      <button id="checkin" type="button">Check in now</button>
+      <button id="clearlog" type="button">Clear log</button>
+    </div>
+
+    <h2>Requests</h2>
+    <ol id="log" class="log" reversed></ol>
+  </section>
+</main>
+<script src="{% static 'access/fake_device.js' %}"></script>
+</body>
+</html>

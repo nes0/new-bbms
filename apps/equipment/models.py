@@ -4,9 +4,12 @@ Equipment, inductions and usage sessions (spec 02 §2.6, 05 §5.3, §5.6–5.8).
 All money is in pence.
 """
 
+from decimal import Decimal
+
 from django.conf import settings
 from django.contrib.auth.models import Group
 from django.db import models
+from django.db.models import F
 from django.utils import timezone
 
 
@@ -67,6 +70,11 @@ class Equipment(models.Model):
     )
     service_interval_hours = models.PositiveIntegerField(null=True, blank=True, help_text="Empty = no reminders.")
 
+    # Bumped whenever something a reader shows or uses changes, so readers know to re-read it (spec 09 §9.4).
+    config_version = models.PositiveIntegerField(default=1, editable=False)
+    # Set when the "service due" reminder goes to the team; cleared when a service is recorded.
+    service_reminder_sent_at = models.DateTimeField(null=True, blank=True, editable=False)
+
     permaloan_member = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -84,13 +92,49 @@ class Equipment(models.Model):
         ordering = ["name"]
         verbose_name_plural = "equipment"
 
+    CONFIG_FIELDS = (
+        "name",
+        "usage_cost_pence_per_hour",
+        "status",
+        "status_note",
+        "meter_mode",
+        "current_threshold_amps",
+        "idle_auto_end_minutes",
+    )
+
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        # Bump config_version here, so the admin, the API and any future page all do it (spec 09 §9.4).
+        bumped = False
+        if self.pk and not self._state.adding:
+            stored = Equipment.objects.filter(pk=self.pk).values(*self.CONFIG_FIELDS).first()
+            changed = stored is not None and any(
+                _same_config_value(stored[f], getattr(self, f)) is False for f in self.CONFIG_FIELDS
+            )
+            if changed:
+                bumped = True
+                self.config_version = F("config_version") + 1
+                update_fields = kwargs.get("update_fields")
+                if update_fields is not None:
+                    kwargs["update_fields"] = {*update_fields, "config_version"}
+        super().save(*args, **kwargs)
+        if bumped:
+            self.refresh_from_db(fields=["config_version"])
 
     @property
     def induction_key(self):
         """The category that inductions are recorded against."""
         return self.induction_category or self.slug
+
+
+def _same_config_value(stored, new) -> bool:
+    if stored is None or new is None:
+        return stored is new
+    if isinstance(stored, Decimal):
+        return stored == Decimal(str(new))
+    return stored == new
 
 
 class Induction(models.Model):
@@ -189,3 +233,83 @@ class UsageSession(models.Model):
     def duration_seconds(self):
         end = self.ended_at or timezone.now()
         return max(0, int((end - self.started_at).total_seconds()))
+
+
+class MachineStatusChange(models.Model):
+    """History behind the out-of-order button and the admin's status field (spec 09 §9.4)."""
+
+    class Source(models.TextChoices):
+        BUTTON = "button", "Button on the machine"
+        ADMIN = "admin", "Admin"
+
+    equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name="status_changes")
+    status = models.CharField(max_length=20, choices=Equipment.Status.choices)
+    note = models.CharField(max_length=255, blank=True)
+    reported_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    session = models.ForeignKey(UsageSession, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    source = models.CharField(max_length=10, choices=Source.choices)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.equipment} · {self.status} · {self.created_at:%Y-%m-%d %H:%M}"
+
+
+class MeterReading(models.Model):
+    """Seconds the motor ran, as reported by a reader in current-draw mode (spec 09 §9.6)."""
+
+    device = models.ForeignKey("access.Device", on_delete=models.CASCADE, related_name="meter_readings")
+    equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name="meter_readings")
+    session = models.ForeignKey(UsageSession, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    seq = models.PositiveBigIntegerField()
+    active_seconds = models.PositiveIntegerField()
+    received_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["device", "seq"], name="one_reading_per_seq")]
+        indexes = [models.Index(fields=["equipment", "received_at"])]
+
+    def __str__(self):
+        return f"{self.equipment} · {self.active_seconds}s · #{self.seq}"
+
+
+class ServiceRecord(models.Model):
+    equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name="service_records")
+    serviced_at = models.DateField(default=timezone.localdate)
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    note = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-serviced_at", "-created_at"]
+
+    def __str__(self):
+        return f"{self.equipment} serviced {self.serviced_at}"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # A recorded service re-arms the "service due" reminder.
+        Equipment.objects.filter(pk=self.equipment_id).update(service_reminder_sent_at=None)
+
+
+class OfflineEvent(models.Model):
+    """An event a device stored while BBMS was unreachable and sent later (spec 09 §9.7)."""
+
+    device = models.ForeignKey("access.Device", on_delete=models.CASCADE, related_name="offline_events")
+    event_id = models.CharField(max_length=64)
+    type = models.CharField(max_length=20)
+    payload = models.JSONField(default=dict)
+    received_at = models.DateTimeField(default=timezone.now)
+    result = models.CharField(max_length=20)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["device", "event_id"], name="one_offline_event_per_id")]
+
+    def __str__(self):
+        return f"{self.device} · {self.event_id} · {self.result}"

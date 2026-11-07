@@ -46,10 +46,55 @@ class KeyFobAdmin(admin.ModelAdmin):
 
 @admin.register(Device)
 class DeviceAdmin(admin.ModelAdmin):
-    list_display = ("name", "device_id", "role", "last_heartbeat", "monitor_heartbeat")
-    list_filter = ("role", "monitor_heartbeat")
-    readonly_fields = ("last_boot", "last_heartbeat", "legacy_id")
-    actions = ["new_api_key"]
+    list_display = ("name", "device_id", "role", "enabled", "firmware_version", "last_heartbeat", "cache_status")
+    list_filter = ("role", "monitor_heartbeat", "enabled")
+    readonly_fields = (
+        "last_boot",
+        "last_heartbeat",
+        "firmware_version",
+        "reported_cache_version",
+        "cache_status",
+        "pending_commands",
+        "legacy_id",
+    )
+    actions = ["new_api_key", "queue_refresh_cache", "queue_purge_cache", "queue_reboot", "disable", "enable"]
+
+    @admin.display(description="Cache")
+    def cache_status(self, device):
+        from .api_v2 import ApiError, allowed_fob_list, cache_version
+
+        try:
+            current = cache_version(allowed_fob_list(device))
+        except ApiError:  # a machine reader with no machine has no list
+            return "—"
+        if not device.reported_cache_version:
+            return "not reported"
+        return "up to date" if device.reported_cache_version == current else f"out of date ({current} now)"
+
+    def _queue(self, request, queryset, command):
+        for device in queryset:
+            device.queue_command(command)
+        self.message_user(request, f'Queued "{command}"; it is sent at each device\'s next check-in.')
+
+    @admin.action(description='Queue "refresh cache"')
+    def queue_refresh_cache(self, request, queryset):
+        self._queue(request, queryset, "refresh_cache")
+
+    @admin.action(description='Queue "purge cache"')
+    def queue_purge_cache(self, request, queryset):
+        self._queue(request, queryset, "purge_cache")
+
+    @admin.action(description='Queue "reboot"')
+    def queue_reboot(self, request, queryset):
+        self._queue(request, queryset, "reboot")
+
+    @admin.action(description="Disable (v2 readers refuse everyone)")
+    def disable(self, request, queryset):
+        queryset.update(enabled=False)
+
+    @admin.action(description="Enable")
+    def enable(self, request, queryset):
+        queryset.update(enabled=True)
 
     @admin.action(description="Generate a new API key (the old one stops working)")
     def new_api_key(self, request, queryset):

@@ -99,6 +99,15 @@ class Member(AbstractBaseUser, PermissionsMixin):
     def full_name(self):
         return f"{self.given_name} {self.family_name}".strip()
 
+    @property
+    def display_name(self):
+        """What readers may show: given name and the first letter of the family name ("Kim K.").
+
+        One place on purpose: what devices may display is an open trustee question (spec 09 §9.3).
+        """
+        initial = f" {self.family_name[0]}." if self.family_name else ""
+        return f"{self.given_name}{initial}".strip()
+
     def get_full_name(self):
         return self.full_name
 

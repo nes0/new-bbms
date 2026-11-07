@@ -147,7 +147,7 @@ clear rule for "BBMS answered" versus "BBMS couldn't answer".
 | `POST check-in` | Boot and heartbeat in one. Body: `{event, firmware_version, cache_version}`, where `event` is `boot` or `heartbeat`. Response: `{server_time, heartbeat_seconds, cache_version, commands: [...]}`. Commands include `refresh_cache`, `purge_cache`, `reboot`, `disable`, `enable`. |
 | `GET allowed-fobs` | The full list this device may let in offline: `[{card, display_name}]`, with an `ETag`. Devices send `If-None-Match` and get `304` when nothing changed. Door: current keyholders. Equipment: members trained on it. |
 | `POST access` | A fob was presented: `{card}`. Response: `{allowed, reason, display_name, session_id?}`. `reason` is one of `ok`, `checked_in` (door: visit recorded, door stays shut), `unknown_fob`, `fob_lost`, `not_member`, `not_keyholder`, `no_photo`, `not_trained`, `course_incomplete` (Moodle course not completed, 06 §6.12), `in_use` (another member is tapped in), `out_of_order`, `enrolled` (fob captured during an enrolment window), `checked_out` (exit reader), `insufficient_credit`, `device_disabled`. For equipment, `allowed` starts a usage session. |
-| `POST sessions/{id}/heartbeat`, `POST sessions/{id}/end` | Equipment usage sessions (as v1 `PUT`/`DELETE /acs/activity/{id}`). |
+| `POST sessions/{id}/heartbeat`, `POST sessions/{id}/end` | Equipment usage sessions (as v1 `PUT`/`DELETE /acs/activity/{id}`). Built choices (09 §9.5): both are idempotent. Heartbeat on a finished session answers `200 {open: false, ...}` rather than v1's 400; ending twice returns the same summary with `already_ended: true` and never recomputes the fee. A tap at `access` by the member who already has the open session returns it again with `resumed: true`. |
 | `POST offline-events` | Upload a batch of decisions the device made while BBMS was unreachable: `[{card, occurred_at, allowed, type}]`. BBMS records them in the access log as offline entries, at the time they happened. |
 | `POST meter` | Equipment readers: motor-on seconds since the last report, with an increasing `seq` (see below). |
 | `POST machine-status` | Equipment readers: a tapped-in member reports the machine out of order or fixed (see below). |
@@ -167,8 +167,10 @@ short link to the device's page (`https://bbms.buildbrighton.com/d/<device-id>`,
 - Authenticated like the rest of v2 (`Authorization: Bearer <key>`); the v1 `ApiKey` header also works.
 
 **Revocation:** when a fob is marked lost, or a member stops being allowed on a device (left, suspended, keyholder
-removed, training revoked), BBMS bumps that device's `cache_version`. The device sees it at its next check-in and
-re-fetches `allowed-fobs`. The heartbeat interval is set by the server (proposed: 5 minutes), so revocations reach
+removed, training revoked), that device's `cache_version` changes. The version is a **hash** (the first 8 hex
+characters of SHA-256 over the sorted cards and names), computed on demand rather than a stored counter, so it
+changes by itself whenever the list does. The device sees it at its next check-in (which adds `refresh_cache` to
+`commands` when the version it reports differs) and re-fetches `allowed-fobs`. The heartbeat interval is set by the server (proposed: 5 minutes), so revocations reach
 devices within minutes, and caches no longer hold fobs forever.
 
 ❓ For the firmware team and trustees:

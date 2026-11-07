@@ -73,10 +73,24 @@ class Device(models.Model):
     monitor_heartbeat = models.BooleanField(default=False, help_text="Warn the acs team if it goes quiet.")
     last_boot = models.DateTimeField(null=True, blank=True)
     last_heartbeat = models.DateTimeField(null=True, blank=True)
+    # Device API v2 (spec 09 §9.4).
+    firmware_version = models.CharField(max_length=50, blank=True)
+    reported_cache_version = models.CharField(max_length=20, blank=True, help_text="What the device says it holds.")
+    enabled = models.BooleanField(default=True, help_text="Untick to make the device refuse everyone (v2 firmware).")
+    pending_commands = models.JSONField(default=list, blank=True, help_text="Sent once at the next check-in.")
     legacy_id = models.PositiveIntegerField(null=True, blank=True, unique=True)
+
+    COMMANDS = ("refresh_cache", "purge_cache", "reboot")
 
     def __str__(self):
         return f"{self.name} ({self.device_id})"
+
+    def queue_command(self, command: str):
+        if command not in self.COMMANDS:
+            raise ValueError(f"Unknown device command: {command}")
+        if command not in self.pending_commands:
+            self.pending_commands = [*self.pending_commands, command]
+            self.save(update_fields=["pending_commands"])
 
     def set_api_key(self, raw_key: str):
         self.api_key_hash = _hash_api_key(raw_key)

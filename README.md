@@ -9,6 +9,12 @@ The membership system for Build Brighton: members, payments, door and machine ac
 - members can log in (including with passwords migrated from the legacy system) and admins can manage them;
 - key fobs, devices and the v1 device API, so the current front-door firmware works unchanged, plus a QR-code call
   for reader screens;
+- the **v2 device API** (`/api/devices/v2/`, built to [the brief](docs/spec/09-device-api-v2-build.md)): check-in,
+  access for doors and machines, session heartbeat and end, out-of-order button, hour meter with idle auto-end and
+  service reminders, offline fob lists and offline events. Reference for the firmware team:
+  [docs/device-api-v2.md](docs/device-api-v2.md);
+- a **fake machine reader** at `/dev/fake-device/` (local development only) that behaves like the planned new
+  firmware and talks to BBMS through the v2 device API. Set it up with `manage.py create_demo_device`;
 - equipment, inductions, Moodle course rules and machine usage sessions: fees, the hourly tidy-up
   (`manage.py tidy_equipment_sessions`) and session adjustments in the admin. Fees are worked out, but no money is
   taken yet: that waits for the payments app.
@@ -28,8 +34,7 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `migration/` | Queries and scripts for moving data from the legacy system |
 
 Apps still to come (one per area of the spec): payments and credit, subscriptions and billing, storage, governance
-(proposals, expenses), reports. The v2 device API for machine readers (live balance, meter, out-of-order button) is
-next for equipment.
+(proposals, expenses), reports.
 
 ## Getting started on your own computer
 

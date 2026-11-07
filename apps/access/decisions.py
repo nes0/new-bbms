@@ -7,6 +7,7 @@ Kept separate from the web views so the same rules serve the v1 API (today's fir
 from dataclasses import dataclass
 from datetime import timedelta
 
+from django.db.models import Q
 from django.utils import timezone
 
 from . import tags
@@ -44,6 +45,30 @@ def find_fob(raw_tag: str) -> KeyFob | None:
     return active.filter(tag_id=("BB" + tag)[:12]).first()
 
 
+def find_fob_by_card(card: str):
+    """Find a fob from the `card` a v2 device sends (spec 09 §9.3). Returns (fob, reason).
+
+    `card` is the decimal card number (1-10 digits) or the full 12-hex tag. No "BB" rule and no prefix guessing.
+    Raises ValueError for anything else (the API turns that into 400 bad_card).
+    """
+    card = tags.normalise(str(card))
+    if len(card) == 12 and all(c in "0123456789ABCDEF" for c in card):
+        match = Q(tag_id=card)
+        number = tags.card_number(card)
+        if number is not None:
+            match |= Q(card_number=number)
+    elif card.isascii() and card.isdigit() and 1 <= len(card) <= 10:
+        match = Q(card_number=int(card))
+    else:
+        raise ValueError("bad_card")
+    fobs = KeyFob.objects.filter(match).select_related("member")
+    fob = fobs.filter(active=True).first()
+    if fob:
+        return fob, ""
+    lost = fobs.filter(active=False, lost_at__isnull=False).exists()
+    return None, "fob_lost" if lost else "unknown_fob"
+
+
 class Outcome:
     """What happened at a door or exit reader."""
 
@@ -79,14 +104,17 @@ def door_refusal_reason(member) -> str:
     return ""
 
 
-def decide(device: Device, raw_tag: str, occurred_at=None) -> Decision:
-    """Decide what a tap at an entry or exit reader means, and record it."""
+def decide(device: Device, raw_tag: str, occurred_at=None, *, fob: KeyFob | None = None) -> Decision:
+    """Decide what a tap at an entry or exit reader means, and record it.
+
+    v2 resolves the card itself and passes the `fob` in; v1 passes the raw tag.
+    """
     now = timezone.now()
     # Trust the device's time only if it's in the past (a fast device clock mustn't create future events).
     when = min(occurred_at, now) if occurred_at else now
     delayed = (now - when) > DELAYED_AFTER
 
-    fob = find_fob(raw_tag)
+    fob = fob or find_fob(raw_tag)
     if fob is None:
         # Unknown fob. Not logged: today's door firmware sends up to 13 guesses per tap for an unknown fob.
         return Decision(Outcome.REFUSED, "unknown_fob")

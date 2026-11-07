@@ -3,7 +3,27 @@ from django.contrib import admin
 from django.utils import timezone
 
 from . import rules
-from .models import Equipment, Induction, TrainingCompletion, UsageSession
+from .models import Equipment, Induction, MachineStatusChange, ServiceRecord, TrainingCompletion, UsageSession
+
+
+class ServiceRecordInline(admin.TabularInline):
+    model = ServiceRecord
+    extra = 0
+    fields = ("serviced_at", "note", "recorded_by")
+    autocomplete_fields = ("recorded_by",)
+
+
+class MachineStatusChangeInline(admin.TabularInline):
+    model = MachineStatusChange
+    extra = 0
+    can_delete = False
+    fields = ("created_at", "status", "note", "source", "reported_by")
+    readonly_fields = fields
+    max_num = 0
+    verbose_name_plural = "Status history"
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Equipment)
@@ -13,6 +33,7 @@ class EquipmentAdmin(admin.ModelAdmin):
     search_fields = ("name", "slug", "asset_tag_id")
     prepopulated_fields = {"slug": ("name",)}
     autocomplete_fields = ("permaloan_member",)
+    inlines = [ServiceRecordInline, MachineStatusChangeInline]
     fieldsets = (
         (None, {"fields": ("name", "slug", "team", "room", "description", "help_text", "ppe")}),
         ("Status", {"fields": ("status", "status_note", "status_since")}),
@@ -32,7 +53,18 @@ class EquipmentAdmin(admin.ModelAdmin):
         ),
         (
             "Fob reader and hour meter",
-            {"fields": ("meter_mode", "current_threshold_amps", "idle_auto_end_minutes", "service_interval_hours")},
+            {
+                "fields": (
+                    "meter_mode",
+                    "current_threshold_amps",
+                    "idle_auto_end_minutes",
+                    "service_interval_hours",
+                    "total_hours",
+                    "hours_since_service_display",
+                    "service_due_display",
+                    "config_version",
+                )
+            },
         ),
         (
             "Asset",
@@ -52,7 +84,38 @@ class EquipmentAdmin(admin.ModelAdmin):
             },
         ),
     )
-    readonly_fields = ("legacy_id",)
+    readonly_fields = (
+        "legacy_id",
+        "total_hours",
+        "hours_since_service_display",
+        "service_due_display",
+        "config_version",
+    )
+
+    @admin.display(description="Running hours (total)")
+    def total_hours(self, equipment):
+        return f"{rules.running_seconds(equipment) / 3600:.1f}" if equipment.pk else "—"
+
+    @admin.display(description="Hours since service")
+    def hours_since_service_display(self, equipment):
+        return f"{rules.hours_since_service(equipment):.1f}" if equipment.pk else "—"
+
+    @admin.display(description="Service due", boolean=True)
+    def service_due_display(self, equipment):
+        return rules.service_due(equipment) if equipment.pk else False
+
+    def save_model(self, request, obj, form, change):
+        if change and "status" in form.changed_data:
+            obj.status_since = timezone.now()
+        super().save_model(request, obj, form, change)
+        if change and "status" in form.changed_data:
+            MachineStatusChange.objects.create(
+                equipment=obj,
+                status=obj.status,
+                note=obj.status_note,
+                reported_by=request.user,
+                source=MachineStatusChange.Source.ADMIN,
+            )
 
 
 @admin.register(Induction)

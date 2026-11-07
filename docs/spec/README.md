@@ -17,6 +17,7 @@ is called out explicitly.
 | [05-access-control-and-equipment.md](05-access-control-and-equipment.md) | Key fobs, door entry, the ACS device API, equipment, inductions, usage billing |
 | [06-other-features.md](06-other-features.md) | Storage boxes, proposals & voting, expenses, notifications, emails, directory, stats, policies |
 | [08-migration-and-cutover.md](08-migration-and-cutover.md) | Data migration, running in parallel, switching hardware over |
+| [09-device-api-v2-build.md](09-device-api-v2-build.md) | Build brief for the v2 device API: exact endpoints, models, tests (a work order, ready to pick up) |
 
 ## Status
 

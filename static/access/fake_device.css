@@ -1,0 +1,60 @@
+/* Fake machine reader (templates/access/fake_device.html). */
+:root {
+  --text: #1d1d1f; --muted: #5f6368; --bg: #f4f4f2; --panel: #ffffff; --border: #d0d4da;
+  --case: #3a3d42; --case-edge: #24262a; --paper: #e9e7e0; --ink: #141414;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --text: #e8eaed; --muted: #a8adb4; --bg: #17181a; --panel: #202124; --border: #3c4043; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.45 system-ui, sans-serif; color: var(--text); background: var(--bg); }
+code { font-size: 0.9em; }
+.bench { display: flex; flex-wrap: wrap; gap: 1.5rem; padding: 1.5rem 1rem; max-width: 72rem; margin: 0 auto;
+  align-items: flex-start; }
+
+/* The device */
+.device { background: var(--case); border: 3px solid var(--case-edge); border-radius: 18px; padding: 1rem;
+  width: min(100%, 640px); color: #ddd; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); }
+.device-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;
+  font-size: 0.85rem; letter-spacing: 0.04em; }
+.maker { text-transform: uppercase; opacity: 0.7; }
+.led-wrap { display: flex; align-items: center; gap: 0.4rem; }
+.led { width: 14px; height: 14px; border-radius: 50%; background: #23401f; border: 2px solid #111; }
+.led.on { background: #4cff3a; box-shadow: 0 0 10px #4cff3a; }
+.screen-wrap { background: #111; padding: 10px; border-radius: 6px; }
+#screen { display: block; width: 100%; aspect-ratio: 296 / 128; image-rendering: pixelated;
+  background: var(--paper); transition: filter 0.4s; }
+.device.unpowered #screen { filter: brightness(0.82); } /* e-paper keeps its last image with no power */
+.reader { display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; }
+.reader label { font-size: 0.85rem; opacity: 0.8; }
+.reader input { flex: 1; min-width: 0; font: 1rem ui-monospace, monospace; padding: 0.5rem; border-radius: 6px;
+  border: 1px solid #111; background: #eee; color: #111; }
+.tap { font: inherit; padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #111; background: #c9ccd1;
+  cursor: pointer; }
+.buttons { display: flex; justify-content: center; gap: 2.5rem; margin-top: 1.25rem; }
+.round { width: 72px; height: 72px; border-radius: 50%; border: 3px solid #111; color: #fff; font-weight: 700;
+  cursor: pointer; box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.3); }
+.round:active, .tap:active { transform: translateY(2px); box-shadow: none; }
+.red { background: #c62828; }
+.blue { background: #1e5bd6; }
+
+/* The test bench */
+.controls { flex: 1 1 22rem; min-width: 0; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1rem 1.25rem; }
+.controls h1 { font-size: 1.2rem; margin: 0 0 0.5rem; }
+.controls h2 { font-size: 1rem; margin: 1.25rem 0 0.5rem; }
+.hint, .muted { color: var(--muted); }
+.small { font-size: 0.85rem; margin-top: 0.25rem; }
+.field { display: block; margin: 0.75rem 0; }
+.field input[type="password"] { display: block; width: 100%; margin-top: 0.25rem; font: inherit; padding: 0.4rem;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--text); }
+.field input[type="range"] { display: block; width: 100%; }
+.switches { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.row { display: flex; gap: 0.5rem; }
+.row button { font: inherit; padding: 0.35rem 0.8rem; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--panel); color: var(--text); cursor: pointer; }
+.log { list-style: none; padding: 0; margin: 0; max-height: 28rem; overflow: auto; font: 12px/1.4 ui-monospace,
+  monospace; }
+.log li { border-top: 1px solid var(--border); padding: 0.35rem 0; overflow-wrap: anywhere; }
+.log .bad { color: #c62828; }
+.log pre { margin: 0.2rem 0 0; white-space: pre-wrap; }

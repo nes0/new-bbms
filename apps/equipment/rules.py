@@ -4,12 +4,16 @@ Who may use a machine, usage sessions and their fees (spec 05 §5.3, §5.6).
 Plain functions, so the v1 API, the v2 API, the admin and the scheduled tidy-up all share one set of rules.
 """
 
-from datetime import timedelta
+import logging
+from datetime import datetime, time, timedelta
 
 from django.db import transaction
+from django.db.models import Sum
 from django.utils import timezone
 
 from .models import Equipment, Induction, TrainingCompletion, UsageSession
+
+logger = logging.getLogger(__name__)
 
 # TODO(settings app): these become admin settings (spec 02 §2.8).
 MINIMUM_CHARGE = timedelta(minutes=15)
@@ -24,6 +28,11 @@ UNCHARGED_REASONS = (UsageSession.Reason.TRAINING, UsageSession.Reason.TESTING, 
 def member_credit_pence(member) -> int:
     # TODO(payments app): the member's credit, worked out from the ledger (04 §4.7).
     return 0
+
+
+def notify_team(equipment: Equipment, message: str):
+    # TODO(notifications app): tell the machine's team (email/Discord). For now it only logs.
+    logger.info("Notify team of %s: %s", equipment.slug, message)
 
 
 def is_on_team(member, equipment: Equipment) -> bool:
@@ -48,12 +57,15 @@ def _course_reason(member, equipment: Equipment, induction: Induction) -> str:
     return "course_incomplete"
 
 
-def machine_refusal_reason(member, equipment: Equipment) -> str:
-    """Why this member can't start a session on this machine, or "" if they can (05 §5.3)."""
+def machine_refusal_reason(member, equipment: Equipment, *, for_offline_cache=False) -> str:
+    """Why this member can't start a session on this machine, or "" if they can (05 §5.3).
+
+    for_offline_cache=True ignores credit and machine status: who a reader may remember (spec 09 §9.7).
+    """
     if not member.has_space_access:
         return "not_member"
     on_team = is_on_team(member, equipment)
-    if equipment.status == Equipment.Status.OUT_OF_ORDER and not on_team:
+    if equipment.status == Equipment.Status.OUT_OF_ORDER and not on_team and not for_offline_cache:
         return "out_of_order"
     if equipment.requires_induction:
         induction = Induction.objects.filter(member=member, category=equipment.induction_key).first()
@@ -62,6 +74,8 @@ def machine_refusal_reason(member, equipment: Equipment) -> str:
         reason = _course_reason(member, equipment, induction)
         if reason:
             return reason
+    if for_offline_cache:
+        return ""
     if member_credit_pence(member) + ALLOWED_NEGATIVE_CREDIT_PENCE <= 0 and equipment.usage_cost_pence_per_hour:
         return "insufficient_credit"
     return ""
@@ -69,11 +83,33 @@ def machine_refusal_reason(member, equipment: Equipment) -> str:
 
 def session_fee_pence(equipment: Equipment, session: UsageSession) -> int:
     """The fee for a finished session: session time, at least the minimum charge, rounded to the penny."""
-    if session.removed or session.reason in UNCHARGED_REASONS or not equipment.usage_cost_pence_per_hour:
+    return _fee(equipment, session.reason, session.removed, session.duration_seconds)
+
+
+def _fee(equipment: Equipment, reason, removed, duration_seconds) -> int:
+    if removed or reason in UNCHARGED_REASONS or not equipment.usage_cost_pence_per_hour:
         return 0
-    seconds = max(session.duration_seconds, int(MINIMUM_CHARGE.total_seconds()))
+    seconds = max(duration_seconds, int(MINIMUM_CHARGE.total_seconds()))
     # Integer maths, rounding half up: rate is pence per hour.
     return (equipment.usage_cost_pence_per_hour * seconds + 1800) // 3600
+
+
+def fee_so_far_pence(session: UsageSession, now=None) -> int:
+    """What an open session would cost if it ended now (at least the minimum charge). Spec 09 §9.5."""
+    now = now or timezone.now()
+    seconds = max(0, int((now - session.started_at).total_seconds()))
+    return _fee(session.equipment, session.reason, False, seconds)
+
+
+def live_balance_pence(member, session: UsageSession | None = None, now=None) -> int:
+    """Credit minus the session's fee, until that fee has been charged (spec 09 §9.5)."""
+    balance = member_credit_pence(member)
+    if session is not None and session.charged_at is None:
+        if session.is_open:
+            balance -= fee_so_far_pence(session, now)
+        else:
+            balance -= session.fee_pence or 0
+    return balance
 
 
 def open_session(equipment: Equipment):
@@ -115,11 +151,89 @@ def end_session(session: UsageSession, *, when=None, ended_by: str) -> UsageSess
     return session
 
 
+def running_seconds(equipment: Equipment, since=None, until=None) -> int:
+    """How long the machine has run in a range (spec 09 §9.4). Worked out each time, so it can't drift."""
+    if equipment.meter_mode == Equipment.MeterMode.CURRENT:
+        readings = equipment.meter_readings.all()
+        if since:
+            readings = readings.filter(received_at__gte=since)
+        if until:
+            readings = readings.filter(received_at__lte=until)
+        return readings.aggregate(total=Sum("active_seconds"))["total"] or 0
+    now = timezone.now()
+    total = 0
+    sessions = equipment.sessions.filter(removed=False)
+    if since:
+        sessions = sessions.exclude(ended_at__lt=since)
+    if until:
+        sessions = sessions.filter(started_at__lte=until)
+    for session in sessions:
+        start = max(session.started_at, since) if since else session.started_at
+        end = session.ended_at or now
+        if until:
+            end = min(end, until)
+        total += max(0, int((end - start).total_seconds()))
+    return total
+
+
+def hours_since_service(equipment: Equipment) -> float:
+    last = equipment.service_records.order_by("-serviced_at", "-created_at").first()
+    since = None
+    if last is not None:
+        since = timezone.make_aware(datetime.combine(last.serviced_at, time.min))
+    return running_seconds(equipment, since=since) / 3600
+
+
+def service_due(equipment: Equipment) -> bool:
+    return bool(equipment.service_interval_hours) and hours_since_service(equipment) >= equipment.service_interval_hours
+
+
+def check_service_reminders():
+    """Tell the team once when a machine becomes due for service; recording a service re-arms it."""
+    sent = 0
+    for equipment in Equipment.objects.filter(archived=False, service_interval_hours__isnull=False):
+        if equipment.service_reminder_sent_at is None and service_due(equipment):
+            notify_team(equipment, "is due for a service")
+            Equipment.objects.filter(pk=equipment.pk).update(service_reminder_sent_at=timezone.now())
+            sent += 1
+    return sent
+
+
+def auto_end_idle_sessions(now=None) -> int:
+    """End sessions on current-draw machines whose motor stopped long ago (05 §5.4, forgotten tap-outs).
+
+    The session ends at the last moment the motor was running, not when we noticed.
+    """
+    now = now or timezone.now()
+    ended = 0
+    machines = Equipment.objects.filter(
+        meter_mode=Equipment.MeterMode.CURRENT, idle_auto_end_minutes__isnull=False, archived=False
+    )
+    for equipment in machines:
+        with transaction.atomic():
+            locked = Equipment.objects.select_for_update().get(pk=equipment.pk)
+            session = open_session(locked)
+            if session is None:
+                continue
+            last_running = (
+                locked.meter_readings.filter(active_seconds__gt=0, received_at__gt=session.started_at)
+                .order_by("-received_at")
+                .first()
+            )
+            last_moment = last_running.received_at if last_running else session.started_at
+            if now - last_moment >= timedelta(minutes=locked.idle_auto_end_minutes):
+                end_session(session, when=last_moment, ended_by=UsageSession.EndedBy.IDLE)
+                ended += 1
+    return ended
+
+
 @transaction.atomic
 def tidy_up(now=None) -> dict:
     """The hourly tidy-up (05 §5.6). Returns counts, for the job's log."""
     now = now or timezone.now()
-    counts = {"closed": 0, "merged": 0}
+    counts = {"closed": 0, "merged": 0, "idle": 0, "reminders": 0}
+    counts["idle"] = auto_end_idle_sessions(now)
+    counts["reminders"] = check_service_reminders()
 
     # 1. Close open sessions that have gone quiet, at their last heartbeat (or a minute after starting).
     for session in UsageSession.objects.filter(ended_at__isnull=True).select_related("equipment"):
