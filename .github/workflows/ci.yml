@@ -34,6 +34,7 @@ jobs:
       - run: python manage.py check --deploy --fail-level WARNING
         env:
           ALLOWED_HOSTS: bbms.buildbrighton.com
+          ID_DOCUMENT_KEYS: aQWajohxse7vEZwzCxE6dD7-5rH69c0vj9oYwNe_LjQ=  # CI only, encrypts nothing real
           SECURE_SSL_REDIRECT: "True"
       - run: python manage.py makemigrations --check --dry-run
       - run: python manage.py collectstatic --noinput

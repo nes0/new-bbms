@@ -61,11 +61,19 @@ them, and BBMS deletes them. Members are told not to email them.
   The table is **never** shown in the Django admin, **never** migrated and **never** copied to the staging or shadow
   sites (08). Every view of a document and every check is logged (member id and reviewer id, not the content).
   Documents are sent with `Cache-Control: no-store`, so browsers don't keep a copy.
-- ⚠️ **Not yet built: encryption at rest.** The managed database encrypts its disks, but a database **backup or dump**
-  holds the documents as they are until it expires (DigitalOcean's backups: 7 days). Planned: encrypt each document
-  with a key held only in the app's environment (Fernet, `cryptography` package), so backups and dumps hold only
-  ciphertext; the shadow site never gets the key. Until then, "deleted" means gone from the live database at once and
-  from backups within their retention period. Say so in the privacy notice.
+- **Encrypted at rest** (built 2026-11-07). Each document is encrypted before it reaches the database (Fernet from
+  the `cryptography` package: AES with an HMAC, so a tampered document won't open), with a key held only in the
+  app's environment, `ID_DOCUMENT_KEYS`. Database backups and dumps hold only ciphertext, and the staging and shadow
+  sites never get the key. The file name, type and size aren't encrypted. Without a key, production **refuses
+  uploads** rather than store a plain copy (`manage.py check --deploy` warns), and a startup check rejects a key
+  that isn't valid. When developing, a key is worked out from `SECRET_KEY`.
+  - **Changing the key:** put the new key first in `ID_DOCUMENT_KEYS` with the old one after it, deploy, run
+    `manage.py rotate_id_document_key`, then remove the old key. A document no key opens shows the trustee a
+    message asking them to record it as not accepted and ask the member to send it again.
+  - Uploads from before encryption are encrypted by a migration (it stops if there are any and no key is set).
+  - "Deleted" still means gone from the live database at once, and gone from backups within their retention period
+    (DigitalOcean's backups: 7 days), but a backup copy can't be read without the key. Say so in the privacy
+    notice.
 - ❓ **For the trustees:** whether an unchecked or not-accepted ID **blocks** anything (today it doesn't: it's a
   step on the account page and the trustees decide what follows); who checks (suggested: trustees); how long
   unchecked uploads are kept (suggested 30 days); whether existing members who emailed documents need re-checking

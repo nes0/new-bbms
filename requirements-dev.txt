@@ -6,6 +6,12 @@ asgiref==3.13.0
     #   django
 bcrypt==5.0.0
     # via -r requirements.txt
+cffi==2.1.1
+    # via
+    #   -r requirements.txt
+    #   cryptography
+cryptography==50.0.2
+    # via -r requirements.txt
 django==5.2.19
     # via -r requirements.txt
 django-environ==0.14.0
@@ -20,6 +26,10 @@ psycopg==3.3.8
     # via -r requirements.txt
 psycopg-binary==3.3.8
     # via -r requirements.txt
+pycparser==3.12
+    # via
+    #   -r requirements.txt
+    #   cffi
 pyee==14.0.0
     # via playwright
 pymysql==1.2.3
