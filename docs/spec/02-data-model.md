@@ -93,7 +93,7 @@ AcsNode (devices)   Settings (key/value)   AuditLog
 
 - **`key_fobs`**: `user_id`, `key_id` (RFID tag string, legacy ones prefixed `BB`, max 12 chars), `active`, `lost`. Marking lost deactivates.
   **New:** store the full hex tag *and* the decimal card number (the last 8 hex digits of the 10, as a number),
-  each unique, so a device can identify a fob by either. Format confirmed: `700012d68733` → card 0001234567 (05 §5.1).
+  each unique, so a device can identify a fob by either. Format confirmed with a real fob; example (made up): `700012d68733` → card 0001234567 (05 §5.1).
 - **`acs_nodes`**: `name`, `device_id` (matches equipment `slug` for equipment nodes), `api_key`, `entry_device` (door vs equipment; **new:** a `role` of `entry`, `exit` or `equipment`), `monitor_heartbeat`, `last_boot`, `last_heartbeat`, `queued_command` (one pending command delivered on next check-in).
 - **New** (05 §5.1–5.2): `fob_enrolments` (reader, member, opened by, opens at, expires at, captured card number and
   hex id, confirmed by/at); access log events gain a `kind`: `entry`, `check-in`, `exit`, `refused`.

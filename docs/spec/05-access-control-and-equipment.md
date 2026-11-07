@@ -16,8 +16,9 @@
   When issuing a fob, the admin reads it in hex mode, so BBMS records the vendor prefix as well as the card number
   and nothing has to be guessed. If that reader works as a USB keyboard, the admin can simply tap the fob into the
   issue form.
-- **Tag format (confirmed 2026-11-05 with a real fob):** `700012d68733` = vendor prefix `70` + card number `0012D687`
-  (decimal **0001234567**, printed on the fob) + checksum `33` (XOR of the five bytes `70 00 12 D6 87`). So BBMS can
+- **Tag format (confirmed 2026-11-05 with a real fob):** for example (a made-up fob; real members' fob numbers are
+  never used as examples) `700012d68733` = vendor prefix `70` + card number `0012D687` (decimal **0001234567**, as
+  printed on a fob) + checksum `33` (XOR of the five bytes `70 00 12 D6 87`). So BBMS can
   derive the decimal card number and the checksum from the hex, and the migration can fill in every fob's card number.
 - A member may have several active fobs. "Mark lost" deactivates a fob (it is never deleted, so history is kept).
 - **Tag lookup tolerance** (devices send ids in different formats). A tag `T` is found by trying, in order:
