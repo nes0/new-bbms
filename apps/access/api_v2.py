@@ -101,6 +101,15 @@ def resolve_card(data):
         raise ApiError(400, "bad_card", "card must be 1-10 digits or a 12-character tag.") from None
 
 
+def enrolled(device, data, reason):
+    """An unknown fob tapped while an enrolment window is open on this reader: capture it (05 §5.1)."""
+    if reason != "unknown_fob":
+        return None
+    from .fobs import capture_v2_card
+
+    return capture_v2_card(device, data.get("card"))
+
+
 def equipment_or_error(device):
     """The machine this reader belongs to, or a 409 (spec 09 §9.3)."""
     from apps.equipment.device_api import equipment_for_device
@@ -219,11 +228,15 @@ def access(request):
     if device.role == Device.Role.EQUIPMENT:
         from apps.equipment.api_v2 import equipment_access
 
-        return JsonResponse(equipment_access(device, fob, reason, enabled=device.enabled))
+        enrolment = enrolled(device, data, reason) if fob is None and device.enabled else None
+        return JsonResponse(equipment_access(device, fob, reason, enabled=device.enabled, enrolment=enrolment))
 
     if not device.enabled:
         return JsonResponse({"allowed": False, "reason": "device_disabled", "display_name": None})
     if fob is None:
+        enrolment = enrolled(device, data, reason)
+        if enrolment:
+            return JsonResponse({"allowed": False, "reason": "enrolled", "display_name": enrolment.member.display_name})
         return JsonResponse({"allowed": False, "reason": reason, "display_name": None})
 
     decision = decisions.decide(device, "", timezone.now(), fob=fob)

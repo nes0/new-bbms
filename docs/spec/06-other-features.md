@@ -224,7 +224,8 @@ A member-only form whose comments are emailed to the trustees.
 
 - **Members list** (`/account`, admin): paginated, sortable, toggle "show left members".
 - **Roles** (admin): create/edit roles; add/remove members.
-- **Key fobs** (admin, ❓ and `comms`): issue free to any current member on their first visit, mark lost.
+- **Key fobs** (admin today; a permission a role can be given): issue free to an active member, mark lost, found
+  again.
 - **Physical keys** (admin): record the key deposit and the key issued and returned.
 - **Trusted-status review list** (admin): members who meet the attendance threshold but aren't trusted (05 §5.10).
 - **Log viewer**: dropped; replaced by hosted logging and error tracking (01 §1.8).

@@ -1,0 +1,8 @@
+{% extends "admin/base_site.html" %}
+{% block extrahead %}{{ block.super }}{{ form.media }}{% endblock %}
+{% block breadcrumbs %}{% include "admin/access/keyfob/_breadcrumbs.html" %}{% endblock %}
+{% block content %}
+<p>Fobs are free. The member's fob records their visits at the door and works the machines they're trained on.
+  Check the number printed on the fob matches what you enter.</p>
+{% include "admin/access/keyfob/_form.html" with submit_label="Issue it" %}
+{% endblock %}

@@ -1,0 +1,7 @@
+{% include "admin/edit_inline/tabular.html" %}
+{% with member=inline_admin_formset.formset.instance %}{% if member.pk and perms.access.add_keyfob %}
+<p class="fob-actions" style="margin: -1em 0 2em">
+  <a class="button" href="{% url 'admin:access_keyfob_issue' %}?member={{ member.pk }}">Issue a fob</a>
+  <a class="button" href="{% url 'admin:access_keyfob_enrol' %}?member={{ member.pk }}">Tap new fob on a reader</a>
+</p>
+{% endif %}{% endwith %}

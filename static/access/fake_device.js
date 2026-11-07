@@ -469,6 +469,7 @@
   };
 
   function refusalText(data) {
+    if (data.reason === "enrolled") return ["Fob registered", `for ${data.display_name || "a member"}`];
     if (data.reason === "in_use") return ["In use by", data.in_use_by || "another member"];
     return REFUSALS[data.reason] || ["Refused", data.reason || "?"];
   }

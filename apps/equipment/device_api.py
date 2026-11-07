@@ -24,6 +24,9 @@ def v1_tap(device, raw_tag, user_payload):
         return 422, {"error": "Invalid Device Key"}
     fob = find_fob(raw_tag)
     if fob is None:
+        from apps.access.fobs import capture_v1_tag
+
+        capture_v1_tag(device, raw_tag)  # during an enrolment window (05 §5.1); still refused
         return 404, {"error": "Key fob ID not found"}
     reason = rules.machine_refusal_reason(fob.member, equipment)
     if reason:

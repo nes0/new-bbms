@@ -18,7 +18,7 @@ But nightly billing, new fobs and revocations all depend on BBMS, so it is still
 |---|---|
 | **Prospective member** | Registers online, sets up a Direct Debit, completes the online induction (agrees rules). |
 | **Member** | Manages own details/profile/photo, sees payments and charges, tops up credit, pays fees, pays for a box, rents lockers, votes, submits expenses, views equipment, the member directory and who is in the space. |
-| **Fob holder** | Any current member: a free fob issued on their first visit. Taps in at the door to record visits (counts towards trusted status) and uses the machines they're trained on; doesn't open the door. |
+| **Fob holder** | Any active member: a free fob issued by a trustee. Taps in at the door to record visits (counts towards trusted status) and uses the machines they're trained on; doesn't open the door. |
 | **Trusted member / keyholder** | A member who has been granted 24/7 door access (needs `trusted` + `key_holder` + approved photo + an RFID fob + a physical key, £15 key deposit). |
 | **Trainer** | Trains other members on a piece of equipment. |
 | **Role holders** | Members with delegated duties (see §1.3). |
@@ -119,7 +119,7 @@ same, so MySQL saves nothing. Django is also built and tested primarily against 
 10. Policies as Markdown in the repo, or editable by admins (06 §6.8)?
 11. Retention period for access and usage logs (08).
 12. Database: confirm PostgreSQL (§1.6).
-13. Fobs and keys (05 §5.1–5.2): who may issue fobs (suggested admins and `comms`); free replacement for a lost fob (suggested yes); key deposit refunded when the key is returned (suggested yes, kept if lost).
+13. Fobs and keys (05 §5.1–5.2): ~~who may issue fobs~~ (decided: trustees, as a permission a role can be given); ~~free replacement for a lost fob~~ (decided: free); key deposit refunded when the key is returned (suggested yes, kept if lost).
 14. Attendance threshold for the trusted-status review list (05 §5.10; suggested 8 visits over at least 4 weeks).
 15. Moodle (06 §6.12): who may log in to Moodle (suggested any non-banned account); online training expiry (suggested none); members already signed off when a course is added (suggested they keep access).
 16. Reports (04 §4.9, 06 §6.13): who sees membership statistics (suggested all members; money figures finance and admins only); whether to build expenditure tracking later.

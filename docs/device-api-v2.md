@@ -73,10 +73,12 @@ unknown fob).
 | `checked_in` | false | visit recorded; door stays shut |
 | `not_member`, `not_keyholder`, `no_photo` | false | refused |
 | `unknown_fob`, `fob_lost` | false | |
+| `enrolled` | false | an admin was waiting for a new fob on this reader and it has been captured for `display_name`; show "Fob registered" |
 | `device_disabled` | false | |
 
 **Machine readers**: `ok`, `in_use` (+ `in_use_by`), `not_member`, `out_of_order`, `not_trained`,
-`course_incomplete`, `insufficient_credit`, `unknown_fob`, `fob_lost`, `device_disabled`. All include `machine`.
+`course_incomplete`, `insufficient_credit`, `unknown_fob`, `fob_lost`, `enrolled`, `device_disabled`. All include
+`machine`.
 Allowed responses add:
 
 ```json

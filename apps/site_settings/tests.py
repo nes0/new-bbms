@@ -28,6 +28,8 @@ DEFAULTS = {
     "session_heartbeat_seconds": "60",
     "id_document_max_age_days": "30",
     "lockers_per_member": "1",
+    "max_active_fobs": "2",
+    "fob_enrolment_seconds": "60",
 }
 
 

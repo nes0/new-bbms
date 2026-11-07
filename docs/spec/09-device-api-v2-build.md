@@ -58,7 +58,7 @@ Build in this order; each phase is usable on its own and should end with green t
 - notifications to the machine's team: no notifications app yet. Call one function, `notify_team(equipment, message)`,
   that only logs for now;
 - member-facing web pages for equipment (status note, service history); the Django admin is enough for now;
-- fob enrolment windows (`reason: "enrolled"`) and the exit-reader occupancy display.
+- the exit-reader occupancy display. (Fob enrolment windows, `reason: "enrolled"`, were built with the fobs slice.)
 
 ## 9.3 Conventions (all v2 endpoints)
 
