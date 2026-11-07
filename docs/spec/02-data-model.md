@@ -67,6 +67,11 @@ AcsNode (devices)   Settings (key/value)   AuditLog
   `profile_photo` (approved photo exists), `new_profile_photo` (awaiting approval), `profile_photo_private` (only show to members), `profile_photo_on_wall` (physical photo on the wall — counts instead of an online photo for door access).
 - **`user_address`**: `line_1..4`, `postcode`, `approved`. A member edit creates an **unapproved** row; an admin approves/declines it. Admin edits are approved immediately.
 - **`notifications`**: in-app messages `message`, `type`, `hash` (dedupe key, e.g. `trusted_status`, `<expenseId>-expense_approved`), `unread`, `notified_at/method`.
+- **New: `IdDocument`** (proof of identity, 03 §3.1): `member`, `kind` (`photo_id` / `proof_of_address`, one of
+  each), `filename`, `content_type` (from the file's contents), `size`, `data` (the file itself), `uploaded_at`.
+  Deleted once checked, or after 30 days. Not in the admin; never migrated or copied to staging/shadow.
+- **New: `IdCheck`** (kept permanently): `member`, `result` (`approved` / `rejected`), `note`, `documents_seen`,
+  `checked_by`, `checked_at`. The record that ID was checked, holding no copy of the documents.
 - **`audit_log`**: `admin_id`, `user_id`, `action`, `description`. Written when audited fields (`induction_completed`, `trusted`, `key_holder`) change.
 
 ## 2.4 Money
@@ -141,6 +146,7 @@ Values that legacy hard-coded become admin-editable settings (one typed row each
 | Locker rents | per size, in the locker size list (06 §6.2) |
 | Minimum monthly subscription (self-service) | £20 |
 | Minimum monthly subscription (set by admin) | £5 |
+| Unchecked proofs of identity are deleted after | new; 30 days (03 §3.1) |
 | Suspension before a member is marked left | new; 30 days (decided provisionally) |
 | Failed Direct Debit retries | new; "BBMS retries" (default) or "let GoCardless retry" (Success+); BBMS mode: retries (default 1) and days between (default 5) |
 | Grace period per payment method | DD 10 days, standing order 6 months, other 7 days (03 §3.5) |
@@ -158,3 +164,6 @@ Stored on S3 (bucket per environment):
 
 **New:** a private DigitalOcean Spaces bucket; serve through signed URLs or through the app with permission checks.
 Member photos must not be guessable (md5 of a short value is guessable).
+
+**Proofs of identity are the exception:** they are held in the database, not in Spaces, so there is one copy to
+delete (03 §3.1, "Proof of identity").

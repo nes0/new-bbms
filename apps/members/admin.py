@@ -2,7 +2,10 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 
-from .models import Member
+from .models import Address, IdCheck, Member
+
+# IdDocument is deliberately NOT registered: the uploads are only seen through the ID check pages, which log each
+# view and delete the documents once checked (spec 03 §3.1).
 
 
 class MemberCreationForm(UserCreationForm):
@@ -17,10 +20,18 @@ class MemberChangeForm(UserChangeForm):
         fields = "__all__"
 
 
+class AddressInline(admin.StackedInline):
+    model = Address
+    extra = 0
+    fields = (("line_1", "line_2"), ("line_3", "line_4"), "postcode", "approved", "created_at")
+    readonly_fields = ("created_at",)
+
+
 @admin.register(Member)
 class MemberAdmin(UserAdmin):
     form = MemberChangeForm
     add_form = MemberCreationForm
+    inlines = [AddressInline]
 
     list_display = ("full_name", "email", "status", "trusted", "key_holder", "date_joined")
     list_filter = ("status", "trusted", "key_holder", "banned", "is_staff")
@@ -31,7 +42,19 @@ class MemberAdmin(UserAdmin):
     fieldsets = (
         (None, {"fields": ("email", "password")}),
         ("Personal details", {"fields": ("given_name", "family_name", "phone", "emergency_contact")}),
-        ("Membership", {"fields": ("status", "founder", "induction_completed", "rules_agreed_at", "profile_private")}),
+        (
+            "Membership",
+            {
+                "fields": (
+                    "status",
+                    "monthly_subscription_pence",
+                    "founder",
+                    "induction_completed",
+                    "rules_agreed_at",
+                    "profile_private",
+                )
+            },
+        ),
         ("Access", {"fields": ("trusted", "key_holder")}),
         ("Banned", {"classes": ("collapse",), "fields": ("banned", "banned_at", "banned_reason")}),
         ("Admin", {"fields": ("notes", "is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
@@ -40,3 +63,18 @@ class MemberAdmin(UserAdmin):
     add_fieldsets = (
         (None, {"classes": ("wide",), "fields": ("email", "given_name", "family_name", "password1", "password2")}),
     )
+
+
+@admin.register(IdCheck)
+class IdCheckAdmin(admin.ModelAdmin):
+    """The record that a member's ID was checked. Made from the ID check pages, so read-only here."""
+
+    list_display = ("checked_at", "member", "result", "documents_seen", "checked_by")
+    list_filter = ("result",)
+    search_fields = ("member__email", "member__given_name", "member__family_name")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False

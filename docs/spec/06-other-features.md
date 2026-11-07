@@ -145,6 +145,7 @@ their own; admins/finance see all.
 | Subscription paid from credit failed — trying Direct Debit | Nightly billing |
 | Subscription payment failed (insufficient credit) | Nightly billing |
 | You are now a trusted member | Admin grants trusted |
+| Proof of identity checked / please send again (with the trustee's note) | A trustee records an ID check (03 §3.1); new |
 | Photo declined | Admin declines photo |
 | New expense (to trustees) / expense approved / declined | Expenses |
 | Feedback (to trustees) | Member submits feedback form |

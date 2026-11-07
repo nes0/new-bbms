@@ -25,6 +25,7 @@
 | `proposals`, `proposal_votes`, `expenses`, `notifications`, `audit_log` | Same | |
 | `acs_nodes` | Devices | **Keep API keys** so current (v1) devices don't need reflashing. Fill in each fob's card number for v2. |
 | `settings` | Settings | Not migrated (the emergency PIN is defunct). Create the new settings (02 §2.8) with the legacy values. |
+| Proofs of identity (emailed to the trustees until now) | (not migrated) | New in BBMS (03 §3.1). Nothing to migrate: the emailed copies are outside BBMS. Trustees delete them from their mailboxes once uploads are live. |
 | S3 photos, receipts | DigitalOcean Spaces (private) | Copy; regenerate keys; update references. |
 | Passwords | Auth | Legacy stores bcrypt (`$2y$…`). Laravel reads these natively; Django needs the hashes prefixed into its `bcrypt$` format (or a small custom hasher) — then members don't need to reset. Prove this with a test during phase 1. |
 | GoCardless mandates | — | Mandates live at GoCardless; just carry `mandate_id`. **Reuse the same GoCardless account** — no re-authorisation needed. |
@@ -58,6 +59,8 @@ The live site stays in charge throughout, and **the shadow site can't charge any
 - Each night, a job takes a dump of the live database, runs the migration script and loads it into a **shadow**
   copy of the new site. This is real member data, so the shadow site is secured like production (private, admins
   only, in the same DigitalOcean account).
+- **Once the new site is live, proofs of identity (the `IdDocument` table, 03 §3.1) are never copied**: any dump of
+  the new site's database for staging, shadow or development leaves that table's rows out.
 - The shadow runs its own scheduled jobs in **dry-run mode**: it works out which charges it **would** create and
   bill, and which members it **would** suspend or mark as left, but sends nothing to GoCardless and no emails.
 - It talks to GoCardless and Stripe only with **read-only API keys**, so it can fetch events, payments and payouts

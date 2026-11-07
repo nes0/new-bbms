@@ -28,10 +28,48 @@ On submit: user created with `status = setting-up`, `active = false`; an empty p
 1. **Set up payment** — either
    - **Direct Debit** (GoCardless redirect flow → mandate). On return: store `mandate_id`, `payment_method = gocardless-variable`, `payment_day = today's day`, then *activate* (§3.4); or
    - **Pay from credit** (`payment_method = balance`) — only offered if the member has no payment method and is `setting-up`/`leaving`/`left`. Sets `payment_day = today`, then *activate*.
-2. **General induction** (`/account/{id}/induction`): read the member agreement (markdown policy), tick "rules agreed" and "induction completed". Then a `comms` role holder confirms it from `/member_inductions` (sets `inducted_by`).
-3. On their first visit, get a free fob (to tap in and use machines). Optional: book equipment inductions, pay for a box, rent a locker.
+2. **Proof of identity** (`/account/id-documents/`): upload photo ID and proof of address (below).
+3. **General induction** (`/account/{id}/induction`): read the member agreement (markdown policy), tick "rules agreed" and "induction completed". Then a `comms` role holder confirms it from `/member_inductions` (sets `inducted_by`).
+4. On their first visit, get a free fob (to tap in and use machines). Optional: book equipment inductions, pay for a box, rent a locker.
 
 **Welcome email** is sent the moment status first changes away from `setting-up`.
+
+### Proof of identity (added 2026-11-07; built)
+
+New members prove who they are with **two documents**: **photo ID** (passport, driving licence) and **proof of
+address** (a utility bill or bank statement from the last three months). Until now they emailed these to the
+trustees, which leaves copies in mailboxes indefinitely. **BBMS replaces that**: members upload them, a trustee checks
+them, and BBMS deletes them. Members are told not to email them.
+
+- **Uploading** (member, `/account/id-documents/`): a scan or photo of each, sent together or one at a time. A new
+  upload replaces the waiting one of the same kind, and a member can delete an upload before it's checked.
+  - Accepted: PDF, JPEG, PNG, WebP and HEIC (iPhone photos), **recognised from the file's contents**, not its name or
+    the browser's claim. Anything else (including HTML, SVG and Office files) is refused.
+  - At most **10 MB** each. Uploads are held in memory while the request is handled, never written to a temporary
+    file, and an over-size request is refused before it is read.
+- **Checking** (`/id-checks/`, anyone with the permission **"Can view and check new members' proofs of identity"**:
+  admins have it; give it to the trustees' role): a list of members waiting, oldest first. The trustee opens each
+  document in a new tab (HEIC downloads instead, since most browsers can't show it), compares it with the name and
+  address given, and records **approved** or **not accepted** with a note (required when not accepted, e.g. "the
+  bill is from 2019"). The member's account page then shows the result; when not accepted, they upload again.
+- **Shredding:** recording the decision **deletes the documents, whatever the decision**, in the same database
+  transaction. What is kept permanently is an **ID check** record: who checked, when, the result, the note and which
+  kinds of document were seen. Uploads nobody checks are deleted after **30 days** (a setting; daily job
+  `shred_stale_id_documents`). Deleting a member deletes their uploads.
+- **Where they're stored:** in the database (one table, `IdDocument`), not in file storage. There is then exactly one
+  copy, deleting the row deletes the file, and nothing depends on App Platform's temporary disk or a Spaces bucket.
+  The table is **never** shown in the Django admin, **never** migrated and **never** copied to the staging or shadow
+  sites (08). Every view of a document and every check is logged (member id and reviewer id, not the content).
+  Documents are sent with `Cache-Control: no-store`, so browsers don't keep a copy.
+- ⚠️ **Not yet built: encryption at rest.** The managed database encrypts its disks, but a database **backup or dump**
+  holds the documents as they are until it expires (DigitalOcean's backups: 7 days). Planned: encrypt each document
+  with a key held only in the app's environment (Fernet, `cryptography` package), so backups and dumps hold only
+  ciphertext; the shadow site never gets the key. Until then, "deleted" means gone from the live database at once and
+  from backups within their retention period. Say so in the privacy notice.
+- ❓ **For the trustees:** whether an unchecked or not-accepted ID **blocks** anything (today it doesn't: it's a
+  step on the account page and the trustees decide what follows); who checks (suggested: trustees); how long
+  unchecked uploads are kept (suggested 30 days); whether existing members who emailed documents need re-checking
+  (suggested no, but delete the emails).
 
 ## 3.2 Statuses
 
@@ -103,6 +141,7 @@ All times Europe/London. Each must be **idempotent** and must **alert on failure
 | 01:30 | `bill-members` | Bills subscription and **locker rent** charges together: Direct Debit payers get **one** GoCardless payment per payment day covering both; credit payers have both taken from credit. (1) Every `pending` charge dated today or earlier → `due`. (2) For each `due` charge: **balance** payers — if credit ≥ subscription, record a `subscription` payment from `balance` (marks the charge paid); otherwise, if their backup method is Direct Debit, bill that and email "trying DD", else email "payment failed". **gocardless-variable** payers — create a GoCardless payment for `monthly_subscription`, record it as `pending` against the charge (charge → `processing`). |
 | 02:00 | `calculate-equipment-fees` | Backstop: bill any finished, unbilled equipment sessions (sessions are normally charged when they end; 05 §5.4, §5.6). |
 | 06:00 | `check-memberships` | Four passes, in this order (below). |
+| daily (new) | `shred_stale_id_documents` | Delete proofs of identity nobody has checked within the time limit (§3.1, "Proof of identity"). |
 | hourly | `fix-equipment-log` | Close stale sessions; merge sessions with gaps ≤ 60 s; mark sessions ≤ 60 s as removed. |
 | hourly | `calculate-proposal-votes` | Tally proposals whose end date has passed. |
 | every 15 min (legacy: 10) | `device:check-online` | Notify `acs` role holders when a monitored device's last heartbeat is > 1 hour old (deduplicated per heartbeat). |

@@ -12,6 +12,7 @@ urlpatterns = [
     path("", core_views.home, name="home"),
     path("healthz", core_views.healthz, name="healthz"),
     path("accounts/", include("django.contrib.auth.urls")),
+    path("", include("apps.members.urls")),
     path("admin/", admin.site.urls),
     # Device API v1 lives at /acs/... (the address today's door firmware uses).
     path("", include("apps.access.urls")),

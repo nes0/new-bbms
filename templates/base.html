@@ -14,13 +14,15 @@
     <a class="site-name" href="{% url 'home' %}">{{ SITE_NAME }}</a>
     <nav>
       {% if user.is_authenticated %}
-        <span>{{ user.get_short_name }}</span>
+        <a href="{% url 'members:account' %}">{{ user.get_short_name }}</a>
+        {% if perms.members.review_id_documents %}<a href="{% url 'members:id-checks' %}">ID checks</a>{% endif %}
         {% if user.is_staff %}<a href="{% url 'admin:index' %}">Admin</a>{% endif %}
         <form method="post" action="{% url 'logout' %}" class="inline">
           {% csrf_token %}
           <button type="submit" class="link">Log out</button>
         </form>
       {% else %}
+        <a href="{% url 'members:register' %}">Join</a>
         <a href="{% url 'login' %}">Log in</a>
       {% endif %}
     </nav>

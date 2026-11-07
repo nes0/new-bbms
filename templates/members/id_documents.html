@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Proof of identity · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Proof of identity</h1>
+  <p>We ask every new member for two documents:</p>
+  <ul>
+    <li><strong>photo ID</strong>, such as a passport or driving licence, and</li>
+    <li><strong>proof of address</strong>, such as a utility bill or bank statement from the last three months.</li>
+  </ul>
+  <p>Upload a scan or a clear photo of each (PDF, JPEG, PNG, WebP or HEIC, up to 10 MB each). Only trustees can see
+    them. <strong>They are deleted as soon as a trustee has checked them</strong>, and after {{ max_age_days }} days if
+    nobody has. We keep only a note that they were checked. Please don't email them to us.</p>
+
+  {% if id_status == "approved" %}
+    <p class="ok">Your proof of identity has been checked{% if id_check %} ({{ id_check.checked_at|date:"j F Y" }}){% endif %}. Thank you: there's nothing more to do.</p>
+  {% else %}
+    {% if id_status == "rejected" and id_check %}
+      <p class="error">A trustee couldn't accept the documents you sent: {{ id_check.note }} Please send them again.</p>
+    {% endif %}
+
+    {% if documents %}
+      <h2>Waiting to be checked</h2>
+      <ul class="plain">
+        {% for document in documents %}
+          <li>{{ document.get_kind_display }}: {{ document.filename }}, sent {{ document.uploaded_at|date:"j F Y" }}
+            <form method="post" action="{% url 'members:id-document-remove' document.kind %}" class="inline">
+              {% csrf_token %}<button type="submit" class="link">delete</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="hint">Uploading a document again replaces the one waiting.</p>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="stack form" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="error">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+      {% for field in form %}
+        <label for="{{ field.auto_id }}">{{ field.label }}</label>
+        <input type="file" name="{{ field.html_name }}" id="{{ field.auto_id }}" accept="{{ form.ACCEPT }}"
+               {% if field.errors %}aria-invalid="true" aria-describedby="{{ field.auto_id }}_errors"{% endif %}>
+        {% if field.help_text %}<span class="hint">{{ field.help_text }}</span>{% endif %}
+        {% if field.errors %}<span class="error" id="{{ field.auto_id }}_errors">{{ field.errors|join:" " }}</span>{% endif %}
+      {% endfor %}
+      <button type="submit">Send</button>
+    </form>
+  {% endif %}
+  <p><a href="{% url 'members:account' %}">Back to your account</a></p>
+{% endblock %}

@@ -5,6 +5,7 @@
   {% if user.is_authenticated %}
     <p>Hello {{ user.get_short_name }}. Your membership status is <strong>{{ user.get_status_display }}</strong>.</p>
   {% else %}
-    <p>This is the new membership system, under construction. <a href="{% url 'login' %}">Log in</a> to continue.</p>
+    <p>This is the new membership system, under construction. <a href="{% url 'login' %}">Log in</a> to continue,
+      or <a href="{% url 'members:register' %}">join</a>.</p>
   {% endif %}
 {% endblock %}

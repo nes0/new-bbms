@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}ID check: {{ subject.full_name }} · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>ID check: {{ subject.full_name }}</h1>
+  <dl class="details">
+    <dt>Email</dt><dd>{{ subject.email }}</dd>
+    <dt>Status</dt><dd>{{ subject.get_status_display }}</dd>
+    <dt>Address given</dt>
+    <dd>{% if address %}{{ address.line_1 }}{% if address.line_2 %}, {{ address.line_2 }}{% endif %}{% if address.line_3 %}, {{ address.line_3 }}{% endif %}{% if address.line_4 %}, {{ address.line_4 }}{% endif %}, {{ address.postcode }}{% else %}—{% endif %}</dd>
+  </dl>
+
+  {% if documents %}
+    <h2>Documents</h2>
+    <ul class="plain">
+      {% for document in documents %}
+        <li>{{ document.get_kind_display }}:
+          <a href="{% url 'members:id-document-file' document.pk %}" target="_blank" rel="noopener noreferrer">{{ document.filename }}</a>
+          <span class="hint">({{ document.size|filesizeformat }}, sent {{ document.uploaded_at|date:"j M Y" }})</span>
+        </li>
+      {% endfor %}
+    </ul>
+    <p class="hint">Opens in a new tab. HEIC photos download instead; don't keep a copy.</p>
+
+    <h2>Your decision</h2>
+    <form method="post" class="stack form">
+      {% csrf_token %}
+      {% for choice in form.result %}<label class="check">{{ choice.tag }} {{ choice.choice_label }}</label>{% endfor %}
+      {% if form.result.errors %}<span class="error">{{ form.result.errors|join:" " }}</span>{% endif %}
+      <label for="{{ form.note.auto_id }}">Note</label>
+      <input type="text" name="note" id="{{ form.note.auto_id }}" maxlength="255" value="{{ form.note.value|default_if_none:'' }}">
+      <span class="hint">{{ form.note.help_text }}</span>
+      {% if form.note.errors %}<span class="error">{{ form.note.errors|join:" " }}</span>{% endif %}
+      <button type="submit">Record and delete the documents</button>
+    </form>
+  {% else %}
+    <p>No documents waiting for this member.</p>
+  {% endif %}
+
+  {% if history %}
+    <h2>Earlier checks</h2>
+    <ul class="plain">
+      {% for check in history %}
+        <li>{{ check.checked_at|date:"j M Y" }}: {{ check.get_result_display }}{% if check.note %} ({{ check.note }}){% endif %},
+          by {{ check.checked_by|default:"a former trustee" }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  <p><a href="{% url 'members:id-checks' %}">All ID checks</a></p>
+{% endblock %}

@@ -80,6 +80,7 @@ These legacy features will **not** be rebuilt:
 - **Reliable**: device checks answer in < 500 ms; scheduled jobs are idempotent (safe to re-run) and alert someone on failure.
 - **Secure**: CSRF protection, role checks on every route, signed webhooks, an API key per device, no secrets in the repo, an audit log of admin actions.
 - **Private**: member PII (address, phone, emergency contact, bank details) visible only to the member and admins; photos not publicly listable.
+  Proofs of identity are seen only by those allowed to check them and are deleted once checked (03 §3.1).
 - **Money is exact**: all money stored as **integer pence**. (Legacy mixes pounds-as-float and pence-as-int.)
 - **Prices are settings, not code** — key deposit, box fee, locker rents per size, locker limit, minimum subscriptions, grace periods (see 02 §2.8).
 - **Cheap to host**: one small managed app plus one database.
@@ -121,6 +122,9 @@ same, so MySQL saves nothing. Django is also built and tested primarily against 
 14. Attendance threshold for the trusted-status review list (05 §5.10; suggested 8 visits over at least 4 weeks).
 15. Moodle (06 §6.12): who may log in to Moodle (suggested any non-banned account); online training expiry (suggested none); members already signed off when a course is added (suggested they keep access).
 16. Reports (04 §4.9, 06 §6.13): who sees membership statistics (suggested all members; money figures finance and admins only); whether to build expenditure tracking later.
+17. Proof of identity (03 §3.1): whether an unchecked ID blocks anything (today it doesn't); who checks (suggested
+    trustees); how long unchecked uploads are kept (suggested 30 days); whether members who emailed documents before
+    need re-checking (suggested no, but the emails are deleted).
 
 ## 1.8 Deployment (decided 2026-11-05: managed platform on DigitalOcean)
 

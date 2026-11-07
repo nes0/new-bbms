@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Your account · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Your account</h1>
+  <p>{{ member.full_name }} · {{ member.email }} · status <strong>{{ member.get_status_display }}</strong></p>
+
+  {% if member.status == "setting-up" %}
+    <h2>Next steps</h2>
+    <ol class="steps">
+      <li><strong>Set up your monthly payment</strong>
+        {% if member.monthly_subscription_pence %}(£{% widthratio member.monthly_subscription_pence 100 1 %} a month){% endif %}.
+        {# TODO(payments app): Direct Debit set-up, or paying from credit (03 §3.1). #}
+        <span class="hint">Coming soon: for now a trustee will set this up with you.</span></li>
+      <li><strong>Send your proof of identity</strong>: photo ID and proof of address.
+        {% if id_status == "approved" %}<span class="ok">Done.</span>
+        {% elif id_status == "waiting" %}<span class="hint">Sent; waiting for a trustee to check.</span>
+        {% elif id_status == "rejected" %}<span class="error">Please send again.</span> <a href="{% url 'members:id-documents' %}">Upload</a>
+        {% else %}<a href="{% url 'members:id-documents' %}">Upload them</a>{% endif %}</li>
+      <li><strong>Complete the general induction</strong>: read the member agreement and confirm you agree.
+        {# TODO(general induction, 05 §5.9): link to the induction page. #}
+        <span class="hint">Coming soon.</span></li>
+      <li><strong>Collect your fob</strong> on your first visit. It records your visits and works the machines
+        you're trained on.</li>
+    </ol>
+  {% endif %}
+
+  <h2>Your details</h2>
+  <dl class="details">
+    <dt>Phone</dt><dd>{{ member.phone|default:"—" }}</dd>
+    <dt>Emergency contact</dt><dd>{{ member.emergency_contact|default:"—" }}</dd>
+    <dt>Address</dt>
+    <dd>
+      {% if address %}
+        {{ address.line_1 }}{% if address.line_2 %}, {{ address.line_2 }}{% endif %}{% if address.line_3 %}, {{ address.line_3 }}{% endif %}{% if address.line_4 %}, {{ address.line_4 }}{% endif %}, {{ address.postcode }}
+        {% if not address.approved %}<span class="hint">(waiting for a trustee to check it)</span>{% endif %}
+      {% else %}—{% endif %}
+    </dd>
+  </dl>
+{% endblock %}

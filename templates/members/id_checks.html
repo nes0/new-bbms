@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}ID checks · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>ID checks</h1>
+  <p>Members' proofs of identity waiting to be checked, oldest first. Checking them deletes them, whatever you
+    decide. Anything not checked within {{ max_age_days }} days is deleted automatically.</p>
+  {% if waiting %}
+    <table class="table">
+      <thead><tr><th>Member</th><th>Status</th><th>Documents</th><th>First sent</th></tr></thead>
+      <tbody>
+        {% for member in waiting %}
+          <tr>
+            <td><a href="{% url 'members:id-check' member.pk %}">{{ member.full_name }}</a></td>
+            <td>{{ member.get_status_display }}</td>
+            <td>{{ member.documents }} of 2</td>
+            <td>{{ member.uploaded_at|date:"j M Y" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>Nothing waiting.</p>
+  {% endif %}
+{% endblock %}

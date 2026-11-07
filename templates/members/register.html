@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Join · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Join {{ SITE_NAME }}</h1>
+  <p>Fill this in to create your account. You'll set up your monthly payment on the next page.
+    Already a member? <a href="{% url 'login' %}">Log in</a>.</p>
+
+  <form method="post" class="stack form" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="error">{{ form.non_field_errors }}</div>{% endif %}
+
+    <fieldset>
+      <legend>About you</legend>
+      {% include "members/_field.html" with field=form.given_name autocomplete="given-name" %}
+      {% include "members/_field.html" with field=form.family_name autocomplete="family-name" %}
+      {% include "members/_field.html" with field=form.email autocomplete="email" %}
+      {% include "members/_field.html" with field=form.password %}
+      {% include "members/_field.html" with field=form.phone autocomplete="tel" %}
+      {% include "members/_field.html" with field=form.emergency_contact %}
+    </fieldset>
+
+    <fieldset>
+      <legend>Address</legend>
+      {% include "members/_field.html" with field=form.address_line_1 autocomplete="address-line1" %}
+      {% include "members/_field.html" with field=form.address_line_2 autocomplete="address-line2" %}
+      {% include "members/_field.html" with field=form.address_line_3 autocomplete="address-line3" %}
+      {% include "members/_field.html" with field=form.address_line_4 %}
+      {% include "members/_field.html" with field=form.postcode autocomplete="postal-code" %}
+    </fieldset>
+
+    <fieldset>
+      <legend>Membership</legend>
+      {% include "members/_field.html" with field=form.monthly_subscription %}
+      {% include "members/_field.html" with field=form.rules_agreed %}
+      {# TODO(policies, 06 §6.8): link to the rules once /resources/policy/rules exists. #}
+      {% include "members/_field.html" with field=form.visited_space %}
+    </fieldset>
+
+    <button type="submit">Create my account</button>
+  </form>
+{% endblock %}

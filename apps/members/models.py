@@ -58,6 +58,8 @@ class Member(AbstractBaseUser, PermissionsMixin):
     founder = models.BooleanField(default=False)
     induction_completed = models.BooleanField(default=False, help_text="Completed the online general induction.")
     rules_agreed_at = models.DateTimeField(null=True, blank=True)
+    # Whole pounds in the legacy system; pence here (02 §2.2). The minimums are settings (02 §2.8).
+    monthly_subscription_pence = models.PositiveIntegerField(null=True, blank=True)
     profile_private = models.BooleanField(default=False, help_text="Hide from the public member list.")
     # Needed for door access (05 §5.2). These become part of the profile/photo app when it's built.
     photo_approved = models.BooleanField(default=False, help_text="Has an approved photo on the system.")
@@ -118,3 +120,77 @@ class Member(AbstractBaseUser, PermissionsMixin):
     def has_space_access(self):
         """Whether this member's status lets them be in the space at all (door and machines add more rules)."""
         return self.status in self.STATUSES_WITH_ACCESS and not self.banned
+
+
+class Address(models.Model):
+    """A member's postal address (02 §2.3). A member's own change waits for an admin to approve it."""
+
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name="addresses")
+    line_1 = models.CharField(max_length=255)
+    line_2 = models.CharField(max_length=255, blank=True)
+    line_3 = models.CharField(max_length=255, blank=True)
+    line_4 = models.CharField(max_length=255, blank=True)
+    postcode = models.CharField(max_length=10)
+    approved = models.BooleanField(default=False)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name_plural = "addresses"
+
+    def __str__(self):
+        return f"{self.line_1}, {self.postcode}"
+
+
+class IdDocument(models.Model):
+    """A scan or photo a new member uploads as proof of identity (spec 03 §3.1, "Proof of identity").
+
+    Kept only until a trustee has checked it, then deleted ("shredded"); unchecked uploads are deleted after
+    ID_DOCUMENT_MAX_AGE. The file is held in the database rather than in file storage, so there is exactly one copy
+    and deleting the row deletes the file. Never registered in the Django admin, and never copied to the shadow site.
+    """
+
+    class Kind(models.TextChoices):
+        PHOTO_ID = "photo_id", "Photo ID (e.g. passport or driving licence)"
+        PROOF_OF_ADDRESS = "proof_of_address", "Proof of address (e.g. a recent utility bill)"
+
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name="id_documents")
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    filename = models.CharField(max_length=255)
+    content_type = models.CharField(max_length=50)
+    size = models.PositiveIntegerField()
+    # TODO(encryption): encrypt with a key from the environment (e.g. Fernet, `cryptography` package) so database
+    # backups and dumps only ever hold ciphertext. See 03 §3.1.
+    data = models.BinaryField()
+    uploaded_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["member", "kind"], name="one_id_document_per_kind")]
+        permissions = [("review_id_documents", "Can view and check new members' proofs of identity")]
+
+    def __str__(self):
+        return f"{self.member} · {self.get_kind_display()}"
+
+
+class IdCheck(models.Model):
+    """A trustee's check of a member's proofs of identity. Kept permanently; the documents themselves are not."""
+
+    class Result(models.TextChoices):
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Not accepted: asked to send again"
+
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name="id_checks")
+    result = models.CharField(max_length=10, choices=Result.choices)
+    note = models.CharField(
+        max_length=255, blank=True, help_text='What was seen (e.g. "passport, council tax bill"), or why not.'
+    )
+    documents_seen = models.CharField(max_length=100, help_text="The kinds of document that were uploaded.")
+    checked_by = models.ForeignKey(Member, on_delete=models.SET_NULL, null=True, related_name="+")
+    checked_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-checked_at"]
+        verbose_name = "ID check"
+
+    def __str__(self):
+        return f"{self.member} · {self.get_result_display()} · {self.checked_at:%Y-%m-%d}"

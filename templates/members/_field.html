@@ -1,0 +1,17 @@
+{# One form field: label, input, help text and errors. Pass `field`, and optionally `autocomplete`. #}
+{% if field.widget_type == "checkbox" %}
+  <label class="check">
+    <input type="checkbox" name="{{ field.html_name }}" id="{{ field.auto_id }}"{% if field.value %} checked{% endif %}
+           {% if field.errors %}aria-invalid="true" aria-describedby="{{ field.auto_id }}_errors"{% endif %}>
+    {{ field.label }}
+  </label>
+{% else %}
+  <label for="{{ field.auto_id }}">{{ field.label }}{% if not field.field.required %} <span class="hint">(optional)</span>{% endif %}</label>
+  <input type="{% if field.widget_type == 'password' %}password{% elif field.widget_type == 'email' %}email{% elif field.widget_type == 'number' %}number{% else %}text{% endif %}"
+         name="{{ field.html_name }}" id="{{ field.auto_id }}"
+         {% if field.widget_type != "password" %}value="{{ field.value|default_if_none:'' }}"{% endif %}
+         {% if autocomplete %}autocomplete="{{ autocomplete }}"{% elif field.widget_type == "password" %}autocomplete="new-password"{% endif %}
+         {% if field.errors %}aria-invalid="true" aria-describedby="{{ field.auto_id }}_errors"{% endif %}>
+  {% if field.help_text %}<span class="hint">{{ field.help_text }}</span>{% endif %}
+{% endif %}
+{% if field.errors %}<span class="error" id="{{ field.auto_id }}_errors">{{ field.errors|join:" " }}</span>{% endif %}
