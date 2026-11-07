@@ -12,7 +12,7 @@ import json
 from datetime import UTC, datetime
 from functools import wraps
 
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -114,8 +114,10 @@ def activity(request):
         return _error("This key doesn't belong to that device", 403)
 
     if request.device.role == Device.Role.EQUIPMENT:
-        # TODO(equipment app): machine rules (05 §5.3) and usage sessions. Refused (4xx) until then.
-        return _error("Equipment sessions are not available yet", 422)
+        from apps.equipment import device_api  # machine rules live in the equipment app
+
+        status_code, body = device_api.v1_tap(request.device, str(data.get("tagId", "")), _user_payload)
+        return JsonResponse(body, status=status_code)
 
     decision = decide(request.device, str(data.get("tagId", "")), _parse_unix_time(data.get("occurredAt")))
 
@@ -130,5 +132,13 @@ def activity(request):
 @require_http_methods(["PUT", "DELETE"])
 @device_api
 def activity_session(request, session_id):
-    # TODO(equipment app): heartbeat (PUT) and end (DELETE) of a usage session.
-    return _error("Session not found", 404)
+    """A machine's usage session: PUT = still running, DELETE = finished (05 §5.4)."""
+    from apps.equipment import device_api
+
+    if request.method == "PUT":
+        status_code, body = device_api.v1_heartbeat(request.device, session_id)
+    else:
+        status_code, body = device_api.v1_end(request.device, session_id)
+    if body is None:
+        return HttpResponse(status=status_code)
+    return JsonResponse(body, status=status_code)

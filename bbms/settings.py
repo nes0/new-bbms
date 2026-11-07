@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.members",
     "apps.access",
+    "apps.equipment",
 ]
 
 MIDDLEWARE = [

@@ -4,8 +4,14 @@ The membership system for Build Brighton: members, payments, door and machine ac
 **new Django version**, replacing the legacy Laravel/PHP system. What it must do is described in
 [`docs/spec/`](docs/spec/README.md); start there.
 
-**Status:** early skeleton. Members can log in (including with passwords migrated from the legacy system) and
-admins can manage members. Everything else is still to be built.
+**Status:** early. Built so far:
+
+- members can log in (including with passwords migrated from the legacy system) and admins can manage them;
+- key fobs, devices and the v1 device API, so the current front-door firmware works unchanged, plus a QR-code call
+  for reader screens;
+- equipment, inductions, Moodle course rules and machine usage sessions: fees, the hourly tidy-up
+  (`manage.py tidy_equipment_sessions`) and session adjustments in the admin. Fees are worked out, but no money is
+  taken yet: that waits for the payments app.
 
 ## What's in this repository
 
@@ -14,13 +20,16 @@ admins can manage members. Everything else is still to be built.
 | `bbms/` | Django project settings and top-level URLs |
 | `apps/core/` | Site-wide pieces: home page, health check (`/healthz`), shared templates |
 | `apps/members/` | Members and their login accounts, including the legacy password hasher |
+| `apps/access/` | Key fobs, devices (door and machine readers), door decisions, the device API |
+| `apps/equipment/` | Equipment, inductions, Moodle course completions, machine usage sessions and fees |
 | `templates/`, `static/` | Page templates; CSS and HTMX (kept locally, no build step) |
 | `docs/spec/` | The specification |
 | `tests/door_compat/` | Runs the real front-door firmware against a server (needs the `BBMSDoorEntry` clone) |
 | `migration/` | Queries and scripts for moving data from the legacy system |
 
-Apps still to come (one per area of the spec): payments and credit, subscriptions and billing, access control and
-the device API, equipment and inductions, storage, governance (proposals, expenses), reports.
+Apps still to come (one per area of the spec): payments and credit, subscriptions and billing, storage, governance
+(proposals, expenses), reports. The v2 device API for machine readers (live balance, meter, out-of-order button) is
+next for equipment.
 
 ## Getting started on your own computer
 
