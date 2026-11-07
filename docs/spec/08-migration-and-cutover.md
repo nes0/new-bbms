@@ -33,6 +33,26 @@
 PayPal payers to Direct Debit or standing order (both methods are dropped). Records for dropped features (CCTV,
 detected devices) aren't migrated.
 
+### Import script status (2026-11-07)
+
+`manage.py import_legacy` (code in `apps/legacy/`) reads the legacy MySQL with a read-only user and imports, into an
+**empty** database: members (legacy passwords keep working), roles, key fobs, devices (keeping their API keys),
+equipment, inductions, machine sessions and the door log. It prints a report with counts, skipped rows (by legacy
+id) and things to check; it never shows names or emails. `--dry-run` imports, reports and rolls back.
+
+Choices made in the script (change them there if the trustees decide otherwise):
+- `payment-warning` → active (it still had access); `on-hold` → suspended. ❓
+- Fobs that clash on tag or card number: the active, most recently changed one is kept; the rest are listed.
+- The Member Box item and its inductions aren't imported; the members who qualify for the box-paid flag are listed
+  (stored once the storage app exists).
+- Every finished legacy session is marked as **settled**, so the new system never charges for it. Sessions the
+  legacy system hadn't billed are counted in the report, with what they'd cost.
+- Legacy `402` door entries become check-ins.
+- Equipment charged per gram or per page has its usage cost set to 0 (per hour only), and is listed.
+
+Not imported yet (waiting for their apps): payments, charges, addresses, proposals, expenses, notifications, the
+audit log, photos and receipts. Tested on the legacy clone's data inside the Docker image (`tools/clone_test/`).
+
 ## 8.3 Testing before cutover, and phases
 
 The new site is tested in four layers, ending with **shadow running**: it receives copies of the live site's real

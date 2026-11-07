@@ -26,6 +26,8 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `docs/spec/` | The specification |
 | `tests/door_compat/` | Runs the real front-door firmware against a server (needs the `BBMSDoorEntry` clone) |
 | `migration/` | Queries and scripts for moving data from the legacy system |
+| `apps/legacy/` | The legacy import: `manage.py import_legacy` (spec 08 §8.2) |
+| `tools/clone_test/` | How to build and run the Docker image on the legacy clone droplet, with its data imported |
 
 Apps still to come (one per area of the spec): payments and credit, subscriptions and billing, storage, governance
 (proposals, expenses), reports. The v2 device API for machine readers (live balance, meter, out-of-order button) is
