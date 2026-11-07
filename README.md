@@ -23,7 +23,10 @@ The membership system for Build Brighton: members, payments, door and machine ac
 - **payments and member credit**: the ledger, credit worked out from it, machine fees taken from credit when a session
   ends (with corrections when a session changes), cash and manual payments in the admin, and the member's credit page
   (`/credit/`) with withdrawal requests;
-- the **legacy import** (`manage.py import_legacy`), tested on the legacy clone's data inside the Docker image.
+- the **legacy import** (`manage.py import_legacy`), tested on the legacy clone's data inside the Docker image;
+- **lockers**: the inventory, default rents per size and location, price overrides for one member's rental and for
+  an empty locker, availability, per-member limits and rentals in the admin, all logged; and the members' page
+  (`/lockers/`). Self-service renting and monthly rent wait for billing.
 
 ## What's in this repository
 
@@ -36,6 +39,7 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `apps/equipment/` | Equipment, inductions, Moodle course completions, machine usage sessions and fees |
 | `apps/site_settings/` | Settings the trustees change in the admin (prices, limits, reader timings, the space's name), with a log of changes |
 | `apps/payments/` | The ledger, member credit, machine fees charged from credit, cash and manual payments, withdrawals |
+| `apps/storage/` | Lockers: locations, sizes, default rents, overrides, availability, rentals, limits and their log |
 | `templates/`, `static/` | Page templates; CSS and HTMX (kept locally, no build step) |
 | `docs/spec/` | The specification |
 | `tests/door_compat/` | Runs the real front-door firmware against a server (needs the `BBMSDoorEntry` clone) |
@@ -43,8 +47,8 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `apps/legacy/` | The legacy import: `manage.py import_legacy` (spec 08 §8.2) |
 | `tools/clone_test/` | How to build and run the Docker image on the legacy clone droplet, with its data imported |
 
-Still to come (one app per area of the spec): subscriptions and billing (GoCardless, Stripe), storage, governance
-(proposals, expenses), notifications, reports; and moving the remaining hard-coded prices and limits into settings.
+Still to come (one app per area of the spec): subscriptions and billing (GoCardless, Stripe), the box flag and
+self-service locker renting, governance (proposals, expenses), notifications, reports.
 
 ## Getting started on your own computer
 

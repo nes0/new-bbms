@@ -17,4 +17,5 @@ urlpatterns = [
     # Device API v1 lives at /acs/... (the address today's door firmware uses).
     path("", include("apps.access.urls")),
     path("", include("apps.payments.urls")),
+    path("", include("apps.storage.urls")),
 ]

@@ -118,11 +118,15 @@ AcsNode (devices)   Settings (key/value)   AuditLog
 - **`storage_boxes`**: `size` (volume units), `user_id` (0 = free), `active`. Boxes have no name or location, only an id.
   Boxes are now all 19 L; the volume field is obsolete.
   **Not migrated:** boxes are no longer tracked individually (06 §6.2).
-  **New** (06 §6.2): on members, a **box paid** flag + date + payment; `storage_locations` (name); `locker_sizes` (name,
-  default monthly rent in pence); `lockers` (location, number, size, status: available / rented / reserved for
-  trustees / out of use, status note, rent override in pence + reason); `locker_rentals` (locker, member, started,
-  ended, monthly rent); `locker_rent_charges` (rental, charge date, amount, status, like subscription charges);
-  and on members, an optional **locker limit override** + reason. Location + number is unique for lockers.
+  **New** (06 §6.2; lockers built 2026-11-07 in `apps/storage`): on members, a **box paid** flag + date + payment
+  (to build); `StorageLocation` (name, description, order); `LockerSize` (name, description, order); `LockerRent`
+  (location, size, default monthly rent in pence; one per location and size); `Locker` (location, number, size,
+  availability: available / reserved for trustees / out of use + note, advertised rent override in pence + reason,
+  retired; "rented" is worked out from an open rental); `LockerRental` (locker, member, started, started by, rent
+  override in pence + reason, ended, ended by, end reason; at most one open rental per locker);
+  `MemberLockerLimit` (member, limit, reason, set by, set at); `LockerChange` (the audit log); and later
+  `locker_rent_charges` (rental, charge date, amount, status, like subscription charges). Location + number is unique
+  for lockers.
 - **`proposals`**: `title`, `description` (markdown), `user_id`, `start_date`, `end_date`, results (`votes_cast`, `votes_for`, `votes_against`, `abstentions`, `quorum`, `result`, `processed`).
 - **`proposal_votes`**: `proposal_id`, `user_id`, `vote` (+1/0/−1), `abstain`.
 - **`expenses`**: `user_id`, `category`, `description`, `amount` (**pence**), `expense_date`, `file` (receipt on S3), `approved`, `declined`, `approved_by_user`.
@@ -154,8 +158,8 @@ row a new field whose default is the starting value.
 | Public occupancy count on the website | new; on/off |
 | Attendance threshold for the trusted-status review list | new; ❓ suggested 8 visits over 4 weeks (05 §5.10) |
 | Box fee (one-off, non-refundable) | £15 (charged outside BBMS today). **Built** |
-| Lockers allowed per member (admins can override per member) | new; ❓ suggested 1 |
-| Locker rents | per size, in the locker size list (06 §6.2) |
+| Lockers allowed per member (admins can override per member) | new; ❓ suggested 1, so it starts at 1 (0–20). **Built** |
+| Locker rents | a default per **size and location**, in Storage → Default rents (06 §6.2), not on this page. **Built** |
 | Minimum monthly subscription (self-service) | £20; **£25 in the new system** (decided 2026-11-07). Built. Members already paying less keep their amount until they change it |
 | Minimum monthly subscription (set by admin) | £5 |
 | Unchecked proofs of identity are deleted after | new; 30 days (03 §3.1), 1–90 days. **Built** |

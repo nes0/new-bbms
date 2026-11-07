@@ -82,7 +82,7 @@ These legacy features will **not** be rebuilt:
 - **Private**: member PII (address, phone, emergency contact, bank details) visible only to the member and admins; photos not publicly listable.
   Proofs of identity are seen only by those allowed to check them and are deleted once checked (03 §3.1).
 - **Money is exact**: all money stored as **integer pence**. (Legacy mixes pounds-as-float and pence-as-int.)
-- **Prices are settings, not code** — key deposit, box fee, locker rents per size, locker limit, minimum subscriptions, grace periods (see 02 §2.8).
+- **Prices are settings, not code** — key deposit, box fee, locker rents per size and location, locker limit, minimum subscriptions, grace periods (see 02 §2.8).
 - **Cheap to host**: one small managed app plus one database.
 - **Backups**: daily database backup with a tested restore.
 

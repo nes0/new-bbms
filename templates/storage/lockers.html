@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load money %}
+
+{% block title %}Lockers · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Lockers</h1>
+
+  <section>
+    <h2>Your lockers</h2>
+    {% if mine %}
+      <ul class="plain">
+        {% for rental, rent in mine %}
+          <li><strong>{{ rental.locker }}</strong> ({{ rental.locker.size }}): {{ rent|pounds }} a month, since
+            {{ rental.started_at|date:"j F Y" }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>You don't rent a locker.</p>
+    {% endif %}
+    <p class="hint">You can rent up to {{ limit }} locker{{ limit|pluralize }}. To give one up, ask the storage team.</p>
+  </section>
+
+  <section>
+    <h2>Available to rent</h2>
+    {% for location, sizes in by_location %}
+      <h3>{{ location }}</h3>
+      {% if location.description %}<p class="hint">{{ location.description }}</p>{% endif %}
+      <table class="table">
+        <thead><tr><th>Locker</th><th>Size</th><th>Monthly rent</th></tr></thead>
+        <tbody>
+          {% for size, items in sizes %}
+            {% for locker, rent in items %}
+              <tr>
+                <td>{{ locker.number }}</td>
+                <td>{{ size }}{% if size.description %} <span class="hint">{{ size.description }}</span>{% endif %}</td>
+                <td>{{ rent|pounds }}</td>
+              </tr>
+            {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    {% empty %}
+      <p>No lockers are free at the moment.</p>
+    {% endfor %}
+    {% if by_location %}
+      {# TODO(subscriptions app): rent one here, paid monthly by Direct Debit or credit, first payment pro rata (06 §6.2). #}
+      <p>To rent one, ask the storage team. Rent is paid monthly.</p>
+    {% endif %}
+  </section>
+{% endblock %}

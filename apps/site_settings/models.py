@@ -90,6 +90,15 @@ class SiteSettings(models.Model):
         help_text="Uploads a trustee hasn't checked by then are deleted.",
     )
 
+    # --- storage (06 §6.2) ---
+    lockers_per_member = models.PositiveSmallIntegerField(
+        "lockers each member may rent",
+        default=1,
+        validators=[MaxValueValidator(20)],
+        help_text="Trustees can give an individual member a different limit, with a reason (Storage → member's "
+        "locker limits). Lowering it doesn't take lockers away from anyone.",
+    )
+
     # How the admin groups them.
     GROUPS = (
         ("The site", ("space_name",)),
@@ -97,6 +106,7 @@ class SiteSettings(models.Model):
         ("Prices", ("key_deposit_pence", "box_fee_pence")),
         ("Machines", ("minimum_session_minutes", "machine_credit_limit_pence")),
         ("Fob readers", ("reader_check_in_seconds", "session_heartbeat_seconds")),
+        ("Storage", ("lockers_per_member",)),
         ("Privacy", ("id_document_max_age_days",)),
     )
 

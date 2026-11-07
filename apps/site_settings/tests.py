@@ -27,6 +27,7 @@ DEFAULTS = {
     "reader_check_in_seconds": "300",
     "session_heartbeat_seconds": "60",
     "id_document_max_age_days": "30",
+    "lockers_per_member": "1",
 }
 
 

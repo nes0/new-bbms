@@ -14,14 +14,14 @@
 | `induction` | equipment `access_fee` (whole £) | Creates an **Induction** record (`paid = true`) for that equipment's `induction_category`. |
 | `key-deposit` (legacy `door-key`) | **£15** (a setting) | Deposit for the physical key that gives 24-hour access; needed before an admin grants key holder (05 §5.2). Fobs are free. |
 | `storage-box` | the box fee (a setting, £15) | One-off, non-refundable; sets the member's "box paid" flag (06 §6.2). Legacy £5 deposits stay as history. |
-| `locker-rent` | the locker's monthly rent (size default, or an admin override) | Pays a locker rent charge (06 §6.2). Billed monthly with the subscription. |
+| `locker-rent` | the locker's monthly rent (the default for its size and location, or a trustee's override for that rental) | Pays a locker rent charge (06 §6.2). Billed monthly with the subscription. |
 | `balance` | any | Adds to member credit (top-up). |
 | `equipment-fee` | computed | Taken from credit when a session ends (05 §5.4, §5.6). If an admin later adjusts the session's times, a correcting `equipment-fee` entry (a refund or an extra charge) is added; the original is never edited. |
 | `withdrawal` | any | Credit paid out (cash) by an admin. |
 | `donation` | any | Legacy only: unmatched PayPal money. Kept in migrated history; can be refunded to a member's credit. |
 | `costs`, consumable service names | any | Deducted from credit. |
 
-**Decided:** the key deposit and box fee are admin-editable **settings** (02 §2.8) and locker rents come from the locker size list (06 §6.2), not code. The amount charged is always worked out **on the server** from the reason and these settings, never taken from the browser.
+**Decided:** the key deposit and box fee are admin-editable **settings** (02 §2.8) and locker rents come from the default rents per size and location (06 §6.2), not code. The amount charged is always worked out **on the server** from the reason and these settings, never taken from the browser.
 
 ### Sources
 

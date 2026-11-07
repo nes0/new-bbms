@@ -55,22 +55,35 @@ Boxes and lockers follow **different rules** (decided 2026-11-06).
 ### Lockers (inventory admin-editable)
 - Each locker has a **location** in the space (a managed list, e.g. "Workshop wall") and a **number**. Location +
   number is unique and is how people refer to it ("Workshop wall locker 12").
-- Each locker has a **size**, from a managed list of locker sizes, each with a **default monthly rent**.
-- Admins add, move, renumber and resize lockers. A locker can't be removed while it's rented.
+- Each locker has a **size**, from a managed list of locker sizes (physical sizes, e.g. "Large").
+- **Default rents are set per size and location** (changed 2026-11-07): each combination of location and size has
+  its own **default monthly rent**, e.g. "Large lockers on the Workshop wall: £8; Large lockers in the Office: £10".
+  A locker can only be added once its size and location have a default rent (or it has its own advertised price).
+- Admins add, move, renumber and resize lockers. A locker can't be removed while it's rented; a locker that has ever
+  been rented is **retired** rather than deleted, so its history is kept.
 
 - **Status** of each locker: **available**, **rented**, **reserved for trustees**, or **out of use**. Members can
   only rent available lockers. Admins can mark a locker reserved (with a note of what for) or out of use (e.g.
-  broken), but only while it isn't rented.
+  broken), but only while it isn't rented. This is how a trustee **overrides the availability advertised for an
+  empty locker**: reserved and out-of-use lockers aren't shown to members. "Rented" isn't stored: it means the
+  locker has an open rental.
 - **Limit:** members may rent up to a **maximum number of lockers** (a setting; ❓ suggested 1). Admins can set a
   **different limit for an individual member** at their discretion, with a reason. The override is audit-logged and
   shown on the member's admin page.
-- **Rent:** charged **monthly** while the member holds the locker. Price = the locker's price override if set,
-  otherwise its size's default monthly rent.
-    - **Price override:** an admin can set an individual locker's rent in exceptional circumstances (including £0),
-      with a reason. It's audit-logged and **cleared automatically when that rental ends**, so the next renter pays
-      the size's default.
-    - ❓ When an admin changes a size's default rent, should existing renters pay the new rent? Suggested: yes, from
-      the first charge at least 30 days after they've been emailed about it.
+- **Rent:** charged **monthly** while the member holds the locker. There are two kinds of price override (changed
+  2026-11-07), both set by a trustee in exceptional circumstances (including £0), each with a reason and
+  audit-logged:
+    - **What one member pays for their locker** (an override on the **rental**): e.g. a reduced rent for a volunteer.
+      It belongs to that rental, so it **ends automatically when the rental ends** and the next renter pays the
+      default.
+    - **The price advertised for an empty locker** (an override on the **locker**): e.g. a cheaper price for a
+      locker with a dented door. Members see it on the lockers page, and whoever rents that locker next pays it: it
+      moves onto their rental (as above) and is cleared from the locker.
+    - So the price a renter pays = their rental's override if set, otherwise the default rent for the locker's size
+      and location.
+    - ❓ When an admin changes a default rent, should existing renters pay the new rent? Suggested: yes, from
+      the first charge at least 30 days after they've been emailed about it. (Built so far: renters without an
+      override simply follow the current default, and the admin warns when a change affects current renters.)
 - **Renting (self-service):**
     1. The member picks an **available** locker, within their limit.
     2. They need a way to pay monthly: a Direct Debit mandate, or member credit (with or without Direct Debit as a
@@ -86,7 +99,8 @@ Boxes and lockers follow **different rules** (decided 2026-11-06).
   Direct Debit retry policy says (03 §3.6). ❓ Suggested: after **30 days** unpaid, the storage team may empty the
   locker and release it.
 - **Giving it up:** by the member, or by the storage team or an admin. Rent stops from that day. ❓ Suggested: no
-  refund for the rest of the month already paid. The price override is cleared and the locker becomes available.
+  refund for the rest of the month already paid. The rental's price override ends with it and the locker becomes
+  available at its default rent.
 - **When a member leaves**, rent stops when their membership ends, and the storage team is told to clear and release
   any lockers they held (and, if they'd paid for a box, to look for a box labelled with their name).
 
@@ -98,7 +112,29 @@ Boxes and lockers follow **different rules** (decided 2026-11-06).
   the box flag, and flagged members who have left.
 
 ❓ Should the **storage team** also manage the locker inventory (locations, numbers, sizes, rents, reservations), or
-admins only?
+admins only? (Built either way: it's ordinary admin permissions, given to the storage role or not.)
+
+### Lockers: build status (2026-11-07)
+
+Built (`apps/storage`):
+- **Inventory** in the admin (Storage): locations, sizes, the **default rent for each size in each location** (in
+  pounds), and lockers with their number, size, availability and advertised price. A locker with a rental history
+  can't be deleted, only retired.
+- **Both price overrides** and **availability** as described above. Changes go through one set of rules, which
+  refuse what isn't allowed (e.g. reserving a rented locker, an override without a reason) and record every change,
+  with who, when, old and new value and the reason, in a read-only "locker changes" log.
+- **Limits:** the usual limit is a setting (02 §2.8, starting at 1); a trustee can give a member their own limit,
+  with a reason, which shows on the member's admin page. Lowering a limit doesn't take lockers away.
+- **Rentals in the admin:** the storage team or an admin gives an available locker to a current member (within their
+  limit), changes what that member pays, and ends the rental.
+- **Pages:** members see available lockers by location with their monthly rent, and their own lockers, rent and
+  limit (`/lockers/`, linked from the account page). The admin's locker list shows status, holder, rent (overrides
+  marked) and start date, filtered by status (including "rented by someone who has left"), location and size.
+
+Waiting for the subscriptions and billing work: **self-service renting** with a Direct Debit or credit to pay from
+and the first (pro-rata) payment; monthly rent charges with the subscription; unpaid rent; rent notice periods;
+ending rentals when a member leaves. Members ask the storage team to rent or give up a locker until then. The box
+flag (above) is still to build.
 
 Related policies: *member storage*, *3-week bins*.
 

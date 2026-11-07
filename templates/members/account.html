@@ -38,6 +38,7 @@
         <a href="{% url 'members:change-subscription' %}">Change</a></dd>
       {# TODO(subscriptions app): payment method, payment day, paid until, and the charges (03 §3.3). #}
       <dt>Credit</dt><dd>{{ credit_pence|pounds }} <a href="{% url 'payments:credit' %}">History and withdrawals</a></dd>
+      <dt>Lockers</dt><dd><a href="{% url 'storage:lockers' %}">Your lockers and ones to rent</a></dd>
       <dt>Member since</dt><dd>{{ member.date_joined|date:"j F Y" }}</dd>
       {% if id_status != "needed" or member.status != "setting-up" %}
         <dt>Proof of identity</dt>
