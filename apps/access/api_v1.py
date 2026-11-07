@@ -17,6 +17,8 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
+from apps.payments.credit import credit_pence
+
 from .decisions import Outcome, decide, find_fob
 from .models import Device
 
@@ -67,8 +69,7 @@ def _user_payload(member):
             "status": member.status,
             "active": member.has_space_access,
             "key_holder": member.key_holder,
-            # TODO(payments app): member credit in pence, as the legacy cash_balance.
-            "cash_balance": 0,
+            "cash_balance": credit_pence(member),  # pence, like the legacy field
             "profile_private": member.profile_private,
         }
     }

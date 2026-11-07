@@ -143,7 +143,14 @@ class Induction(models.Model):
     member = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="inductions")
     category = models.SlugField(max_length=64, help_text="Equipment.induction_category (or slug).")
     paid = models.BooleanField(default=False)
-    # TODO(payments app): link to the payment that paid the induction fee.
+    payment = models.ForeignKey(
+        "payments.Payment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        help_text="The payment of the induction fee, if it was paid through BBMS.",
+    )
     trained_at = models.DateTimeField(null=True, blank=True)
     trainer = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
@@ -207,7 +214,8 @@ class UsageSession(models.Model):
     motor_on_seconds = models.PositiveIntegerField(default=0)
 
     fee_pence = models.PositiveIntegerField(null=True, blank=True, help_text="Worked out when the session ends.")
-    # TODO(payments app): charged_at is set when the fee is taken from the member's credit.
+    # When the fee was settled with the member's credit (payments.services.settle_session). The charge, and any
+    # later corrections, are ledger rows linked to the session (`payments`).
     charged_at = models.DateTimeField(null=True, blank=True)
 
     original_started_at = models.DateTimeField(null=True, blank=True)

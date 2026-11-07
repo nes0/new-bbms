@@ -16,4 +16,5 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # Device API v1 lives at /acs/... (the address today's door firmware uses).
     path("", include("apps.access.urls")),
+    path("", include("apps.payments.urls")),
 ]

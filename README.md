@@ -7,6 +7,7 @@ The membership system for Build Brighton: members, payments, door and machine ac
 **Status:** early. Built so far:
 
 - members can log in (including with passwords migrated from the legacy system) and admins can manage them;
+- online **registration** (`/register`) and proof-of-identity uploads checked by trustees (`/id-checks/`);
 - key fobs, devices and the v1 device API, so the current front-door firmware works unchanged, plus a QR-code call
   for reader screens;
 - the **v2 device API** (`/api/devices/v2/`, built to [the brief](docs/spec/09-device-api-v2-build.md)): check-in,
@@ -16,8 +17,11 @@ The membership system for Build Brighton: members, payments, door and machine ac
 - a **fake machine reader** at `/dev/fake-device/` (local development only) that behaves like the planned new
   firmware and talks to BBMS through the v2 device API. Set it up with `manage.py create_demo_device`;
 - equipment, inductions, Moodle course rules and machine usage sessions: fees, the hourly tidy-up
-  (`manage.py tidy_equipment_sessions`) and session adjustments in the admin. Fees are worked out, but no money is
-  taken yet: that waits for the payments app.
+  (`manage.py tidy_equipment_sessions`) and session adjustments in the admin;
+- **payments and member credit**: the ledger, credit worked out from it, machine fees taken from credit when a session
+  ends (with corrections when a session changes), cash and manual payments in the admin, and the member's credit page
+  (`/credit/`) with withdrawal requests;
+- the **legacy import** (`manage.py import_legacy`), tested on the legacy clone's data inside the Docker image.
 
 ## What's in this repository
 
@@ -28,6 +32,7 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `apps/members/` | Members and their login accounts, including the legacy password hasher |
 | `apps/access/` | Key fobs, devices (door and machine readers), door decisions, the device API |
 | `apps/equipment/` | Equipment, inductions, Moodle course completions, machine usage sessions and fees |
+| `apps/payments/` | The ledger, member credit, machine fees charged from credit, cash and manual payments, withdrawals |
 | `templates/`, `static/` | Page templates; CSS and HTMX (kept locally, no build step) |
 | `docs/spec/` | The specification |
 | `tests/door_compat/` | Runs the real front-door firmware against a server (needs the `BBMSDoorEntry` clone) |
@@ -35,8 +40,8 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `apps/legacy/` | The legacy import: `manage.py import_legacy` (spec 08 §8.2) |
 | `tools/clone_test/` | How to build and run the Docker image on the legacy clone droplet, with its data imported |
 
-Apps still to come (one per area of the spec): payments and credit, subscriptions and billing, storage, governance
-(proposals, expenses), reports.
+Still to come (one app per area of the spec): subscriptions and billing (GoCardless, Stripe), storage, governance
+(proposals, expenses), settings, notifications, reports.
 
 ## Getting started on your own computer
 

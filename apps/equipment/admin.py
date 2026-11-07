@@ -1,6 +1,8 @@
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.utils import timezone
+
+from apps.payments import services
 
 from . import rules
 from .models import Equipment, Induction, MachineStatusChange, ServiceRecord, TrainingCompletion, UsageSession
@@ -201,7 +203,15 @@ class UsageSessionAdmin(admin.ModelAdmin):
             obj.removed = obj.ended_at is not None and (obj.ended_at - obj.started_at) <= rules.SHORT_SESSION
             if obj.ended_at:
                 obj.fee_pence = rules.session_fee_pence(obj.equipment, obj)
-            # TODO(payments app): if already charged, add a correcting ledger entry; notify the member.
         elif change and "reason" in form.changed_data and obj.ended_at:
             obj.fee_pence = rules.session_fee_pence(obj.equipment, obj)
         super().save_model(request, obj, form, change)
+        if obj.ended_at:
+            # Charge, or refund, the difference as a new ledger row (05 §5.6).
+            # TODO(notifications app): tell the member the old and new times and any change to the charge.
+            correction = services.settle_session(obj)
+            if correction is not None and correction.corrects_id:
+                verb = "refunded" if correction.amount_pence < 0 else "charged"
+                messages.info(request, f"The member was {verb} £{abs(correction.amount_pence) / 100:.2f}.")
+            elif obj.legacy_id and correction is None and "ended_at" in form.changed_data:
+                messages.warning(request, "This session was billed by the legacy system, so no money was moved.")
