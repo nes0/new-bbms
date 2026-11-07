@@ -34,7 +34,7 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `apps/members/` | Members and their login accounts, including the legacy password hasher |
 | `apps/access/` | Key fobs, devices (door and machine readers), door decisions, the device API |
 | `apps/equipment/` | Equipment, inductions, Moodle course completions, machine usage sessions and fees |
-| `apps/site_settings/` | Settings the trustees change in the admin, with a log of changes (so far: the minimum monthly subscription) |
+| `apps/site_settings/` | Settings the trustees change in the admin (prices, limits, reader timings, the space's name), with a log of changes |
 | `apps/payments/` | The ledger, member credit, machine fees charged from credit, cash and manual payments, withdrawals |
 | `templates/`, `static/` | Page templates; CSS and HTMX (kept locally, no build step) |
 | `docs/spec/` | The specification |

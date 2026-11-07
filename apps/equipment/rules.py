@@ -12,20 +12,25 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from apps.payments import credit, services
+from apps.site_settings.models import SiteSettings
 
 from .models import Equipment, Induction, MeterReading, TrainingCompletion, UsageSession
 
 logger = logging.getLogger(__name__)
 
-# TODO(settings app): these become admin settings (spec 02 §2.8).
-MINIMUM_CHARGE = timedelta(minutes=15)
-ALLOWED_NEGATIVE_CREDIT_PENCE = 500  # credit must be above -£5 to start a session
+# The minimum charge and the credit allowed below zero are admin settings (apps/site_settings, 02 §2.8).
+# These are fixed rules of how sessions work, not prices, so they stay in the code:
 SHORT_SESSION = timedelta(seconds=60)  # this short or less: removed, not charged
 MERGE_GAP = timedelta(seconds=60)  # back-to-back sessions this close are merged
 MERGE_WINDOW = timedelta(days=2)  # the tidy-up only looks this far back for sessions to merge
 STALE_AFTER = timedelta(hours=1)  # an open session with no heartbeat for this long is closed
 
 UNCHARGED_REASONS = (UsageSession.Reason.TRAINING, UsageSession.Reason.TESTING, UsageSession.Reason.MAINTENANCE)
+
+
+def minimum_charge_seconds() -> int:
+    """A charged session costs at least this much time (setting, 02 §2.8; 15 minutes to start with)."""
+    return SiteSettings.load().minimum_session_minutes * 60
 
 
 def member_credit_pence(member) -> int:
@@ -79,7 +84,8 @@ def machine_refusal_reason(member, equipment: Equipment, *, for_offline_cache=Fa
             return reason
     if for_offline_cache:
         return ""
-    if member_credit_pence(member) + ALLOWED_NEGATIVE_CREDIT_PENCE <= 0 and equipment.usage_cost_pence_per_hour:
+    credit_limit = SiteSettings.load().machine_credit_limit_pence
+    if equipment.usage_cost_pence_per_hour and member_credit_pence(member) + credit_limit <= 0:
         return "insufficient_credit"
     return ""
 
@@ -92,7 +98,7 @@ def session_fee_pence(equipment: Equipment, session: UsageSession) -> int:
 def _fee(equipment: Equipment, reason, removed, duration_seconds) -> int:
     if removed or reason in UNCHARGED_REASONS or not equipment.usage_cost_pence_per_hour:
         return 0
-    seconds = max(duration_seconds, int(MINIMUM_CHARGE.total_seconds()))
+    seconds = max(duration_seconds, minimum_charge_seconds())
     # Integer maths, rounding half up: rate is pence per hour.
     return (equipment.usage_cost_pence_per_hour * seconds + 1800) // 3600
 

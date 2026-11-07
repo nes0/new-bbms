@@ -5,22 +5,27 @@ The rules in one place:
 - PDF, JPEG, PNG, WebP or HEIC (iPhone photos), recognised from the file's contents, not its name;
 - at most MAX_FILE_BYTES each;
 - uploads are held in memory while the request is handled, never in a temporary file on disk;
-- deleted as soon as a trustee has checked them, or after MAX_AGE if nobody does.
+- deleted as soon as a trustee has checked them, or after max_age_days() if nobody does (a setting, 02 §2.8).
 """
 
 import re
-from datetime import timedelta
 
 from django.core.files.uploadhandler import MemoryFileUploadHandler
 from django.db import transaction
 from django.utils import timezone
 
+from apps.site_settings.models import SiteSettings
+
 from .models import IdCheck, IdDocument
 
 MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_REQUEST_BYTES = 2 * MAX_FILE_BYTES + 64 * 1024  # two files plus the form fields
-# TODO(settings app): how long unchecked uploads are kept is a setting (02 §2.8); suggested 30 days.
-MAX_AGE = timedelta(days=30)
+
+
+def max_age_days() -> int:
+    """How long unchecked uploads are kept (setting; 30 days to start with)."""
+    return SiteSettings.load().id_document_max_age_days
+
 
 # Types a browser can show safely in a tab; anything else is downloaded instead.
 SHOWN_INLINE = {"application/pdf", "image/jpeg", "image/png", "image/webp"}
@@ -84,9 +89,9 @@ def record_check(member, reviewer, result: str, note: str = "") -> IdCheck:
 
 
 def shred_stale(now=None) -> int:
-    """Delete uploads nobody has checked within MAX_AGE. Returns how many were deleted."""
+    """Delete uploads nobody has checked within the time limit. Returns how many were deleted."""
     now = now or timezone.now()
-    deleted, _ = IdDocument.objects.filter(uploaded_at__lt=now - MAX_AGE).delete()
+    deleted, _ = IdDocument.objects.filter(uploaded_at__lt=now - SiteSettings.load().id_document_max_age).delete()
     return deleted
 
 

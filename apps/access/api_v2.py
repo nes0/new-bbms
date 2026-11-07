@@ -20,12 +20,12 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
+from apps.site_settings.models import SiteSettings
+
 from . import decisions, qr, tags
 from .models import AccessEvent, Device, KeyFob
 
-# TODO(settings app): these become admin settings.
-HEARTBEAT_SECONDS = 300
-SESSION_HEARTBEAT_SECONDS = 60
+# The check-in and session heartbeat intervals are admin settings (apps/site_settings, 02 §2.8).
 MAX_OFFLINE_EVENTS = 500
 
 
@@ -181,10 +181,11 @@ def check_in(request):
         update_fields=["last_boot", "last_heartbeat", "firmware_version", "reported_cache_version", "pending_commands"]
     )
 
+    site_settings = SiteSettings.load()
     body = {
         "server_time": unix(now),
-        "heartbeat_seconds": HEARTBEAT_SECONDS,
-        "session_heartbeat_seconds": SESSION_HEARTBEAT_SECONDS,
+        "heartbeat_seconds": site_settings.reader_check_in_seconds,
+        "session_heartbeat_seconds": site_settings.session_heartbeat_seconds,
         "cache_version": version,
         "commands": commands,
     }

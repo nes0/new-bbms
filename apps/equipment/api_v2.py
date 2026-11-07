@@ -30,7 +30,7 @@ def machine_payload(equipment: Equipment) -> dict:
         "name": equipment.name,
         "config_version": equipment.config_version,
         "hourly_rate_pence": equipment.usage_cost_pence_per_hour,
-        "minimum_minutes": int(rules.MINIMUM_CHARGE.total_seconds() // 60),
+        "minimum_minutes": rules.minimum_charge_seconds() // 60,
         "status": equipment.status,
         "status_note": equipment.status_note,
         "status_since": unix(equipment.status_since),

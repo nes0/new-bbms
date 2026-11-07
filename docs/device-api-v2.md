@@ -32,6 +32,9 @@ brief, spec 09.
 | `meter` | every 60 s while the motor runs, and when a session ends |
 | `allowed-fobs` | when check-in returns `refresh_cache` or a `cache_version` you don't hold |
 
+The two intervals are admin settings in BBMS (300 and 60 to start with, limits 60–3600 and 15–600 seconds). Always
+use the values from the latest check-in, and the machine's `minimum_minutes` from the latest `machine` object.
+
 ## `POST check-in`
 
 ```json

@@ -160,8 +160,8 @@ Response (every role):
 }
 ```
 
-- `heartbeat_seconds` 300 and `session_heartbeat_seconds` 60 are constants in `api_v2.py` for now (`TODO(settings
-  app)`).
+- `heartbeat_seconds` (300) and `session_heartbeat_seconds` (60) are admin settings (02 §2.8, built 2026-11-07), so
+  firmware must use the values it's sent rather than assume these.
 - `cache_version` is explained in 9.7. Until phase 3, return `""`.
 - `commands`: the device's `pending_commands` (then clear them), plus `"disable"` if `enabled` is False, plus
   `"refresh_cache"` if the device's reported cache version differs from the current one (phase 3).

@@ -170,9 +170,10 @@ class Address(models.Model):
 class IdDocument(models.Model):
     """A scan or photo a new member uploads as proof of identity (spec 03 §3.1, "Proof of identity").
 
-    Kept only until a trustee has checked it, then deleted ("shredded"); unchecked uploads are deleted after
-    ID_DOCUMENT_MAX_AGE. The file is held in the database rather than in file storage, so there is exactly one copy
-    and deleting the row deletes the file. Never registered in the Django admin, and never copied to the shadow site.
+    Kept only until a trustee has checked it, then deleted ("shredded"); unchecked uploads are deleted after the
+    time in Settings (30 days to start with). The file is held in the database rather than in file storage, so there
+    is exactly one copy and deleting the row deletes the file. Never registered in the Django admin, and never copied
+    to the shadow site.
     """
 
     class Kind(models.TextChoices):

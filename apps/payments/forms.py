@@ -22,6 +22,17 @@ class PoundsField(forms.DecimalField):
         super().__init__(max_digits=8, decimal_places=2, **kwargs)
 
 
+def what_choices():
+    """What an admin can record. Built each time, so the labels show the current prices from Settings."""
+    return [
+        ("topup", "Credit top-up (cash received)"),
+        ("withdrawal", "Cash paid out of the member's credit"),
+        ("induction", "Induction fee"),
+        ("key-deposit", f"Key deposit (£{prices.key_deposit_pence() / 100:.2f})"),
+        ("storage-box", f"Box fee (£{prices.box_fee_pence() / 100:.2f})"),
+    ]
+
+
 class RecordPaymentForm(forms.Form):
     """Cash and manual payments recorded by an admin (04 §4.5).
 
@@ -29,13 +40,6 @@ class RecordPaymentForm(forms.Form):
     settings, never from this form.
     """
 
-    WHAT = [
-        ("topup", "Credit top-up (cash received)"),
-        ("withdrawal", "Cash paid out of the member's credit"),
-        ("induction", "Induction fee"),
-        ("key-deposit", f"Key deposit (£{prices.KEY_DEPOSIT_PENCE / 100:.2f})"),
-        ("storage-box", f"Box fee (£{prices.BOX_FEE_PENCE / 100:.2f})"),
-    ]
     PAID_HOW = [
         (Payment.Source.CASH, "Cash"),
         (Payment.Source.MANUAL, "Paid outside BBMS (e.g. bank transfer)"),
@@ -43,7 +47,7 @@ class RecordPaymentForm(forms.Form):
     ]
 
     member = forms.ModelChoiceField(queryset=Member.objects.order_by("given_name", "family_name"))
-    what = forms.ChoiceField(choices=WHAT)
+    what = forms.ChoiceField(choices=what_choices)
     paid_how = forms.ChoiceField(
         choices=PAID_HOW, required=False, help_text="For induction fees, key deposits and box fees."
     )

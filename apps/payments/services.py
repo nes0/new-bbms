@@ -86,12 +86,12 @@ def pay_induction(member, equipment, source, **fields) -> Payment:
 
 def pay_key_deposit(member, source, **fields) -> Payment:
     # TODO(members): record the deposit on the member (key issued date, number, returned) (02 §2.2).
-    return pay(member, Payment.Reason.KEY_DEPOSIT, source, prices.KEY_DEPOSIT_PENCE, **fields)
+    return pay(member, Payment.Reason.KEY_DEPOSIT, source, prices.key_deposit_pence(), **fields)
 
 
 def pay_box_fee(member, source, **fields) -> Payment:
     # TODO(storage app): set the member's "box paid" flag, date and payment (06 §6.2).
-    return pay(member, Payment.Reason.STORAGE_BOX, source, prices.BOX_FEE_PENCE, reference="box", **fields)
+    return pay(member, Payment.Reason.STORAGE_BOX, source, prices.box_fee_pence(), reference="box", **fields)
 
 
 @transaction.atomic

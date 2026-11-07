@@ -138,29 +138,36 @@ Values that legacy hard-coded become admin-editable settings, with every change 
 setting** (rather than one row per setting), so each value is validated and has a label and help text in the admin.
 Admins edit it at Admin → Settings; money is entered in pounds and stored in pence. Every change is recorded
 (setting, old value, new value, who, when) in a read-only "setting changes" log. A setting is added by giving the
-row a new field whose default is the starting value. Built so far: the **minimum monthly subscription
-(self-service)**; the rest of this table are still constants in the code, marked `TODO(settings app)`.
+row a new field whose default is the starting value.
+- Values are read from the database each time they're used (one quick query), so a change applies at once on every
+  server, with nothing to restart. Each has limits checked when it's saved (for example a reader can't be told to
+  check in more often than once a minute).
+- **A setting is added when something uses it**, so the admin page never shows values that do nothing. The rows below
+  marked **Built** are settings now; the others arrive with their feature (lockers, occupancy, billing and so on).
+- Changing a price affects **new** payments only; nothing already recorded changes.
 
 | Setting | Legacy value |
 |---|---|
-| Key deposit (physical key for 24-hour access; legacy door-key deposit) | £15 |
-| Active fobs per member (fobs are free) | 2 |
+| Key deposit (physical key for 24-hour access; legacy door-key deposit) | £15. **Built** |
+| Active fobs per member (fobs are free) | 2 (not enforced yet: arrives with fob issuing, 06 §6.10) |
 | Occupancy timeout (no tap-out) | new; default 4 hours after last fob activity, everyone cleared at 4am |
 | Public occupancy count on the website | new; on/off |
 | Attendance threshold for the trusted-status review list | new; ❓ suggested 8 visits over 4 weeks (05 §5.10) |
-| Box fee (one-off, non-refundable) | £15 (charged outside BBMS today) |
+| Box fee (one-off, non-refundable) | £15 (charged outside BBMS today). **Built** |
 | Lockers allowed per member (admins can override per member) | new; ❓ suggested 1 |
 | Locker rents | per size, in the locker size list (06 §6.2) |
 | Minimum monthly subscription (self-service) | £20; **£25 in the new system** (decided 2026-11-07). Built. Members already paying less keep their amount until they change it |
 | Minimum monthly subscription (set by admin) | £5 |
-| Unchecked proofs of identity are deleted after | new; 30 days (03 §3.1) |
+| Unchecked proofs of identity are deleted after | new; 30 days (03 §3.1), 1–90 days. **Built** |
 | Suspension before a member is marked left | new; 30 days (decided provisionally) |
 | Failed Direct Debit retries | new; "BBMS retries" (default) or "let GoCardless retry" (Success+); BBMS mode: retries (default 1) and days between (default 5) |
 | Grace period per payment method | DD 10 days, standing order 6 months, other 7 days (03 §3.5) |
-| Minimum billable equipment session | 15 minutes |
-| Allowed negative credit for equipment fees | £5 |
-| Trustees' contact email | `trustees@buildbrighton.com` |
-| Space name (used in emails and pages) | "Build Brighton" |
+| Minimum billable equipment session | 15 minutes. **Built**. Readers show it, so changing it bumps every machine's `config_version` (09 §9.4) |
+| Allowed negative credit for equipment fees | £5. **Built**, as "credit below zero still allowed to start a machine session": a member can start a charged session while their credit is above −£5. A session that has started is always charged in full (decided 2026-11-07, 04 §4.1) |
+| How often v2 readers check in | new; 5 minutes (05 §5.4: also how quickly a revoked fob reaches readers), 1–60 minutes. **Built** |
+| How often machine readers send a session heartbeat | new; 60 seconds (09 §9.5), 15 seconds–10 minutes. **Built** |
+| Trustees' contact email | `trustees@buildbrighton.com` (arrives with the first email to the trustees) |
+| Space name (used in emails and pages) | "Build Brighton". **Built**; replaces the `SITE_NAME` environment variable |
 
 ## 2.9 Files
 

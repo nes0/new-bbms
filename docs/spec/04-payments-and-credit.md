@@ -69,7 +69,8 @@ page with withdrawal requests, and finance's handling of those requests. Choices
 
 Still to build: GoCardless, Stripe, subscription charges and billing (03), the statement import (4.6), the finance
 overview and money summary (4.8, 4.9), member-facing top-ups and paying fees from the credit page, and importing the
-legacy payments (08 §8.2). Prices are constants in `apps/payments/prices.py` until the settings app exists.
+legacy payments (08 §8.2). The key deposit and box fee are admin settings (02 §2.8, built 2026-11-07), read through
+`apps/payments/prices.py`.
 
 ## 4.2 GoCardless (Direct Debit)
 

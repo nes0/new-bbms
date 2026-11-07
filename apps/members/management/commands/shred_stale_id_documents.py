@@ -14,4 +14,5 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         deleted = id_documents.shred_stale()
-        self.stdout.write(f"Deleted {deleted} unchecked ID document(s) older than {id_documents.MAX_AGE.days} days.")
+        days = id_documents.max_age_days()
+        self.stdout.write(f"Deleted {deleted} unchecked ID document(s) older than {days} days.")

@@ -127,8 +127,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="BBMS <noreply@bbms.buildbrighton.com>")
 
-# Site name used in page titles and emails (a setting in the spec; 02 §2.8).
-SITE_NAME = env("SITE_NAME", default="Build Brighton")
+# The space's name is an admin setting (apps/site_settings, 02 §2.8), not an environment variable.
 # The site's public address, for links that leave the site: emails, QR codes on device screens.
 SITE_URL = env("SITE_URL", default="http://localhost:8000").rstrip("/")
 

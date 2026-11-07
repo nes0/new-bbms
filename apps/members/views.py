@@ -62,7 +62,7 @@ def _id_documents_page(request):
         "documents": member.id_documents.defer("data").order_by("kind"),
         "id_status": id_documents.status(member),
         "id_check": member.id_checks.first(),
-        "max_age_days": id_documents.MAX_AGE.days,
+        "max_age_days": id_documents.max_age_days(),
     }
     return render(request, "members/id_documents.html", context)
 
@@ -88,7 +88,7 @@ def id_checks(request):
         .annotate(documents=Count("id_documents"), uploaded_at=Min("id_documents__uploaded_at"))
         .order_by("uploaded_at")
     )
-    return render(request, "members/id_checks.html", {"waiting": waiting, "max_age_days": id_documents.MAX_AGE.days})
+    return render(request, "members/id_checks.html", {"waiting": waiting, "max_age_days": id_documents.max_age_days()})
 
 
 @login_required
