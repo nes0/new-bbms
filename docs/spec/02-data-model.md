@@ -132,7 +132,14 @@ AcsNode (devices)   Settings (key/value)   AuditLog
 
 ## 2.8 Settings (new system)
 
-Values that legacy hard-coded become admin-editable settings (one typed row each, changes audit-logged):
+Values that legacy hard-coded become admin-editable settings, with every change audit-logged.
+
+**How they're stored (built 2026-11-07, `apps/site_settings`):** a single settings row with **one typed field per
+setting** (rather than one row per setting), so each value is validated and has a label and help text in the admin.
+Admins edit it at Admin → Settings; money is entered in pounds and stored in pence. Every change is recorded
+(setting, old value, new value, who, when) in a read-only "setting changes" log. A setting is added by giving the
+row a new field whose default is the starting value. Built so far: the **minimum monthly subscription
+(self-service)**; the rest of this table are still constants in the code, marked `TODO(settings app)`.
 
 | Setting | Legacy value |
 |---|---|
@@ -144,7 +151,7 @@ Values that legacy hard-coded become admin-editable settings (one typed row each
 | Box fee (one-off, non-refundable) | £15 (charged outside BBMS today) |
 | Lockers allowed per member (admins can override per member) | new; ❓ suggested 1 |
 | Locker rents | per size, in the locker size list (06 §6.2) |
-| Minimum monthly subscription (self-service) | £20 |
+| Minimum monthly subscription (self-service) | £20; **£25 in the new system** (decided 2026-11-07). Built. Members already paying less keep their amount until they change it |
 | Minimum monthly subscription (set by admin) | £5 |
 | Unchecked proofs of identity are deleted after | new; 30 days (03 §3.1) |
 | Suspension before a member is marked left | new; 30 days (decided provisionally) |

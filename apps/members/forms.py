@@ -7,11 +7,22 @@ from django.contrib.auth import password_validation
 from django.db import transaction
 from django.utils import timezone
 
+from apps.site_settings.models import SiteSettings
+
 from . import id_documents
 from .models import Address, IdCheck, IdDocument, Member
 
-# TODO(settings app): the minimum self-service subscription is a setting (02 §2.8); legacy value £20.
-MINIMUM_SUBSCRIPTION_POUNDS = 20
+
+def subscription_field() -> forms.IntegerField:
+    """The monthly amount a member chooses: whole pounds, at least the minimum in Settings (02 §2.8)."""
+    minimum = SiteSettings.load().minimum_subscription_pounds
+    return forms.IntegerField(
+        label="Monthly subscription (£)",
+        min_value=minimum,
+        max_value=10_000,
+        help_text=f"Whole pounds, at least £{minimum}.",
+    )
+
 
 # The shape of a UK postcode, e.g. "BN1 4AA", "SW1A 1AA", "M1 1AE". It checks the format, not that the postcode
 # exists. GIR 0AA (Girobank) is the one historical exception that is still valid.
@@ -39,12 +50,7 @@ class RegistrationForm(forms.Form):
     address_line_3 = forms.CharField(max_length=255, required=False, label="Address line 3")
     address_line_4 = forms.CharField(max_length=255, required=False, label="Address line 4")
     postcode = forms.CharField(max_length=10)
-    monthly_subscription = forms.IntegerField(
-        label="Monthly subscription (£)",
-        min_value=MINIMUM_SUBSCRIPTION_POUNDS,
-        max_value=10_000,
-        help_text=f"Whole pounds, at least £{MINIMUM_SUBSCRIPTION_POUNDS}.",
-    )
+    monthly_subscription = forms.IntegerField()  # replaced in __init__, so the minimum is read from Settings
     emergency_contact = forms.CharField(
         max_length=255, help_text="Who we should contact in an emergency, and how (name and phone number)."
     )
@@ -52,6 +58,10 @@ class RegistrationForm(forms.Form):
     # private file storage (DigitalOcean Spaces, 02 §2.9) and the photo approval workflow.
     rules_agreed = forms.BooleanField(label="I agree to follow the rules of the space")
     visited_space = forms.BooleanField(label="I have visited the space")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["monthly_subscription"] = subscription_field()
 
     def clean_email(self):
         email = self.cleaned_data["email"].strip().lower()

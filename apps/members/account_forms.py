@@ -3,7 +3,7 @@
 from django import forms
 from django.core.validators import MinLengthValidator
 
-from .forms import MINIMUM_SUBSCRIPTION_POUNDS, normalise_postcode
+from .forms import normalise_postcode, subscription_field
 from .models import Address, Member
 
 
@@ -66,12 +66,11 @@ class AddressForm(forms.ModelForm):
 class SubscriptionForm(forms.Form):
     """The monthly amount (03 §3.7). Applies from the next charge."""
 
-    monthly_subscription = forms.IntegerField(
-        label="Monthly subscription (£)",
-        min_value=MINIMUM_SUBSCRIPTION_POUNDS,
-        max_value=10_000,
-        help_text=f"Whole pounds, at least £{MINIMUM_SUBSCRIPTION_POUNDS}.",
-    )
+    monthly_subscription = forms.IntegerField()  # replaced in __init__, so the minimum is read from Settings
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["monthly_subscription"] = subscription_field()
 
 
 class LeaveForm(forms.Form):

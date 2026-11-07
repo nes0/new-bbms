@@ -12,7 +12,7 @@
 | Phone | required, min 10 chars |
 | Address line 1, postcode | required; postcode must be a valid UK postcode |
 | Address lines 2–4 | optional |
-| Monthly subscription | required, integer pounds, **min £20** |
+| Monthly subscription | required, integer pounds, at least the **minimum monthly subscription** setting (02 §2.8; £25, was £20 in legacy) |
 | Emergency contact | required |
 | Profile photo | optional upload; goes into the **pending approval** queue |
 | Photo private | optional |
@@ -180,7 +180,7 @@ to `due`, so it was billed again at every 01:30 run). How retries happen is an *
 
 ## 3.7 Changing a subscription
 
-- **Amount** (member): only if method is `gocardless-variable` or `balance`. Minimum is a setting (legacy £20; admins may go down to £5). Applies from the next charge.
+- **Amount** (member): only if method is `gocardless-variable` or `balance`. Minimum is a setting (02 §2.8: **£25**, decided 2026-11-07; legacy £20; admins may go down to £5). Applies from the next charge. Raising the minimum doesn't change what existing members pay: a member below it keeps their amount until they change it, and must then choose at least the new minimum.
 - **Method** (member): `gocardless-variable` ⇄ `balance`. Switching to balance keeps Direct Debit as the **backup** method.
 - **Method/day** (admin): any method and payment day 1–28.
 - **Migrate old DD**: not rebuilt. Any member still on an old-style `gocardless` subscription is moved to a variable mandate before cutover (08).
@@ -203,7 +203,8 @@ trained on, what the front door does for them (from the door rules, 05 §5.2), p
 - **change their address**: the new one waits for a trustee and the old one stays current until then (02 §2.3). A
   second change replaces a waiting one. Trustees approve or decline in the admin ("Addresses", filtered to "not
   approved"); approving deletes the out-of-date addresses;
-- **change the monthly amount** (§3.7, at least £20). Until billing exists this only stores the amount;
+- **change the monthly amount** (§3.7, at least the minimum setting, £25). Until billing exists this only stores
+  the amount;
 - **change their password** (Django's page, in the site's style);
 - **leave, if still `setting-up`**: the account is deleted with its address, uploads and ID checks. If anything that
   must be kept refers to it (a payment, a fob), it isn't deleted and the member is asked to contact the trustees.

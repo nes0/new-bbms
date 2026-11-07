@@ -109,7 +109,8 @@ same, so MySQL saves nothing. Django is also built and tested primarily against 
 
 1. Door access by an explicit list of membership statuses rather than the `active` flag (05 §5.2).
 2. Proposal **quorum** rule, and whether only current members may vote (06 §6.3).
-4. Minimum subscription (£20 self-service, £5 admin): keep?
+4. Minimum subscription: **self-service decided 2026-11-07: £25** (was £20), an admin setting (02 §2.8). Still open:
+   keep the £5 minimum for amounts set by an admin?
 5. Who may mark members as **trained**: admins only, or trainers too (05 §5.8)?
 6. Should the door's public Discord announcement use the full name, the first name only, or respect private profiles (05)?
 7. Public (logged-out) member directory: keep (06 §6.1)?

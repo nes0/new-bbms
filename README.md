@@ -34,6 +34,7 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `apps/members/` | Members and their login accounts, including the legacy password hasher |
 | `apps/access/` | Key fobs, devices (door and machine readers), door decisions, the device API |
 | `apps/equipment/` | Equipment, inductions, Moodle course completions, machine usage sessions and fees |
+| `apps/site_settings/` | Settings the trustees change in the admin, with a log of changes (so far: the minimum monthly subscription) |
 | `apps/payments/` | The ledger, member credit, machine fees charged from credit, cash and manual payments, withdrawals |
 | `templates/`, `static/` | Page templates; CSS and HTMX (kept locally, no build step) |
 | `docs/spec/` | The specification |
@@ -43,7 +44,7 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `tools/clone_test/` | How to build and run the Docker image on the legacy clone droplet, with its data imported |
 
 Still to come (one app per area of the spec): subscriptions and billing (GoCardless, Stripe), storage, governance
-(proposals, expenses), settings, notifications, reports.
+(proposals, expenses), notifications, reports; and moving the remaining hard-coded prices and limits into settings.
 
 ## Getting started on your own computer
 

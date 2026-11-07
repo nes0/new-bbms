@@ -2,6 +2,8 @@
 
 from django.test import TestCase
 
+from apps.site_settings.models import SiteSettings
+
 from .forms import normalise_postcode
 from .models import Address, Member
 
@@ -58,10 +60,16 @@ class RegistrationTests(TestCase):
         address = Address.objects.get()
         self.assertEqual((address.line_1, address.postcode, address.approved), ("1 Example Street", "BN1 4AA", False))
 
-    def test_the_subscription_must_be_at_least_20_pounds_in_whole_pounds(self):
-        self.assertContains(self.register(monthly_subscription="19"), "greater than or equal to 20")
-        self.assertContains(self.register(monthly_subscription="20.50"), "Enter a whole number")
+    def test_the_subscription_must_be_at_least_the_minimum_in_whole_pounds(self):
+        self.assertContains(self.register(monthly_subscription="24"), "greater than or equal to 25")
+        self.assertContains(self.register(monthly_subscription="25.50"), "Enter a whole number")
         self.assertFalse(Member.objects.exists())
+
+    def test_the_minimum_comes_from_settings(self):
+        SiteSettings.objects.update_or_create(pk=1, defaults={"minimum_subscription_pence": 3000})
+        self.assertContains(self.client.get("/register"), "at least £30")
+        self.assertContains(self.register(monthly_subscription="25"), "greater than or equal to 30")
+        self.assertRedirects(self.register(monthly_subscription="30"), "/account/")
 
     def test_both_boxes_must_be_ticked(self):
         response = self.register(rules_agreed=None, visited_space=None)

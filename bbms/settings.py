@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "apps.equipment",
     "apps.payments",
     "apps.legacy",
+    "apps.site_settings",
 ]
 
 MIDDLEWARE = [

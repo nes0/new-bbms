@@ -162,11 +162,16 @@ class SubscriptionTests(TestCase):
         self.member.refresh_from_db()
         self.assertEqual(self.member.monthly_subscription_pence, 3000)
 
-    def test_at_least_20_pounds_in_whole_pounds(self):
-        for bad in ("19", "25.50", ""):
+    def test_at_least_the_minimum_in_whole_pounds(self):
+        for bad in ("24", "25.50", ""):
             self.client.post("/account/subscription/", {"monthly_subscription": bad})
             self.member.refresh_from_db()
             self.assertEqual(self.member.monthly_subscription_pence, 2000, bad)
+
+    def test_a_member_paying_less_than_a_new_minimum_keeps_their_amount_until_they_change_it(self):
+        # This member chose £20 under the old minimum; raising it to £25 doesn't change their amount.
+        self.assertContains(self.client.get("/account/"), "£20.00")
+        self.assertContains(self.client.get("/account/subscription/"), "at least £25")
 
 
 class PasswordChangeTests(TestCase):
