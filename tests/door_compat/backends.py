@@ -156,4 +156,130 @@ def _free_port() -> int:
         return s.getsockname()[1]
 
 
-BACKENDS = {"legacy-clone": LegacyCloneBackend}
+class DjangoLocalBackend:
+    """The new Django site, run locally with `manage.py runserver` on a throwaway SQLite database.
+
+    Test members and fobs are created directly through the Django ORM, in this process, on the same database
+    file the server uses.
+    """
+
+    name = "django-local"
+    host_header = "localhost"
+    verify_tls = False
+    use_tls = False  # the development server speaks plain HTTP
+    matches_card_number = True  # spec 05 §5.1
+    device_name = "door-compat-test"
+
+    def __init__(self):
+        self.api_key = "door-compat-" + secrets.token_hex(12)
+        self.https_host = "127.0.0.1"
+        self.https_port = None
+        self._server = None
+        self._tmp = None
+
+    # -- connection --------------------------------------------------------------------
+    def start(self):
+        import sys
+        import tempfile
+        from pathlib import Path
+
+        repo_root = Path(__file__).resolve().parents[2]
+        self._tmp = tempfile.mkdtemp(prefix="door-compat-django-")
+        env = {
+            "DEBUG": "True",
+            "SECRET_KEY": "door-compat-only",
+            "ALLOWED_HOSTS": "localhost,127.0.0.1",
+            "DATABASE_URL": f"sqlite:///{self._tmp}/db.sqlite3",
+            "DB_CONN_MAX_AGE": "0",
+            "DJANGO_SETTINGS_MODULE": "bbms.settings",
+        }
+        os.environ.update(env)
+        sys.path.insert(0, str(repo_root))
+        import django
+        from django.core.management import call_command
+
+        django.setup()
+        call_command("migrate", verbosity=0)
+
+        self.https_port = _free_port()
+        self._server = subprocess.Popen(
+            [sys.executable, "manage.py", "runserver", f"127.0.0.1:{self.https_port}", "--noreload"],
+            cwd=repo_root,
+            env={**os.environ, **env},
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            if self._server.poll() is not None:
+                raise RuntimeError("Django development server failed to start")
+            try:
+                socket.create_connection(("127.0.0.1", self.https_port), timeout=1).close()
+                return
+            except OSError:
+                time.sleep(0.3)
+        raise RuntimeError("Django development server did not come up")
+
+    def stop(self):
+        import shutil
+
+        if self._server:
+            self._server.terminate()
+            self._server.wait(timeout=10)
+        if self._tmp:
+            shutil.rmtree(self._tmp, ignore_errors=True)
+
+    # -- fixtures ----------------------------------------------------------------------
+    def install_fixtures(self, people):
+        from apps.access.models import Device, KeyFob
+        from apps.members.models import Member
+
+        door = Device(name="Door compatibility test", device_id=self.device_name, role=Device.Role.ENTRY)
+        door.set_api_key(self.api_key)
+        door.save()
+        for person in people:
+            member = Member.objects.create_user(
+                f"door-test-{person.number}@example.com",
+                "door-compat-password",
+                given_name=person.given_name,
+                family_name=person.family_name,
+                status=Member.Status.ACTIVE if person.active else Member.Status.LEFT,
+                trusted=person.trusted,
+                key_holder=person.key_holder,
+                # The legacy "no profile row" case has no photo information at all.
+                photo_approved=person.photo and person.has_profile,
+                photo_on_wall=person.photo_on_wall and person.has_profile,
+            )
+            if person.tag_id:
+                KeyFob.objects.create(member=member, tag_id=person.tag_id, active=person.fob_active)
+
+    def remove_fixtures(self):
+        pass  # the whole database is thrown away in stop()
+
+    def _member(self, person):
+        from apps.members.models import Member
+
+        return Member.objects.get(email=f"door-test-{person.number}@example.com")
+
+    def set_fob_active(self, person, active: bool):
+        from apps.access.models import KeyFob
+
+        KeyFob.objects.filter(member=self._member(person)).update(active=active)
+
+    def set_keyholder(self, person, key_holder: bool):
+        member = self._member(person)
+        member.key_holder = key_holder
+        member.save(update_fields=["key_holder"])
+
+    def entries_recorded(self, person) -> int:
+        from apps.access.models import AccessEvent
+
+        return AccessEvent.objects.filter(member=self._member(person), kind=AccessEvent.Kind.ENTRY).count()
+
+    def last_boot(self):
+        from apps.access.models import Device
+
+        return Device.objects.get(device_id=self.device_name).last_boot
+
+
+BACKENDS = {"legacy-clone": LegacyCloneBackend, "django-local": DjangoLocalBackend}

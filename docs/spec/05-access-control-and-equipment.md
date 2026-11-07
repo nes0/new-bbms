@@ -151,6 +151,20 @@ clear rule for "BBMS answered" versus "BBMS couldn't answer".
 | `POST offline-events` | Upload a batch of decisions the device made while BBMS was unreachable: `[{card, occurred_at, allowed, type}]`. BBMS records them in the access log as offline entries, at the time they happened. |
 | `POST meter` | Equipment readers: motor-on seconds since the last report, with an increasing `seq` (see below). |
 | `POST machine-status` | Equipment readers: a tapped-in member reports the machine out of order or fixed (see below). |
+| `GET qr` | Any device: a QR code linking to the device's page on BBMS, in a raw format for a microcontroller (see below). Built 2026-11-07. |
+
+**QR code for the device's screen** (added 2026-11-07; built): `GET /api/devices/v2/qr` returns a QR code for a
+short link to the device's page (`https://bbms.buildbrighton.com/d/<device-id>`, which redirects to
+`/devices/<device-id>/`; members are asked to log in first). Kept short so the code stays small: a typical one is
+29 × 29 modules.
+- **Raw format** (default, `application/octet-stream`): byte 0 is N, the modules per side; then N rows, top to
+  bottom, each `ceil(N / 8)` bytes, most significant bit = leftmost module, 1 = dark, spare bits 0. Total
+  `1 + N × ceil(N / 8)` bytes (117 for 29 × 29). No quiet zone is included: the device leaves at least 4 light
+  modules around it. Error correction level M.
+- `?format=json` gives `{url, size, row_bytes, rows: [hex strings]}` for debugging.
+- An `ETag` header changes only when the link changes; devices send `If-None-Match` and get `304 Not Modified`, so
+  they can fetch it once and keep it. The link is also sent in an `X-QR-URL` header.
+- Authenticated like the rest of v2 (`Authorization: Bearer <key>`); the v1 `ApiKey` header also works.
 
 **Revocation:** when a fob is marked lost, or a member stops being allowed on a device (left, suspended, keyholder
 removed, training revoked), BBMS bumps that device's `cache_version`. The device sees it at its next check-in and

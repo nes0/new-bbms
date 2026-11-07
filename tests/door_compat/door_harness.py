@@ -88,7 +88,7 @@ class Exchange:
 
 
 class BbmsProxy:
-    """Local HTTP endpoint for the door script; forwards to BBMS over HTTPS.
+    """Local HTTP endpoint for the door script; forwards to BBMS over HTTPS (or plain HTTP for a local dev server).
 
     mode:
       "online"  - forward requests to BBMS
@@ -96,7 +96,8 @@ class BbmsProxy:
       "down"    - stop listening, so connections are refused (BBMS unreachable)
     """
 
-    def __init__(self, target_host: str, target_port: int, host_header: str, verify_tls: bool):
+    def __init__(self, target_host: str, target_port: int, host_header: str, verify_tls: bool, use_tls: bool = True):
+        self.use_tls = use_tls
         self.target_host = target_host
         self.target_port = target_port
         self.host_header = host_header
@@ -163,7 +164,10 @@ class BbmsProxy:
         threading.Thread(target=self._server.serve_forever, daemon=True).start()
 
     def _forward(self, method, path, raw, headers):
-        conn = http.client.HTTPSConnection(self.target_host, self.target_port, context=self.tls_context, timeout=30)
+        if self.use_tls:
+            conn = http.client.HTTPSConnection(self.target_host, self.target_port, context=self.tls_context, timeout=30)
+        else:
+            conn = http.client.HTTPConnection(self.target_host, self.target_port, timeout=30)
         forwarded = {k: v for k, v in headers.items() if k.lower() in ("content-type", "accept", "apikey")}
         forwarded["Host"] = self.host_header
         conn.request(method, path, body=raw or None, headers=forwarded)

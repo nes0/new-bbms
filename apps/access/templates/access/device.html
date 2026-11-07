@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}{{ device.name }} · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>{{ device.name }}</h1>
+  <p>{{ device.get_role_display }}.</p>
+  {% if device.last_heartbeat %}
+    <p>Last heard from {{ device.last_heartbeat|timesince }} ago.</p>
+  {% else %}
+    <p>Not heard from yet.</p>
+  {% endif %}
+{% endblock %}

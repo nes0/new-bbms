@@ -18,6 +18,8 @@ psycopg-binary==3.3.8
     # via -r requirements.txt
 ruff==0.17.4
     # via -r requirements-dev.in
+segno==1.6.6
+    # via -r requirements.txt
 sqlparse==0.6.1
     # via
     #   -r requirements.txt

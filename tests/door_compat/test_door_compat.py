@@ -107,7 +107,13 @@ class DoorTestCase(unittest.TestCase):
     preload_cache = None
 
     def setUp(self):
-        self.proxy = BbmsProxy(BACKEND.https_host, BACKEND.https_port, BACKEND.host_header, BACKEND.verify_tls)
+        self.proxy = BbmsProxy(
+            BACKEND.https_host,
+            BACKEND.https_port,
+            BACKEND.host_header,
+            BACKEND.verify_tls,
+            use_tls=getattr(BACKEND, "use_tls", True),
+        )
         self.discord = DiscordCapture()
         self.door = DoorProcess(
             FIRMWARE,
@@ -162,13 +168,21 @@ class ServerContract(DoorTestCase):
         self.assertEqual(body["tagId"], KEYHOLDER.tag_id)
 
     def test_vendor_prefix_guessing_reaches_later_prefixes(self):
-        """Wrong-prefix attempts must be clean 4xx refusals so the door keeps trying."""
+        """A fob whose vendor prefix is late in the firmware's list still gets in.
+
+        Legacy matches the exact tag, so wrong-prefix guesses must be clean 4xx refusals and the door keeps
+        trying. The new system also matches on the card number (05 §5.1), so the first guess already works.
+        """
         result = self.door.tap(LATE_PREFIX.card)
         self.assertTrue(result.door_opened, result.log)
-        attempts = LATE_PREFIX.prefix_index + 1
-        self.assertEqual(len(result.statuses), attempts)
-        self.assertTrue(all(400 <= s < 500 for s in result.statuses[:-1]), result.statuses)
-        self.assertEqual(self.door.cached().get(LATE_PREFIX.card), LATE_PREFIX.tag_id)
+        if getattr(BACKEND, "matches_card_number", False):
+            self.assertEqual(len(result.statuses), 1, "card-number matching: the first guess opens the door")
+            self.assertIn(LATE_PREFIX.card, self.door.cached())
+        else:
+            attempts = LATE_PREFIX.prefix_index + 1
+            self.assertEqual(len(result.statuses), attempts)
+            self.assertTrue(all(400 <= s < 500 for s in result.statuses[:-1]), result.statuses)
+            self.assertEqual(self.door.cached().get(LATE_PREFIX.card), LATE_PREFIX.tag_id)
 
     def test_photo_on_wall_counts_instead_of_online_photo(self):
         self.assertTrue(self.door.tap(LATE_PREFIX.card).door_opened)

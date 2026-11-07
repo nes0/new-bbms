@@ -59,6 +59,9 @@ class Member(AbstractBaseUser, PermissionsMixin):
     induction_completed = models.BooleanField(default=False, help_text="Completed the online general induction.")
     rules_agreed_at = models.DateTimeField(null=True, blank=True)
     profile_private = models.BooleanField(default=False, help_text="Hide from the public member list.")
+    # Needed for door access (05 §5.2). These become part of the profile/photo app when it's built.
+    photo_approved = models.BooleanField(default=False, help_text="Has an approved photo on the system.")
+    photo_on_wall = models.BooleanField(default=False, help_text="Has a physical photo on the wall instead.")
 
     banned = models.BooleanField(default=False)
     banned_at = models.DateTimeField(null=True, blank=True)

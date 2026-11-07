@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     # BBMS apps
     "apps.core",
     "apps.members",
+    "apps.access",
 ]
 
 MIDDLEWARE = [
@@ -124,6 +125,8 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="BBMS <noreply@bbms.build
 
 # Site name used in page titles and emails (a setting in the spec; 02 §2.8).
 SITE_NAME = env("SITE_NAME", default="Build Brighton")
+# The site's public address, for links that leave the site: emails, QR codes on device screens.
+SITE_URL = env("SITE_URL", default="http://localhost:8000").rstrip("/")
 
 # Security settings for production (behind DigitalOcean App Platform's HTTPS proxy).
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
