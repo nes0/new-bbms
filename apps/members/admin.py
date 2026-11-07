@@ -20,6 +20,31 @@ class MemberChangeForm(UserChangeForm):
         fields = "__all__"
 
 
+@admin.register(Address)
+class AddressAdmin(admin.ModelAdmin):
+    """Address changes waiting for approval (03 §3.9): filter by "approved: No" to see the queue."""
+
+    list_display = ("member", "__str__", "approved", "created_at")
+    list_filter = ("approved",)
+    search_fields = ("member__email", "member__given_name", "member__family_name", "postcode")
+    autocomplete_fields = ("member",)
+    actions = ["approve", "decline"]
+
+    @admin.action(description="Approve the selected addresses (replaces the member's old address)")
+    def approve(self, request, queryset):
+        count = 0
+        for address in queryset.filter(approved=False):
+            address.approve()
+            count += 1
+        self.message_user(request, f"Approved {count} address(es).")
+
+    @admin.action(description="Decline the selected address changes (deletes them)")
+    def decline(self, request, queryset):
+        deleted, _ = queryset.filter(approved=False).delete()
+        # TODO(notifications app): tell the member their address change wasn't accepted.
+        self.message_user(request, f"Declined {deleted} address change(s).")
+
+
 class AddressInline(admin.StackedInline):
     model = Address
     extra = 0

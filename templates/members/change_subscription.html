@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Change your subscription · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Change your monthly subscription</h1>
+  <p>{% if current %}You pay £{{ current }} a month.{% else %}You haven't chosen an amount yet.{% endif %}
+    A new amount applies from your next monthly payment.</p>
+  <form method="post" class="stack form" novalidate>
+    {% csrf_token %}
+    {% include "members/_field.html" with field=form.monthly_subscription %}
+    <button type="submit">Save</button>
+  </form>
+  <p><a href="{% url 'members:account' %}">Back to your account</a></p>
+{% endblock %}

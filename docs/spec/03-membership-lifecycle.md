@@ -193,6 +193,25 @@ to `due`, so it was billed again at every 01:30 run). How retries happen is an *
 - **"Leave" button**: a `setting-up` account is **deleted outright**; anyone else → `leaving`.
 - **Rejoin** (a `left` member): status → `setting-up`, then the normal payment set-up flow.
 
+### The member's account page: build status (2026-11-07)
+
+Built (`/account/`): membership status, monthly amount, credit (linked to the credit page, 04 §4.7), fobs, machines
+trained on, what the front door does for them (from the door rules, 05 §5.2), proof-of-identity status and, for a
+`setting-up` member, the next steps. A member can:
+- **edit their details**: name, phone (at least 10 characters) and emergency contact, all required. The **email
+  address** is the login, so changing it is an admin job for now (it needs confirming by email first);
+- **change their address**: the new one waits for a trustee and the old one stays current until then (02 §2.3). A
+  second change replaces a waiting one. Trustees approve or decline in the admin ("Addresses", filtered to "not
+  approved"); approving deletes the out-of-date addresses;
+- **change the monthly amount** (§3.7, at least £20). Until billing exists this only stores the amount;
+- **change their password** (Django's page, in the site's style);
+- **leave, if still `setting-up`**: the account is deleted with its address, uploads and ID checks. If anything that
+  must be kept refers to it (a payment, a fob), it isn't deleted and the member is asked to contact the trustees.
+
+Waiting for the subscriptions work: payment method and day, "paid until", the charges list, the "method" change,
+and leaving for current members (cancel the Direct Debit → `leaving`). Waiting for other apps: the profile and photo
+(06 §6.1), the general induction step (05 §5.9) and emails about address decisions.
+
 ## 3.9 Admin member controls
 
 From the member's account page, admins can:

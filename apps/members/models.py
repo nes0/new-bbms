@@ -7,7 +7,7 @@ arrive with their own apps.
 """
 
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 
@@ -121,6 +121,20 @@ class Member(AbstractBaseUser, PermissionsMixin):
         """Whether this member's status lets them be in the space at all (door and machines add more rules)."""
         return self.status in self.STATUSES_WITH_ACCESS and not self.banned
 
+    @property
+    def current_address(self):
+        """The address a trustee has approved, if any."""
+        return self.addresses.filter(approved=True).first()
+
+    @property
+    def pending_address(self):
+        """A change the member asked for that hasn't been approved yet (newer than the current address)."""
+        pending = self.addresses.filter(approved=False).first()
+        current = self.current_address
+        if pending is not None and (current is None or pending.created_at > current.created_at):
+            return pending
+        return None
+
 
 class Address(models.Model):
     """A member's postal address (02 §2.3). A member's own change waits for an admin to approve it."""
@@ -140,6 +154,17 @@ class Address(models.Model):
 
     def __str__(self):
         return f"{self.line_1}, {self.postcode}"
+
+    @property
+    def lines(self):
+        return [line for line in (self.line_1, self.line_2, self.line_3, self.line_4, self.postcode) if line]
+
+    def approve(self):
+        """Make this the member's address: earlier addresses (approved or not) are deleted, as they're out of date."""
+        with transaction.atomic():
+            Address.objects.filter(member=self.member_id).exclude(pk=self.pk).delete()
+            self.approved = True
+            self.save(update_fields=["approved"])
 
 
 class IdDocument(models.Model):

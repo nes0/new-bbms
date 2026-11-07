@@ -1,4 +1,4 @@
-"""Joining, the member's own account page and proof of identity (spec 03 §3.1)."""
+"""Joining and proof of identity (spec 03 §3.1). The account page itself is in account_views.py."""
 
 import logging
 
@@ -31,18 +31,6 @@ def register(request):
         messages.success(request, "Welcome! Your account is set up. Here's what to do next.")
         return redirect("members:account")
     return render(request, "members/register.html", {"form": form})
-
-
-@login_required
-def account(request):
-    member = request.user
-    context = {
-        "member": member,
-        "address": member.addresses.first(),
-        "id_status": id_documents.status(member),
-        "id_check": member.id_checks.first(),
-    }
-    return render(request, "members/account.html", context)
 
 
 # --- Proof of identity: the member's side ---

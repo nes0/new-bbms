@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Change your address · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Change your address</h1>
+  {% if address %}<p>We have: {{ address.lines|join:", " }}.</p>{% endif %}
+  <p>A trustee checks a new address before it replaces the old one.</p>
+  <form method="post" class="stack form" novalidate>
+    {% csrf_token %}
+    {% include "members/_field.html" with field=form.line_1 autocomplete="address-line1" %}
+    {% include "members/_field.html" with field=form.line_2 autocomplete="address-line2" %}
+    {% include "members/_field.html" with field=form.line_3 autocomplete="address-line3" %}
+    {% include "members/_field.html" with field=form.line_4 %}
+    {% include "members/_field.html" with field=form.postcode autocomplete="postal-code" %}
+    <button type="submit">Send for checking</button>
+  </form>
+  <p><a href="{% url 'members:account' %}">Back to your account</a></p>
+{% endblock %}

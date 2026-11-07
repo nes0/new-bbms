@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Edit your details · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Edit your details</h1>
+  <form method="post" class="stack form" novalidate>
+    {% csrf_token %}
+    {% include "members/_field.html" with field=form.given_name autocomplete="given-name" %}
+    {% include "members/_field.html" with field=form.family_name autocomplete="family-name" %}
+    {% include "members/_field.html" with field=form.phone autocomplete="tel" %}
+    {% include "members/_field.html" with field=form.emergency_contact %}
+    <p class="hint">To change your email address, ask a trustee.</p>
+    <button type="submit">Save</button>
+  </form>
+  <p><a href="{% url 'members:account' %}">Back to your account</a></p>
+{% endblock %}

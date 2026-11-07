@@ -1,41 +1,90 @@
 {% extends "base.html" %}
+{% load money %}
 
 {% block title %}Your account · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
   <h1>Your account</h1>
-  <p>{{ member.full_name }} · {{ member.email }} · status <strong>{{ member.get_status_display }}</strong></p>
+  <p>{{ member.full_name }} · {{ member.email }}</p>
 
   {% if member.status == "setting-up" %}
-    <h2>Next steps</h2>
-    <ol class="steps">
-      <li><strong>Set up your monthly payment</strong>
-        {% if member.monthly_subscription_pence %}(£{% widthratio member.monthly_subscription_pence 100 1 %} a month){% endif %}.
-        {# TODO(payments app): Direct Debit set-up, or paying from credit (03 §3.1). #}
-        <span class="hint">Coming soon: for now a trustee will set this up with you.</span></li>
-      <li><strong>Send your proof of identity</strong>: photo ID and proof of address.
-        {% if id_status == "approved" %}<span class="ok">Done.</span>
-        {% elif id_status == "waiting" %}<span class="hint">Sent; waiting for a trustee to check.</span>
-        {% elif id_status == "rejected" %}<span class="error">Please send again.</span> <a href="{% url 'members:id-documents' %}">Upload</a>
-        {% else %}<a href="{% url 'members:id-documents' %}">Upload them</a>{% endif %}</li>
-      <li><strong>Complete the general induction</strong>: read the member agreement and confirm you agree.
-        {# TODO(general induction, 05 §5.9): link to the induction page. #}
-        <span class="hint">Coming soon.</span></li>
-      <li><strong>Collect your fob</strong> on your first visit. It records your visits and works the machines
-        you're trained on.</li>
-    </ol>
+    <section class="card">
+      <h2>Next steps</h2>
+      <ol class="steps">
+        <li><strong>Set up your monthly payment</strong>
+          {% if member.monthly_subscription_pence %}({{ member.monthly_subscription_pence|pounds }} a month){% endif %}.
+          {# TODO(subscriptions app): Direct Debit set-up, or paying from credit (03 §3.1). #}
+          <span class="hint">Coming soon: for now a trustee will set this up with you.</span></li>
+        <li><strong>Send your proof of identity</strong>: photo ID and proof of address.
+          {% if id_status == "approved" %}<span class="ok">Done.</span>
+          {% elif id_status == "waiting" %}<span class="hint">Sent; waiting for a trustee to check.</span>
+          {% elif id_status == "rejected" %}<span class="error">Please send again.</span> <a href="{% url 'members:id-documents' %}">Upload</a>
+          {% else %}<a href="{% url 'members:id-documents' %}">Upload them</a>{% endif %}</li>
+        <li><strong>Complete the general induction</strong>: read the member agreement and confirm you agree.
+          {# TODO(general induction, 05 §5.9): link to the induction page. #}
+          <span class="hint">Coming soon.</span></li>
+        <li><strong>Collect your fob</strong> on your first visit. It records your visits and works the machines
+          you're trained on.</li>
+      </ol>
+    </section>
   {% endif %}
 
-  <h2>Your details</h2>
-  <dl class="details">
-    <dt>Phone</dt><dd>{{ member.phone|default:"—" }}</dd>
-    <dt>Emergency contact</dt><dd>{{ member.emergency_contact|default:"—" }}</dd>
-    <dt>Address</dt>
-    <dd>
-      {% if address %}
-        {{ address.line_1 }}{% if address.line_2 %}, {{ address.line_2 }}{% endif %}{% if address.line_3 %}, {{ address.line_3 }}{% endif %}{% if address.line_4 %}, {{ address.line_4 }}{% endif %}, {{ address.postcode }}
-        {% if not address.approved %}<span class="hint">(waiting for a trustee to check it)</span>{% endif %}
-      {% else %}—{% endif %}
-    </dd>
-  </dl>
+  <section>
+    <h2>Membership</h2>
+    <dl class="details">
+      <dt>Status</dt><dd><strong>{{ member.get_status_display }}</strong>{% if member.banned %} <span class="error">(banned)</span>{% endif %}</dd>
+      <dt>Monthly subscription</dt>
+      <dd>{% if member.monthly_subscription_pence %}{{ member.monthly_subscription_pence|pounds }}{% else %}—{% endif %}
+        <a href="{% url 'members:change-subscription' %}">Change</a></dd>
+      {# TODO(subscriptions app): payment method, payment day, paid until, and the charges (03 §3.3). #}
+      <dt>Credit</dt><dd>{{ credit_pence|pounds }} <a href="{% url 'payments:credit' %}">History and withdrawals</a></dd>
+      <dt>Member since</dt><dd>{{ member.date_joined|date:"j F Y" }}</dd>
+      {% if id_status != "needed" or member.status != "setting-up" %}
+        <dt>Proof of identity</dt>
+        <dd>{% if id_status == "approved" %}Checked{% elif id_status == "waiting" %}Waiting for a trustee{% elif id_status == "rejected" %}<span class="error">Please send again</span>{% else %}Not sent{% endif %}
+          {% if id_status != "approved" %}<a href="{% url 'members:id-documents' %}">Upload</a>{% endif %}</dd>
+      {% endif %}
+    </dl>
+  </section>
+
+  <section>
+    <h2>Access</h2>
+    <dl class="details">
+      <dt>Front door</dt>
+      <dd>{% if not door_reason %}Your fob opens the door: 24-hour access
+        {% elif door_reason == "not_member" %}None at the moment
+        {% elif door_reason == "no_photo" %}Keyholder, but your fob won't open the door until we have an approved photo of you
+        {% else %}Tap your fob when you arrive to record your visit; a keyholder lets you in{% endif %}</dd>
+      <dt>Fobs</dt>
+      <dd>{% for fob in fobs %}{{ fob.label }}{% if not forloop.last %}, {% endif %}{% empty %}None yet: collect one on your first visit{% endfor %}</dd>
+      <dt>Trained on</dt>
+      <dd>{% for name in trained_on %}{{ name }}{% if not forloop.last %}, {% endif %}{% empty %}No machines yet{% endfor %}</dd>
+    </dl>
+  </section>
+
+  <section>
+    <h2>Your details</h2>
+    <dl class="details">
+      <dt>Phone</dt><dd>{{ member.phone|default:"—" }}</dd>
+      <dt>Emergency contact</dt><dd>{{ member.emergency_contact|default:"—" }}</dd>
+      <dt>Address</dt>
+      <dd>
+        {% if address %}{{ address.lines|join:", " }}{% elif not pending_address %}—{% endif %}
+        {% if pending_address %}
+          <div class="hint">{% if address %}Changing to{% else %}Waiting for a trustee to check:{% endif %}
+            {{ pending_address.lines|join:", " }}{% if address %} (waiting for a trustee to check it){% endif %}</div>
+        {% endif %}
+      </dd>
+    </dl>
+    <p class="actions">
+      <a href="{% url 'members:edit-details' %}">Edit your details</a>
+      <a href="{% url 'members:change-address' %}">Change your address</a>
+      <a href="{% url 'password_change' %}">Change your password</a>
+    </p>
+  </section>
+
+  <section>
+    <h2>Leaving</h2>
+    <p><a href="{% url 'members:leave' %}">Leave {{ SITE_NAME }}</a></p>
+  </section>
 {% endblock %}

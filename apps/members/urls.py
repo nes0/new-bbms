@@ -1,12 +1,17 @@
 from django.urls import path
 
-from . import views
+from . import account_views, views
 
 app_name = "members"
 
 urlpatterns = [
     path("register", views.register, name="register"),
-    path("account/", views.account, name="account"),
+    # The member's own account. Changing the password uses Django's page at /accounts/password_change/.
+    path("account/", account_views.account, name="account"),
+    path("account/details/", account_views.edit_details, name="edit-details"),
+    path("account/address/", account_views.change_address, name="change-address"),
+    path("account/subscription/", account_views.change_subscription, name="change-subscription"),
+    path("account/leave/", account_views.leave, name="leave"),
     path("account/id-documents/", views.id_documents_page, name="id-documents"),
     path("account/id-documents/<str:kind>/delete", views.id_document_remove, name="id-document-remove"),
     # Trustees (permission members.review_id_documents)

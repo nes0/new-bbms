@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Leave · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Leave {{ SITE_NAME }}</h1>
+  {% if can_delete %}
+    <p>Your membership hasn't started yet, so leaving deletes your account straight away, along with your address
+      and any proof of identity you've sent. This can't be undone; you're welcome to join again later.</p>
+    <form method="post" class="stack form" novalidate>
+      {% csrf_token %}
+      {% include "members/_field.html" with field=form.confirm %}
+      <button type="submit" class="danger">Delete my account</button>
+    </form>
+  {% else %}
+    {# TODO(subscriptions app): cancel the Direct Debit here; status → leaving until the paid period ends (03 §3.8). #}
+    <p>To leave, please contact the trustees. Soon you'll be able to cancel your membership here: your access will
+      carry on until the end of the period you've paid for.</p>
+  {% endif %}
+  <p><a href="{% url 'members:account' %}">Back to your account</a></p>
+{% endblock %}

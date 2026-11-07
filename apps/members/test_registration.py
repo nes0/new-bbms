@@ -51,7 +51,7 @@ class RegistrationTests(TestCase):
         self.assertTrue(member.check_password("solder-and-sawdust"))
         account = self.client.get("/account/")
         self.assertContains(account, "Next steps")
-        self.assertContains(account, "£25 a month")
+        self.assertContains(account, "£25.00 a month")
 
     def test_the_address_waits_for_approval(self):
         self.register()
