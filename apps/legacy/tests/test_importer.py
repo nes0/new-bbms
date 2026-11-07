@@ -14,7 +14,7 @@ from apps.members.models import Member
 
 # A real PHP password_hash() of "BBMStest2026!" (as in apps/members/tests.py).
 PHP_HASH = "$2y$10$sEjkh81ZV4pWfRu8mhnU4OJk47Ih8KK8f6NibQt4HLuUKJh/DaVWy"
-KIM_TAG = tags.full_tag("70", 1234567)  # 700012D68733
+KIM_TAG = tags.full_tag("70", 1234567)  # 700012D68733, a made-up fob
 SAM_TAG = tags.full_tag("55", 12345601)
 DOOR_KEY = "legacy-door-key-1234"
 LASER_KEY = "legacy-laser-key-5678"

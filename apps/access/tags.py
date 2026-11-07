@@ -1,15 +1,15 @@
 """
 RFID tag ids and card numbers (spec 05 §5.1).
 
-A 125 kHz fob's full tag id, as BBMS has always stored it, is 12 hex characters:
+A 125 kHz fob's full tag id, as BBMS has always stored it, is 12 hex characters. For example (a made-up fob):
 
     70 0012D687 33
-    |  |        └─ checksum: the 5 bytes before it combined with XOR
+    |  |        └─ checksum: the 5 bytes before it combined with XOR (70 ^ 00 ^ 12 ^ D6 ^ 87 = 33)
     |  └────────── card number (8 hex digits) = 0001234567 in decimal, usually printed on the fob
     └───────────── vendor prefix
 
 Some readers (including today's front door) only give the decimal card number, so BBMS stores the card
-number separately and can match a fob by either. Confirmed with a real fob on 2026-11-05.
+number separately and can match a fob by either. The format was confirmed with a real fob on 2026-11-05.
 """
 
 import re

@@ -2,18 +2,21 @@ from django.test import SimpleTestCase
 
 from apps.access import tags
 
-# A real fob, read on 2026-11-05: hex id 700012d68733, decimal 0001234567 printed on it.
-REAL_TAG = "700012d68733"
+# A made-up fob in the real format (confirmed against a real fob on 2026-11-05; that fob's number isn't kept here).
+#   70 0012D687 33: vendor prefix 70, card number 0x0012D687 = 0001234567 in decimal,
+#   checksum 70 ^ 00 ^ 12 ^ D6 ^ 87 = 33.
+EXAMPLE_TAG = "700012d68733"
+EXAMPLE_CARD = 1234567
 
 
 class TagTests(SimpleTestCase):
-    def test_real_fob(self):
-        self.assertTrue(tags.is_valid_full_tag(REAL_TAG))
-        self.assertEqual(tags.card_number(REAL_TAG), 1234567)
-        self.assertEqual(tags.format_card_number(1234567), "0001234567")
+    def test_example_fob(self):
+        self.assertTrue(tags.is_valid_full_tag(EXAMPLE_TAG))
+        self.assertEqual(tags.card_number(EXAMPLE_TAG), EXAMPLE_CARD)
+        self.assertEqual(tags.format_card_number(EXAMPLE_CARD), "0001234567")
 
-    def test_building_a_tag_matches_the_real_one(self):
-        self.assertEqual(tags.full_tag("70", 1234567), REAL_TAG.upper())
+    def test_building_a_tag_matches_the_example(self):
+        self.assertEqual(tags.full_tag("70", EXAMPLE_CARD), EXAMPLE_TAG.upper())
 
     def test_checksum_must_match(self):
         self.assertFalse(tags.is_valid_full_tag("700012D6873D"))
