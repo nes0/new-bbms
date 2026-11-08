@@ -71,7 +71,7 @@ unknown fob).
 | `ok` | true | open the door |
 | `checked_out` | true | exit reader |
 | `checked_in` | false | visit recorded; door stays shut |
-| `not_member`, `not_keyholder`, `no_photo` | false | refused |
+| `not_member`, `not_keyholder`, `no_induction`, `no_photo` | false | refused (`no_induction`: a key holder whose general induction isn't confirmed yet) |
 | `unknown_fob`, `fob_lost` | false | |
 | `enrolled` | false | an admin was waiting for a new fob on this reader and it has been captured for `display_name`; show "Fob registered" |
 | `device_disabled` | false | |

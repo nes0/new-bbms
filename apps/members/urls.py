@@ -12,10 +12,14 @@ urlpatterns = [
     path("account/address/", account_views.change_address, name="change-address"),
     path("account/subscription/", account_views.change_subscription, name="change-subscription"),
     path("account/leave/", account_views.leave, name="leave"),
+    path("account/induction/", account_views.general_induction, name="induction"),
     path("account/id-documents/", views.id_documents_page, name="id-documents"),
     path("account/id-documents/<str:kind>/delete", views.id_document_remove, name="id-document-remove"),
     # Trustees (permission members.review_id_documents)
     path("id-checks/", views.id_checks, name="id-checks"),
     path("id-checks/<int:member_id>/", views.id_check, name="id-check"),
     path("id-checks/documents/<int:document_id>", views.id_document_file, name="id-document-file"),
+    # The comms role (permission members.confirm_general_inductions)
+    path("general-inductions/", views.general_inductions, name="general-inductions"),
+    path("general-inductions/<int:member_id>/confirm", views.confirm_induction, name="confirm-induction"),
 ]

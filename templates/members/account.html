@@ -19,9 +19,11 @@
           {% elif id_status == "waiting" %}<span class="hint">Sent; waiting for a trustee to check.</span>
           {% elif id_status == "rejected" %}<span class="error">Please send again.</span> <a href="{% url 'members:id-documents' %}">Upload</a>
           {% else %}<a href="{% url 'members:id-documents' %}">Upload them</a>{% endif %}</li>
-        <li><strong>Complete the general induction</strong>: read the member agreement and confirm you agree.
-          {# TODO(general induction, 05 §5.9): link to the induction page. #}
-          <span class="hint">Coming soon.</span></li>
+        <li><strong>Complete the general induction</strong>: read the guidance for members and the rules, and
+          confirm you agree.
+          {% if member.general_induction_status == "confirmed" %}<span class="ok">Done.</span>
+          {% elif member.general_induction_status == "waiting" %}<span class="hint">Done; we'll confirm it when you visit.</span>
+          {% else %}<a href="{% url 'members:induction' %}">Do it now</a>{% endif %}</li>
         <li><strong>Collect your fob</strong> on your first visit. It records your visits and works the machines
           you're trained on.</li>
       </ol>
@@ -44,6 +46,11 @@
       <dt>Pay for something</dt><dd><a href="{% url 'payments:pay' %}">Induction fees, key deposit, box fee</a></dd>
       <dt>Lockers</dt><dd><a href="{% url 'storage:lockers' %}">Your lockers and ones to rent</a></dd>
       <dt>Member since</dt><dd>{{ member.date_joined|date:"j F Y" }}</dd>
+      {% if member.status != "setting-up" %}
+        <dt>General induction</dt>
+        <dd>{% if member.general_induction_status == "confirmed" %}Done{% elif member.general_induction_status == "waiting" %}Waiting to be confirmed{% else %}Not done{% endif %}
+          <a href="{% url 'members:induction' %}">{% if member.general_induction_status == "to-do" %}Do it now{% else %}Read the guidance and rules{% endif %}</a></dd>
+      {% endif %}
       {% if id_status != "needed" or member.status != "setting-up" %}
         <dt>Proof of identity</dt>
         <dd>{% if id_status == "approved" %}Checked{% elif id_status == "waiting" %}Waiting for a trustee{% elif id_status == "rejected" %}<span class="error">Please send again</span>{% else %}Not sent{% endif %}
@@ -58,6 +65,7 @@
       <dt>Front door</dt>
       <dd>{% if not door_reason %}Your fob opens the door: 24-hour access
         {% elif door_reason == "not_member" %}None at the moment
+        {% elif door_reason == "no_induction" %}Keyholder, but your fob won't open the door until your general induction is confirmed: <a href="{% url 'members:induction' %}">general induction</a>
         {% elif door_reason == "no_photo" %}Keyholder, but your fob won't open the door until we have an approved photo of you
         {% else %}Tap your fob when you arrive to record your visit; a keyholder lets you in{% endif %}</dd>
       <dt>Fobs</dt>

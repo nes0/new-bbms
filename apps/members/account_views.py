@@ -12,11 +12,12 @@ from django.views.decorators.http import require_http_methods
 
 from apps.access import tags
 from apps.access.decisions import door_refusal_reason
+from apps.core import policies
 from apps.equipment.models import Equipment
 from apps.payments.credit import credit_pence
 
-from . import id_documents
-from .account_forms import AddressForm, DetailsForm, LeaveForm, LeaveMembershipForm, SubscriptionForm
+from . import id_documents, induction
+from .account_forms import AddressForm, DetailsForm, InductionForm, LeaveForm, LeaveMembershipForm, SubscriptionForm
 from .models import Member
 
 logger = logging.getLogger(__name__)
@@ -69,6 +70,27 @@ def edit_details(request):
         messages.success(request, "Your details have been updated.")
         return redirect("members:account")
     return render(request, "members/edit_details.html", {"form": form})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def general_induction(request):
+    """The general induction (05 §5.9): read the member agreement and the rules, and agree to them."""
+    member = request.user
+    form = InductionForm(request.POST) if request.method == "POST" else InductionForm()
+    if request.method == "POST" and member.induction_completed:
+        return redirect("members:induction")
+    if request.method == "POST" and form.is_valid():
+        induction.complete(member)
+        messages.success(request, "Thank you. Someone from the space will confirm your induction when you visit.")
+        return redirect("members:account")
+    context = {
+        "form": form,
+        "member": member,
+        "agreement": policies.html("member-agreement", top_heading=3),
+        "rules": policies.html("rules"),
+    }
+    return render(request, "members/induction.html", context)
 
 
 @login_required

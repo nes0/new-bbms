@@ -1,0 +1,10 @@
+{% autoescape off %}You're now a trusted member of {{ site_name }}
+Hello {{ member.given_name }},
+
+You have been made a trusted member of {{ site_name }}.
+
+This means you can now become a key holder and use the space at any time. To get a key, pay the key deposit from
+your account, then arrange to collect a key from a trustee.
+
+Pay the key deposit: {{ site_url }}/pay/
+{% endautoescape %}

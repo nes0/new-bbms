@@ -4,9 +4,9 @@ Copy the legacy system's data into the new models (spec 08 §8.2).
 Run through `manage.py import_legacy`, always into an **empty** database: the script is meant to be run again and
 again against fresh copies of production before the real cutover, so it never tries to merge into existing data.
 
-What is imported so far (the apps that exist): members (with how they pay and what they've paid up to) and their
-roles, subscription charges, key fobs, devices (keeping their API keys, so today's door and laser keep working),
-equipment, inductions, machine usage sessions and the door log.
+What is imported so far (the apps that exist): members (with how they pay, what they've paid up to and who confirmed
+their general induction), their audit log and roles, subscription charges, key fobs, devices (keeping their API
+keys, so today's door and laser keep working), equipment, inductions, machine usage sessions and the door log.
 Everything else is counted and listed as "not imported yet".
 
 The report only ever shows legacy **ids** and counts, never names or email addresses, so it's safe to share.
@@ -17,7 +17,7 @@ from collections import Counter, defaultdict
 from datetime import UTC, date, datetime
 
 from django.contrib.auth.hashers import make_password
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, Permission
 from django.utils import timezone
 from django.utils.text import slugify
 
@@ -27,7 +27,7 @@ from apps.billing.models import Charge
 from apps.equipment import rules
 from apps.equipment.models import Equipment, Induction, UsageSession
 from apps.members.hashers import from_legacy_hash
-from apps.members.models import Member
+from apps.members.models import Member, MemberChange
 
 BATCH = 2000
 
@@ -71,7 +71,6 @@ NOT_IMPORTED_YET = [
     ("proposal_votes", "governance app"),
     ("expenses", "governance app"),
     ("notifications", "notifications app"),
-    ("audit_log", "audit log"),
 ]
 NEVER_IMPORTED = ["storage_boxes", "detected_devices", "settings", "failed_jobs", "password_reminders", "migrations"]
 
@@ -156,11 +155,13 @@ class Importer:
         self.devices = {}  # device id (e.g. "main-door") -> Device
         self.equipment = {}  # slug -> Equipment
         self.box_paid_user_ids = []  # legacy user ids who'll get the "box paid" flag
+        self.inducted_by = {}  # legacy user id -> legacy id of who confirmed their general induction
 
     def run(self):
         # List every table in the report, even empty ones, in the order they're imported.
         for table in (
             "users",
+            "audit_log",
             "subscription_charge",
             "profile_data",
             "roles",
@@ -174,6 +175,7 @@ class Importer:
         ):
             self.report.read[table] += 0
         self.import_members()
+        self.import_audit_log()
         self.import_charges()
         self.import_profiles()
         self.import_roles()
@@ -221,6 +223,8 @@ class Importer:
             if payment_day is not None and payment_day > 28:
                 payment_day = 1  # as legacy did (02 §2.2)
             pounds = int(row.get("monthly_subscription") or 0)
+            if row.get("inducted_by"):
+                self.inducted_by[row["id"]] = row["inducted_by"]
             batch.append(
                 Member(
                     email=email,
@@ -252,6 +256,7 @@ class Importer:
         Member.objects.bulk_create(batch, batch_size=500)
         report.imported[table] = len(batch)
         self.members = {m.legacy_id: m for m in Member.objects.filter(legacy_id__isnull=False)}
+        self.link_inductions_confirmed()
         report.note("legacy statuses: " + ", ".join(f"{s or '(blank)'} {n}" for s, n in sorted(statuses.items())))
         for old in ("payment-warning", "on-hold"):
             if statuses[old]:
@@ -321,6 +326,60 @@ class Importer:
             f"{pending_photos} new photos were awaiting approval"
         )
 
+    def link_inductions_confirmed(self):
+        """Who confirmed each member's general induction (05 §5.9). Legacy didn't record when."""
+        unknown = []
+        for legacy_id, confirmer_id in self.inducted_by.items():
+            member, confirmer = self.members.get(legacy_id), self.members.get(confirmer_id)
+            if member is None:
+                continue
+            if confirmer is None:
+                unknown.append(legacy_id)
+                continue
+            Member.objects.filter(pk=member.pk).update(inducted_by=confirmer)
+        if unknown:
+            self.report.note(
+                f"{len(unknown)} general induction(s) confirmed by someone not imported: "
+                "listed as waiting to be confirmed (legacy ids " + ", ".join(str(i) for i in unknown[:10]) + ")"
+            )
+        # The door now needs a confirmed general induction (05 §5.2), which legacy didn't check.
+        unconfirmed = (
+            Member.objects.filter(key_holder=True, inducted_by__isnull=True, inducted_at__isnull=True)
+            .exclude(status=Member.Status.LEFT)
+            .order_by("legacy_id")
+            .values_list("legacy_id", flat=True)
+        )
+        if unconfirmed:
+            sample = ", ".join(str(i) for i in unconfirmed[:10])
+            self.report.note(
+                f"⚠️ {len(unconfirmed)} key holder(s) without a confirmed general induction: the door won't open for "
+                f"them until it's confirmed (legacy ids {sample})"
+            )
+
+    def import_audit_log(self):
+        """The legacy audit log (02 §2.3): one row per admin change to a member's flags, as free text."""
+        table, report = "audit_log", self.report
+        batch = []
+        for row in self.source.rows(table):
+            report.read[table] += 1
+            member = self.members.get(row.get("user_id"))
+            if member is None:
+                report.skip(table, "no such member", row["id"])
+                continue
+            action = text(row.get("action"))
+            description = text(row.get("description"))
+            batch.append(
+                MemberChange(
+                    member=member,
+                    field="legacy",
+                    new_value=(description if action in ("", "user_updated") else f"{action}: {description}")[:255],
+                    changed_by=self.members.get(row.get("admin_id")),
+                    changed_at=when(row.get("created_at")) or self.now,
+                )
+            )
+        MemberChange.objects.bulk_create(batch, batch_size=500)
+        report.imported[table] = len(batch)
+
     def import_roles(self):
         report = self.report
         for row in self.source.rows("roles"):
@@ -341,6 +400,11 @@ class Importer:
         Through = Member.groups.through
         Through.objects.bulk_create([Through(member_id=m, group_id=g) for m, g in links], ignore_conflicts=True)
         Member.objects.filter(pk__in=admins).update(is_staff=True, is_superuser=True)
+        # Legacy's comms role confirmed general inductions (01 §1.3, 05 §5.9).
+        comms = next((g for g in self.groups.values() if g.name == "comms"), None)
+        if comms is not None:
+            confirm = Permission.objects.get(content_type__app_label="members", codename="confirm_general_inductions")
+            comms.permissions.add(confirm)
         report.imported["role_user"] = len(links)
         report.note(f"{len(admins)} members of the 'admin' role can use the admin site (other roles: groups only)")
 

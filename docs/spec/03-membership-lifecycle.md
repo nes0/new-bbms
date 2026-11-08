@@ -275,3 +275,20 @@ From the member's account page, admins can:
 - see a "trusted members missing photos" report (`/account/trusted_missing_photos`).
 
 All changes to `trusted`, `key_holder`, `induction_completed` are written to the **audit log**.
+
+### Admin member controls: build status (2026-11-08)
+
+Built, in the Django admin's member page:
+- the **audit log** (`MemberChange`): changes to trusted, key holder, induction completed, who confirmed the
+  induction, the two photo flags and banned, with who and when, wherever they're made (admin, the induction pages).
+  Shown at the bottom of the member's page and as its own read-only list; the legacy `audit_log` is imported;
+- making someone **trusted** emails them; **key holder** can only be ticked for a trusted member whose general
+  induction is confirmed (05 §5.2, §5.9);
+- the **photo approved** and **photo on wall** flags; a **"Photo: trusted, with no photo"** filter on the members
+  list is the "trusted members missing photos" report;
+- ticking **approved** on a waiting address makes it the member's address (the old one is deleted); deleting it
+  declines it;
+- shortcuts to **record a payment** for the member (the member is filled in), their payments and their audit log.
+
+Waiting for other apps: approving and declining an uploaded photo (and its email) with the profiles app (06 §6.1);
+the in-app "trusted" notification (06 §6.5); telling a member their address change was declined.

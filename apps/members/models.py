@@ -64,7 +64,18 @@ class Member(AbstractBaseUser, PermissionsMixin):
     trusted = models.BooleanField(default=False, help_text="Granted by an admin; needed before key holder.")
     key_holder = models.BooleanField(default=False, help_text="Has 24-hour access (physical key, deposit paid).")
     founder = models.BooleanField(default=False)
+    # The general induction (05 §5.9): the member reads the member agreement and the rules and says they've done it
+    # (`induction_completed`); someone with the "confirm general inductions" permission then confirms it.
     induction_completed = models.BooleanField(default=False, help_text="Completed the online general induction.")
+    inducted_by = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="induction confirmed by",
+    )
+    inducted_at = models.DateTimeField("induction confirmed", null=True, blank=True)
     rules_agreed_at = models.DateTimeField(null=True, blank=True)
     # Whole pounds in the legacy system; pence here (02 §2.2). The minimums are settings (02 §2.8).
     monthly_subscription_pence = models.PositiveIntegerField(null=True, blank=True)
@@ -107,6 +118,7 @@ class Member(AbstractBaseUser, PermissionsMixin):
 
     class Meta:
         ordering = ["given_name", "family_name"]
+        permissions = [("confirm_general_inductions", "Can confirm members' general inductions")]
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(payment_day__isnull=True) | models.Q(payment_day__gte=1, payment_day__lte=28),
@@ -146,6 +158,19 @@ class Member(AbstractBaseUser, PermissionsMixin):
         return self.status in self.STATUSES_WITH_ACCESS and not self.banned
 
     @property
+    def general_induction_status(self):
+        """ "confirmed", "waiting" (done, not yet confirmed) or "to-do" (05 §5.9)."""
+        # Confirmed stays confirmed if whoever confirmed it is later deleted (inducted_by is then empty).
+        if self.induction_completed and (self.inducted_by_id or self.inducted_at):
+            return "confirmed"
+        return "waiting" if self.induction_completed else "to-do"
+
+    @property
+    def induction_confirmed(self):
+        """Needed before a member can be a key holder and open the door (05 §5.2, §5.9)."""
+        return self.general_induction_status == "confirmed"
+
+    @property
     def has_direct_debit(self):
         return bool(self.mandate_id)
 
@@ -167,6 +192,28 @@ class Member(AbstractBaseUser, PermissionsMixin):
         if pending is not None and (current is None or pending.created_at > current.created_at):
             return pending
         return None
+
+
+class MemberChange(models.Model):
+    """The audit log for members (02 §2.3, 03 §3.9): who changed a member's trusted, key holder, induction, photo or
+    banned flags, and when. Written by apps/members/changes.py; rows imported from the legacy audit log have the
+    field "legacy" and the legacy description as the new value.
+    """
+
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name="changes")
+    field = models.CharField(max_length=50)
+    old_value = models.CharField(max_length=255, blank=True)
+    new_value = models.CharField(max_length=255, blank=True)
+    changed_by = models.ForeignKey(Member, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    changed_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-changed_at", "-pk"]
+        verbose_name = "change to a member (audit log)"
+        verbose_name_plural = "changes to members (audit log)"
+
+    def __str__(self):
+        return f"{self.member} · {self.field}: {self.old_value} → {self.new_value}"
 
 
 class Address(models.Model):

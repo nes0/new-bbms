@@ -3,6 +3,7 @@
 from datetime import datetime
 
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import Group
 from django.test import TestCase
 
 from apps.access import tags
@@ -10,7 +11,7 @@ from apps.access.models import AccessEvent, Device, KeyFob
 from apps.equipment.models import Equipment, Induction, UsageSession
 from apps.legacy.importer import Importer
 from apps.legacy.source import ListSource
-from apps.members.models import Member
+from apps.members.models import Member, MemberChange
 
 # A real PHP password_hash() of "BBMStest2026!" (as in apps/members/tests.py).
 PHP_HASH = "$2y$10$sEjkh81ZV4pWfRu8mhnU4OJk47Ih8KK8f6NibQt4HLuUKJh/DaVWy"
@@ -60,12 +61,18 @@ def legacy_tables():
                 monthly_subscription=25,
                 mandate_id="MD-MADE-UP-1",
                 subscription_expires=datetime(2025, 4, 1),
+                inducted_by=3,
             ),
             user(2, "sam@example.com", status="payment-warning", payment_method="paypal", monthly_subscription=20),
             user(3, "admin@example.com", payment_method="balance", payment_day=0),
             user(4, "kim@example.com"),  # same email as user 1, differently cased
             user(5, "gone@example.com", status="left", password=""),
-            user(6, "odd@example.com", status="on-hold"),
+            # Confirmed by someone not imported, so the door needs it confirming again.
+            user(6, "odd@example.com", status="on-hold", inducted_by=99, trusted=1, key_holder=1),
+        ],
+        "audit_log": [
+            dict(id=1, user_id=1, admin_id=3, action="user_updated", description="trusted", created_at=T),
+            dict(id=2, user_id=42, admin_id=3, action="user_updated", description="key_holder", created_at=T),
         ],
         "subscription_charge": [
             dict(
@@ -103,7 +110,7 @@ def legacy_tables():
             dict(id=2, user_id=2, profile_photo=0, profile_photo_on_wall=1, new_profile_photo=1),
             dict(id=3, user_id=99, profile_photo=1, profile_photo_on_wall=0, new_profile_photo=0),
         ],
-        "roles": [dict(id=1, name="admin"), dict(id=2, name="laser")],
+        "roles": [dict(id=1, name="admin"), dict(id=2, name="laser"), dict(id=3, name="comms")],
         "role_user": [
             dict(id=1, role_id=1, user_id=3),
             dict(id=2, role_id=2, user_id=1),
@@ -324,6 +331,24 @@ class ImportTests(TestCase):
         admin = self.member(3)
         self.assertTrue(admin.is_superuser and admin.is_staff)
         self.assertEqual(list(self.member(1).groups.values_list("name", flat=True)), ["laser"])
+
+    def test_general_inductions_and_the_comms_role(self):
+        self.assertEqual(self.member(1).inducted_by, self.member(3))
+        self.assertEqual(self.member(1).general_induction_status, "confirmed")
+        self.assertEqual(self.member(2).general_induction_status, "waiting")
+        self.assertEqual(self.member(6).general_induction_status, "waiting")
+        self.assertIn("1 general induction(s) confirmed by someone not imported", self.output)
+        self.assertIn("1 key holder(s) without a confirmed general induction", self.output)
+        self.assertIn("(legacy ids 6)", self.output)
+        comms = Group.objects.get(name="comms")
+        self.assertTrue(comms.permissions.filter(codename="confirm_general_inductions").exists())
+
+    def test_audit_log(self):
+        change = MemberChange.objects.get()
+        self.assertEqual((change.member, change.changed_by), (self.member(1), self.member(3)))
+        self.assertEqual((change.field, change.new_value), ("legacy", "trusted"))
+        self.assertEqual(change.changed_at.isoformat(), "2025-03-01T12:00:00+00:00")
+        self.assertIn("no such member: 1 (legacy ids 2)", self.output)
 
     def test_fobs(self):
         kim = KeyFob.objects.get(legacy_id=1)

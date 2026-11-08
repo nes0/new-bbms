@@ -199,7 +199,7 @@ outcome:
 | OPEN | `allowed: true, reason: "ok"` |
 | CHECKED_IN | `allowed: false, reason: "checked_in"` (visit recorded; door stays shut) |
 | CHECKED_OUT | `allowed: true, reason: "checked_out"` |
-| REFUSED | `allowed: false, reason: <decision.reason>` (`not_member`, `not_keyholder`, `no_photo`) |
+| REFUSED | `allowed: false, reason: <decision.reason>` (`not_member`, `not_keyholder`, `no_induction`, `no_photo`) |
 | no fob | `allowed: false, reason: "unknown_fob"` or `"fob_lost"`, `display_name: null` |
 
 **Equipment readers**, in this order:

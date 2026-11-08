@@ -73,6 +73,8 @@ AcsNode (devices)   Settings (key/value)   AuditLog
 - **New: `IdCheck`** (kept permanently): `member`, `result` (`approved` / `rejected`), `note`, `documents_seen`,
   `checked_by`, `checked_at`. The record that ID was checked, holding no copy of the documents.
 - **`audit_log`**: `admin_id`, `user_id`, `action`, `description`. Written when audited fields (`induction_completed`, `trusted`, `key_holder`) change.
+  **New** (`MemberChange`): member, field, old value, new value, changed by, changed at; also logs the photo flags,
+  banned and who confirmed the general induction (03 §3.9). Members also gain `inducted_at` (05 §5.9).
 
 ## 2.4 Money
 
