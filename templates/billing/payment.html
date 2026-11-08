@@ -47,6 +47,9 @@
     <h2>Direct Debit</h2>
     {% if member.mandate_id %}
       <p class="ok">Your Direct Debit is set up.</p>
+    {% elif discord_first %}
+      <p>First, <a href="{% url 'discord:page' %}">link your Discord account</a>: every member joins our Discord
+        server. Then come back here to set up your payment.</p>
     {% elif can_set_up_direct_debit %}
       <p>Pay each month by Direct Debit, through GoCardless. It takes a couple of minutes: you'll need your bank
         account number and sort code.{% if member.payment_method == "paypal" %} Then cancel your PayPal
@@ -56,7 +59,7 @@
     {% endif %}
   </section>
 
-  {% if can_set_up_paypal %}
+  {% if can_set_up_paypal and not discord_first %}
     <section>
       {% if member.payment_method == "paypal" %}
         <h2>PayPal</h2>
@@ -74,7 +77,7 @@
     </section>
   {% endif %}
 
-  {% if can_set_up_credit %}
+  {% if can_set_up_credit and not discord_first %}
     <section>
       <h2>Or pay from your credit</h2>
       <p>Your subscription is taken from your credit each month, so keep it topped up. If it runs out, your

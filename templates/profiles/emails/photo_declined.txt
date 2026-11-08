@@ -1,0 +1,7 @@
+{% autoescape off %}{{ site_name }}: your photo wasn't approved
+Hello {{ member.given_name }},
+
+A trustee looked at the photo you uploaded and didn't approve it{% if reason %}: {{ reason }}{% else %}. We need a clear, recent photo of your face, on its own, so people at the space (and the door, for key holders) know who you are{% endif %}.
+
+Please upload another from your profile: {{ site_url }}/account/profile/
+{% endautoescape %}

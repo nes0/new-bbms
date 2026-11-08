@@ -13,3 +13,4 @@ gocardless-pro==3.21.0  # Direct Debit through GoCardless (spec 04 §4.2); pinne
 stripe==16.0.1          # card payments through Stripe Checkout (spec 04 §4.3); pinned, update deliberately
 markdown>=3.7           # renders the policies (member agreement, rules) from markdown files in the repo (spec 06 §6.8)
 django-storages[s3]>=1.14 # member photos in a private DigitalOcean Spaces bucket (spec 01 §1.8)
+pillow>=11            # crops and resizes member photos (spec 06 §6.1)

@@ -57,6 +57,9 @@ def _set_status(member, status, **extra):
         setattr(member, name, value)
     member.save(update_fields=["status", *extra])
     logger.info("Member %s: %s → %s", member.pk, was, status)
+    from apps.discord.linking import sync_soon
+
+    sync_soon(member)  # their member / former-member role on Discord (06 §6.14)
     return was
 
 

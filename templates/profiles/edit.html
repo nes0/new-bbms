@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Your profile · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<h1>Your profile</h1>
+<p class="hint">Other members see this in the <a href="{% url 'profiles:directory' %}">member list</a>.</p>
+<form method="post" enctype="multipart/form-data" class="stack form" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<p class="error">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+  <fieldset>
+    <legend>Photo</legend>
+    {% if current %}<p><img class="avatar small" src="{% url 'profiles:photo' member.pk 'thumb' %}" alt=""> Your photo.</p>{% endif %}
+    {% if pending %}<p><img class="avatar small" src="{% url 'profiles:photo' member.pk 'thumb' %}?waiting=1" alt=""> Waiting for a trustee to check it.</p>{% endif %}
+    <label for="{{ form.photo.auto_id }}">{{ form.photo.label }} <span class="hint">(optional)</span></label>
+    <input type="file" name="photo" id="{{ form.photo.auto_id }}" accept="image/jpeg,image/png,image/webp"{% if form.photo.errors %} aria-invalid="true"{% endif %}>
+    <span class="hint">{{ form.photo.help_text }}</span>
+    {% if form.photo.errors %}<span class="error">{{ form.photo.errors|join:" " }}</span>{% endif %}
+    {% include "members/_field.html" with field=form.photo_private %}
+    <span class="hint">{{ form.photo_private.help_text }}</span>
+  </fieldset>
+  <fieldset>
+    <legend>Privacy</legend>
+    {% include "members/_field.html" with field=form.private %}
+    <span class="hint">{{ form.private.help_text }}</span>
+  </fieldset>
+  <fieldset>
+    <legend>About you</legend>
+    {% include "members/_field.html" with field=form.tagline %}
+    <label for="{{ form.description.auto_id }}">{{ form.description.label|capfirst }} <span class="hint">(optional)</span></label>
+    <textarea name="description" id="{{ form.description.auto_id }}" rows="6">{{ form.description.value|default_if_none:"" }}</textarea>
+    {% if form.description.errors %}<span class="error">{{ form.description.errors|join:" " }}</span>{% endif %}
+  </fieldset>
+  <fieldset>
+    <legend>Skills</legend>
+    <ul class="skills-choice">
+      {% for choice in form.skills %}<li><label>{{ choice.tag }} {{ choice.choice_label }}</label></li>{% endfor %}
+    </ul>
+  </fieldset>
+  <fieldset>
+    <legend>Links</legend>
+    {% include "members/_field.html" with field=form.website autocomplete="url" %}
+    {% include "members/_field.html" with field=form.github %}
+    {% include "members/_field.html" with field=form.twitter %}
+    {% include "members/_field.html" with field=form.facebook %}
+    {% include "members/_field.html" with field=form.irc %}
+  </fieldset>
+  <button type="submit">Save</button>
+</form>
+{% if current or pending %}
+  <form method="post" action="{% url 'profiles:remove-photo' %}" class="stack">{% csrf_token %}
+    {% if pending %}<input type="hidden" name="which" value="waiting"><button type="submit" class="danger">Delete the photo waiting to be checked</button>
+    {% else %}<p class="hint">{% if member.key_holder %}Key holders need an approved photo for the door: deleting yours stops your fob opening it until a new one is approved.{% endif %}</p>
+      <button type="submit" class="danger">Delete your photo</button>{% endif %}
+  </form>
+{% endif %}
+<p><a href="{% url 'profiles:member' member.pk %}">See your profile</a> · <a href="{% url 'members:account' %}">Back to your account</a></p>
+{% endblock %}

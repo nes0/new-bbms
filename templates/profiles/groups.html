@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Groups · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<h1>Groups</h1>
+<p>Members who look after parts of the space, and how to reach them.</p>
+{% for group in groups %}
+  <section class="card">
+    <h2><a href="{% url 'profiles:group' group.name %}">{{ group.info.title|default:group.name }}</a></h2>
+    {% if group.info.description %}{{ group.info.description|linebreaks }}{% endif %}
+    {% if group.info.email %}<p>Email: <a href="mailto:{{ group.info.email }}">{{ group.info.email }}</a></p>{% endif %}
+    {% with channels=group.discord_channels.all %}{% if channels %}<p>Discord: {% for channel in channels %}{% if channel.url %}<a href="{{ channel.url }}">{{ channel.name }}</a>{% else %}{{ channel.name }}{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}{% endwith %}
+  </section>
+{% empty %}
+  <p>No groups yet.</p>
+{% endfor %}
+{% endblock %}

@@ -53,6 +53,8 @@ INSTALLED_APPS = [
     "apps.site_settings",
     "apps.storage",
     "apps.billing",
+    "apps.profiles",
+    "apps.discord",
 ]
 
 MIDDLEWARE = [
@@ -185,6 +187,19 @@ GOCARDLESS_WEBHOOK_SECRET = env("GOCARDLESS_WEBHOOK_SECRET", default="")
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 # The webhook endpoint's signing secret (whsec_...), from Stripe's dashboard. Webhooks are refused without it.
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
+
+# Discord (spec 06 §6.14): members link their Discord account, and BBMS adds them to the server and keeps their
+# member / former-member role right. From the Discord developer portal (the application's OAuth2 and Bot pages) and
+# the server (with Developer Mode on, right-click → Copy ID). Without them, development and tests use a fake
+# (/dev/discord/) and a live site doesn't ask members to link Discord.
+DISCORD_CLIENT_ID = env("DISCORD_CLIENT_ID", default="")
+DISCORD_CLIENT_SECRET = env("DISCORD_CLIENT_SECRET", default="")
+DISCORD_BOT_TOKEN = env("DISCORD_BOT_TOKEN", default="")
+DISCORD_GUILD_ID = env("DISCORD_GUILD_ID", default="")  # the server
+DISCORD_MEMBER_ROLE_ID = env("DISCORD_MEMBER_ROLE_ID", default="")  # given while someone is a member
+DISCORD_FORMER_MEMBER_ROLE_ID = env("DISCORD_FORMER_MEMBER_ROLE_ID", default="")  # given once they've left
+# Where BBMS posts the welcome message (its text is in the admin's Settings). Empty: no welcome message.
+DISCORD_WELCOME_CHANNEL_ID = env("DISCORD_WELCOME_CHANNEL_ID", default="")
 
 # PayPal (subscriptions and credit top-ups, spec 04 §4.4; not built yet). The space's PayPal account: every PayPal
 # button pays it, and IPNs for any other account are refused. Old accounts, during a switch to a new one: their

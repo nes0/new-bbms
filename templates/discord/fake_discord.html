@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Fake Discord{% endblock %}
+{% block content %}
+<h1>Fake Discord</h1>
+<p class="hint">Local development only: this stands in for Discord because the DISCORD_* settings aren't set.</p>
+<form method="post" class="stack">{% csrf_token %}
+  <label for="username">Discord username</label><input id="username" name="username" value="fake-user">
+  <button type="submit">Authorise</button>
+</form>
+<p><a href="{% url 'discord:done' %}?state={{ state|urlencode }}&error=access_denied">Cancel</a></p>
+{% endblock %}

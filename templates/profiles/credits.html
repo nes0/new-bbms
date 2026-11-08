@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Credits · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<h1>Credits</h1>
+<h2>Skill icons</h2>
+<p>From <a href="https://thenounproject.com/">The Noun Project</a>, licensed under
+  <a href="https://creativecommons.org/licenses/by/3.0/">Creative Commons Attribution</a>:</p>
+<ul>{% for skill in skills %}<li>{{ skill.name }}: {{ skill.credit }}, from The Noun Project</li>{% endfor %}</ul>
+{% endblock %}

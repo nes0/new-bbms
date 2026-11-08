@@ -54,8 +54,8 @@ class RegistrationForm(forms.Form):
     emergency_contact = forms.CharField(
         max_length=255, help_text="Who we should contact in an emergency, and how (name and phone number)."
     )
-    # TODO(photos): an optional profile photo, into the pending-approval queue (03 §3.1, 06 §6.1). Waits for
-    # private file storage (DigitalOcean Spaces, 02 §2.9) and the photo approval workflow.
+    # The optional photo is a next step on the account page, not here: a file on this long form is lost whenever
+    # another field has an error (06 §6.1).
     rules_agreed = forms.BooleanField(label="I agree to follow the rules of the space")
     visited_space = forms.BooleanField(label="I have visited the space")
 

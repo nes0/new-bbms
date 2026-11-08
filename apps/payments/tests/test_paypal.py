@@ -51,7 +51,10 @@ class PayPalTestCase(TestCase):
         return self.ipn(**{**defaults, **data})
 
     def joiner(self, **fields):
-        return make_member(status=Member.Status.SETTING_UP, monthly_subscription_pence=2500, **fields)
+        # Discord linking is tested in apps.discord; here they count as linked.
+        return make_member(
+            status=Member.Status.SETTING_UP, monthly_subscription_pence=2500, discord_exempt=True, **fields
+        )
 
     def paypal_payer(self, **fields):
         return payer(Member.PaymentMethod.PAYPAL, day=self.today.day, paypal_subscription_id="I-SUB1", **fields)

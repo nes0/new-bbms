@@ -90,6 +90,26 @@ class Member(AbstractBaseUser, PermissionsMixin):
         null=True, blank=True, help_text="Day of the month the subscription is charged (1-28)."
     )
     mandate_id = models.CharField("GoCardless mandate", max_length=50, blank=True)
+    discord_user_id = models.CharField(
+        "Discord account",
+        max_length=32,
+        blank=True,
+        help_text="Discord's id for the member's linked account (06 §6.14).",
+    )
+    discord_username = models.CharField(max_length=100, blank=True)
+    discord_linked_at = models.DateTimeField(null=True, blank=True)
+    discord_on_server = models.BooleanField(
+        default=False, help_text="On the space's Discord server when BBMS last looked."
+    )
+    discord_welcome_due = models.BooleanField(
+        default=False, help_text="BBMS added them to the server and hasn't posted their welcome message yet."
+    )
+    discord_exempt = models.BooleanField(
+        "Discord not needed",
+        default=False,
+        help_text="Lets this member be set up without linking a Discord account (06 §6.14). For trustees to use "
+        "sparingly.",
+    )
     paypal_email = models.EmailField(
         "PayPal email",
         blank=True,
@@ -140,7 +160,13 @@ class Member(AbstractBaseUser, PermissionsMixin):
             models.CheckConstraint(
                 condition=models.Q(payment_day__isnull=True) | models.Q(payment_day__gte=1, payment_day__lte=28),
                 name="member_payment_day_1_to_28",
-            )
+            ),
+            # One BBMS account per Discord account.
+            models.UniqueConstraint(
+                fields=["discord_user_id"],
+                condition=~models.Q(discord_user_id=""),
+                name="one_member_per_discord_account",
+            ),
         ]
 
     def __str__(self):

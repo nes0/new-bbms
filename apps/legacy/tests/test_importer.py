@@ -153,11 +153,35 @@ def legacy_tables():
             dict(id=5, user_id=3, charge_date=datetime(2025, 4, 1), amount=0, status="weird", created_at=T),
         ],
         "profile_data": [
-            dict(id=1, user_id=1, profile_photo=1, profile_photo_on_wall=0, new_profile_photo=0),
+            dict(
+                id=1,
+                user_id=1,
+                profile_photo=1,
+                profile_photo_on_wall=0,
+                new_profile_photo=0,
+                profile_photo_private=1,
+                tagline="Makes things",
+                description="Lasers and lathes.",
+                skills_array='["laser-cutter", "welding", "juggling"]',
+                github="https://github.com/made-up-kim",
+                twitter="@madeupkim",
+                google_plus="kim",
+                website="example.com",
+            ),
             dict(id=2, user_id=2, profile_photo=0, profile_photo_on_wall=1, new_profile_photo=1),
             dict(id=3, user_id=99, profile_photo=1, profile_photo_on_wall=0, new_profile_photo=0),
         ],
-        "roles": [dict(id=1, name="admin"), dict(id=2, name="laser"), dict(id=3, name="comms")],
+        "roles": [
+            dict(id=1, name="admin"),
+            dict(
+                id=2,
+                name="laser",
+                title="Laser team",
+                description="Look after the laser.",
+                email_public="laser@example.com",
+            ),
+            dict(id=3, name="comms"),
+        ],
         "role_user": [
             dict(id=1, role_id=1, user_id=3),
             dict(id=2, role_id=2, user_id=1),
@@ -382,6 +406,19 @@ class ImportTests(TestCase):
         sam = self.member(2)
         self.assertEqual((sam.payment_method, sam.paypal_email), ("paypal", "sam.paypal@example.com"))
         self.assertNotIn("paying by 'paypal'", self.output)
+
+    def test_profiles(self):
+        from apps.profiles.models import Profile, RoleInfo
+
+        kim = Profile.objects.get(member=self.member(1))
+        self.assertEqual(
+            (kim.tagline, kim.skills, kim.photo_private), ("Makes things", ["laser-cutter", "welding"], True)
+        )
+        self.assertEqual((kim.github, kim.twitter, kim.website), ("made-up-kim", "madeupkim", "https://example.com"))
+        self.assertEqual(Profile.objects.count(), Member.objects.count())  # everyone has one
+        self.assertIn("skills not on the list, left out: juggling (1)", self.output)
+        laser = RoleInfo.objects.get(group__name="laser")
+        self.assertEqual((laser.title, laser.email), ("Laser team", "laser@example.com"))
 
     def test_subscription_charges(self):
         from apps.billing.models import Charge

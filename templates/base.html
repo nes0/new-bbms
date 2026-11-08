@@ -17,6 +17,7 @@
     <a class="site-name" href="{% url 'home' %}"><img class="logo" src="{% static 'img/logo.png' %}" alt="{{ SITE_NAME }}" width="40" height="40"></a>
     <nav>
       {% if user.is_authenticated %}
+        <a href="{% url 'profiles:directory' %}">Members</a>
         <a href="{% url 'members:account' %}">{{ user.get_short_name }}</a>
         {% if perms.members.review_id_documents %}<a href="{% url 'members:id-checks' %}">ID checks</a>{% endif %}
         {% if perms.members.confirm_general_inductions %}<a href="{% url 'members:general-inductions' %}">Inductions</a>{% endif %}

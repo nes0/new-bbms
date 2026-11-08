@@ -1,0 +1,2 @@
+{# A member's photo, or their initials. Pass `card` (from the view) and optionally `small`. #}
+{% if card.photo_url %}<img class="avatar{% if small %} small{% endif %}" src="{{ card.photo_url }}" alt="" loading="lazy" width="200" height="200">{% else %}<span class="avatar blank{% if small %} small{% endif %}" aria-hidden="true">{{ card.member.given_name|slice:":1" }}{{ card.member.family_name|slice:":1" }}</span>{% endif %}

@@ -47,6 +47,25 @@ class SiteSettings(models.Model):
         help_text="Admins may set a member's amount below the usual minimum, down to this (03 §3.7).",
     )
 
+    public_member_directory = models.BooleanField(
+        "show the member list to visitors who aren't logged in",
+        default=False,
+        help_text="Members who chose a private profile are never shown to visitors. Logged-in members always see "
+        "the list (06 §6.1). Legacy showed it to everyone; whether to keep that is a trustee decision (01 §1.7).",
+    )
+
+    # --- Discord (06 §6.14) ---
+    discord_welcome_message = models.TextField(
+        "Discord welcome message",
+        max_length=2000,
+        blank=True,
+        default="Welcome to {space}, {mention}! Please read #rules, then pick the topic channels you're interested "
+        "in from Channels & Roles.",
+        help_text="Posted in the welcome channel when BBMS adds a new member to the server. {mention} notifies "
+        "them; {name} is their full name, {first_name} their first name, {space} the space's name. Discord's own "
+        "formatting works, e.g. <#channel id> links a channel. Up to 2,000 characters; empty for no message.",
+    )
+
     # --- billing (03 §3.5-3.6) ---
     grace_direct_debit_days = models.PositiveIntegerField(
         "grace period for Direct Debit payers (days)",
@@ -207,7 +226,8 @@ class SiteSettings(models.Model):
         ("Key fobs", ("max_active_fobs", "fob_enrolment_seconds")),
         ("Fob readers", ("reader_check_in_seconds", "session_heartbeat_seconds")),
         ("Storage", ("lockers_per_member",)),
-        ("Privacy", ("id_document_max_age_days",)),
+        ("Privacy", ("id_document_max_age_days", "public_member_directory")),
+        ("Discord", ("discord_welcome_message",)),
     )
 
     class Meta:

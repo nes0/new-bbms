@@ -46,8 +46,20 @@ def can_set_up_paypal(member):
     return member.payment_method == Member.PaymentMethod.PAYPAL or member.status in CREDIT_SETUP_STATUSES
 
 
+def _discord_first(request):
+    """Joining members link Discord before they can set up a payment, so before they're active (06 §6.14)."""
+    from apps.discord.linking import blocks_setup
+
+    if blocks_setup(request.user):
+        messages.error(request, "First, link your Discord account: every member joins our Discord server.")
+        return redirect("discord:page")
+    return None
+
+
 @login_required
 def payment(request):
+    from apps.discord.linking import blocks_setup
+
     member = request.user
     charges = member.charges.select_related("rental__locker").order_by("-charge_date", "-pk")[:24]
     context = {
@@ -58,6 +70,7 @@ def payment(request):
         "can_set_up_credit": can_set_up_credit(member),
         "can_set_up_direct_debit": can_set_up_direct_debit(member),
         "can_set_up_paypal": can_set_up_paypal(member),
+        "discord_first": blocks_setup(member),
         "can_switch": member.payment_method in SWITCHABLE and member.status != Member.Status.LEFT,
     }
     return render(request, "billing/payment.html", context)
@@ -66,6 +79,8 @@ def payment(request):
 @login_required
 @require_POST
 def direct_debit_start(request):
+    if (response := _discord_first(request)) is not None:
+        return response
     member = request.user
     if not can_set_up_direct_debit(member):
         messages.error(request, "Rejoin first, then set up your Direct Debit.")
@@ -109,6 +124,8 @@ def direct_debit_done(request):
 @require_POST
 def paypal_start(request):
     """Send the member to PayPal to subscribe for their monthly amount (04 §4.4)."""
+    if (response := _discord_first(request)) is not None:
+        return response
     from apps.payments import paypal
     from apps.payments.views import paypal_urls
 
@@ -128,6 +145,8 @@ def paypal_start(request):
 @require_POST
 def credit_start(request):
     """Pay the subscription from member credit (03 §3.1)."""
+    if (response := _discord_first(request)) is not None:
+        return response
     member = request.user
     if not can_set_up_credit(member):
         messages.error(request, "Paying from credit isn't available for your account. Please ask a trustee.")

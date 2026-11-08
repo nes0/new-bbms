@@ -13,6 +13,7 @@ from django.views.decorators.http import require_http_methods
 from apps.access import tags
 from apps.access.decisions import door_refusal_reason
 from apps.core import policies
+from apps.discord import client as discord
 from apps.equipment.models import Equipment
 from apps.payments.credit import credit_pence
 
@@ -53,6 +54,7 @@ def account(request):
         "door_reason": door_refusal_reason(member),  # "" when their fob opens the front door (05 §5.2)
         "unpaid_charges": member.charges.filter(status__in=("due", "failed")).count(),
         "payment_day_suffix": _ordinal(member.payment_day) if member.payment_day else "",
+        "discord_enabled": discord.enabled(),
     }
     return render(request, "members/account.html", context)
 
