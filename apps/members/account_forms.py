@@ -83,3 +83,12 @@ class LeaveMembershipForm(forms.Form):
     """Confirmation for leaving (03 §3.8): the Direct Debit stops, access lasts until the paid-up date."""
 
     confirm = forms.BooleanField(label="Yes, I want to leave and stop my monthly payments")
+
+
+class InductionForm(forms.Form):
+    """The general induction (05 §5.9): both must be ticked, as in legacy."""
+
+    induction_completed = forms.BooleanField(
+        label="I have read and understand this guidance for members and I agree to follow it."
+    )
+    rules_agreed = forms.BooleanField(label="I agree to the rules of the space.")

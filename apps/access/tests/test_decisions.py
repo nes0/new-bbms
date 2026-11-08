@@ -19,6 +19,8 @@ def keyholder(**fields):
         trusted=True,
         key_holder=True,
         photo_approved=True,
+        induction_completed=True,
+        inducted_at=timezone.now(),
     )
     defaults.update(fields)
     email = defaults.pop("email", "kim@example.com")
@@ -85,6 +87,12 @@ class DoorDecisionTests(TestCase):
         decision = self.tap(member)
         self.assertEqual((decision.outcome, decision.reason), (Outcome.CHECKED_IN, "not_keyholder"))
         self.assertTrue(AccessEvent.objects.filter(member=member, kind=AccessEvent.Kind.CHECK_IN).exists())
+
+    def test_keyholder_without_a_confirmed_general_induction_checks_in(self):
+        for i, fields in enumerate([{"induction_completed": False, "inducted_at": None}, {"inducted_at": None}]):
+            member = keyholder(email=f"m{i}@example.com", **fields)  # not done, or done but not confirmed
+            decision = self.tap(member)
+            self.assertEqual((decision.outcome, decision.reason), (Outcome.CHECKED_IN, "no_induction"))
 
     def test_keyholder_without_photo_checks_in(self):
         decision = self.tap(keyholder(photo_approved=False))

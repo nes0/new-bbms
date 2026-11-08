@@ -72,12 +72,21 @@ A fob opens the main door only if its member is **all** of:
 1. `active` (has access to the space);
 2. `trusted`;
 3. `key_holder`;
-4. has an **approved online photo** *or* a **photo on the wall**.
+4. has had their **general induction confirmed** (5.9; decided 2026-11-08, new: legacy didn't check it);
+5. has an **approved online photo** *or* a **photo on the wall**.
 
 **Becoming a keyholder** (24-hour, unsupervised access): an admin grants key holder to a member who is trusted, has
-an approved photo (or photo on the wall), has a fob, and has paid the **£15 key deposit**, and records the physical
+had their general induction confirmed, has an approved photo (or photo on the wall), has a fob, and has paid the
+**£15 key deposit**, and records the physical
 key issued to them (date, and key number if keys are numbered; returned date when it comes back).
 ❓ Is the key deposit refunded (to credit) when the key is returned? Suggested: yes; it's kept if the key is lost.
+
+**Built (2026-11-08):** the admin won't tick key holder for a member who isn't trusted or whose general induction
+isn't confirmed (existing key holders can still be edited); the key deposit is offered on the Pay page only once both
+are done; and the door doesn't open for a key holder without a confirmed induction (reason `no_induction`: their tap
+is recorded as a check-in, and the account page tells them why). ⚠️ **Before cutover:** key holders whose induction
+legacy never confirmed lose 24-hour access; the legacy import lists how many. Trustees to decide: confirm them in
+bulk, or ask each to do the induction.
 
 **Non-keyholders tap in at the door** (decided 2026-11-07). The door doesn't open for them, but BBMS records the tap
 as a **visit**, so the space can track footfall and members build up attendance towards trusted status (5.10).
@@ -92,7 +101,7 @@ as a **visit**, so the space can track footfall and members build up attendance 
   **historical** attendance (08).
 
 Refusals are written to the access log with response 402 and a reason message ("Not a member", "Not a keyholder",
-"Member not trusted"). Successful entries are logged as `main-door` activity.
+"Member not trusted"; new: no confirmed general induction, no photo). Successful entries are logged as `main-door` activity.
 
 ❓ Trustees: legacy checks the `active` flag, not `status`. A `leaving` member keeps `active = true` until expiry
 (correct). Proposal: express the rule as an explicit list of statuses: `active`, `leaving`, `payment-warning`, `honorary`.
@@ -164,7 +173,7 @@ clear rule for "BBMS answered" versus "BBMS couldn't answer".
 |---|---|
 | `POST check-in` | Boot and heartbeat in one. Body: `{event, firmware_version, cache_version}`, where `event` is `boot` or `heartbeat`. Response: `{server_time, heartbeat_seconds, cache_version, commands: [...]}`. Commands include `refresh_cache`, `purge_cache`, `reboot`, `disable`, `enable`. |
 | `GET allowed-fobs` | The full list this device may let in offline: `[{card, display_name}]`, with an `ETag`. Devices send `If-None-Match` and get `304` when nothing changed. Door: current keyholders. Equipment: members trained on it. |
-| `POST access` | A fob was presented: `{card}`. Response: `{allowed, reason, display_name, session_id?}`. `reason` is one of `ok`, `checked_in` (door: visit recorded, door stays shut), `unknown_fob`, `fob_lost`, `not_member`, `not_keyholder`, `no_photo`, `not_trained`, `course_incomplete` (Moodle course not completed, 06 §6.12), `in_use` (another member is tapped in), `out_of_order`, `enrolled` (fob captured during an enrolment window), `checked_out` (exit reader), `insufficient_credit`, `device_disabled`. For equipment, `allowed` starts a usage session. |
+| `POST access` | A fob was presented: `{card}`. Response: `{allowed, reason, display_name, session_id?}`. `reason` is one of `ok`, `checked_in` (door: visit recorded, door stays shut), `unknown_fob`, `fob_lost`, `not_member`, `not_keyholder`, `no_induction`, `no_photo`, `not_trained`, `course_incomplete` (Moodle course not completed, 06 §6.12), `in_use` (another member is tapped in), `out_of_order`, `enrolled` (fob captured during an enrolment window), `checked_out` (exit reader), `insufficient_credit`, `device_disabled`. For equipment, `allowed` starts a usage session. |
 | `POST sessions/{id}/heartbeat`, `POST sessions/{id}/end` | Equipment usage sessions (as v1 `PUT`/`DELETE /acs/activity/{id}`). Built choices (09 §9.5): both are idempotent. Heartbeat on a finished session answers `200 {open: false, ...}` rather than v1's 400; ending twice returns the same summary with `already_ended: true` and never recomputes the fee. A tap at `access` by the member who already has the open session returns it again with `resumed: true`. |
 | `POST offline-events` | Upload a batch of decisions the device made while BBMS was unreachable: `[{card, occurred_at, allowed, type}]`. BBMS records them in the access log as offline entries, at the time they happened. |
 | `POST meter` | Equipment readers: motor-on seconds since the last report, with an increasing `seq` (see below). |
@@ -397,6 +406,16 @@ Several machines can share one `induction_category` (e.g. two drills), so one in
 
 Separate from equipment training: every new member reads the member agreement online, agrees to the rules and marks
 the induction complete; a `comms` role holder then confirms it (`inducted_by`). See 03 §3.1.
+
+A confirmed general induction is **required for 24-hour access**: to be made a key holder, to pay the key deposit
+and for a fob to open the door (5.2; decided 2026-11-08).
+
+**Built (2026-11-08):** the member's page `/account/induction/` shows the guidance for members (the legacy member
+agreement) and the rules, with both boxes to tick; it's a step on a new member's account page. `/general-inductions/`
+lists who's waiting (not members who have left), for anyone with the permission "Can confirm members' general
+inductions": admins, and the `comms` role (given it by the legacy import and by the migration). Confirming records
+who and when (`inducted_by`, `inducted_at`, new). Both steps are in the members' audit log. The policies are markdown
+files in `apps/core/policies/` (06 §6.8), copied from legacy with links to pages not built yet removed.
 
 ## 5.10 Attendance (counts towards trusted status)
 

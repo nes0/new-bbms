@@ -1,7 +1,8 @@
 """
 Emails about billing and membership (spec 03 §3.2, §3.6; 06 §6.5).
 
-Each email is a plain-text template in templates/billing/emails/, whose first line is the subject. Nothing is sent
+Each email is a plain-text template in templates/billing/emails/ (or, for another app's emails, the path given, e.g.
+"members/emails/trusted"), whose first line is the subject. Nothing is sent
 during a dry run (`suppressed()`), so the shadow site and `--dry-run` jobs can't email anyone (08).
 """
 
@@ -32,7 +33,8 @@ class suppressed:
 
 def _render(template, context):
     context = {"site_name": SiteSettings.load().space_name, "site_url": settings.SITE_URL, **context}
-    text = render_to_string(f"billing/emails/{template}.txt", context).strip()
+    path = template if "/" in template else f"billing/emails/{template}"
+    text = render_to_string(f"{path}.txt", context).strip()
     subject, _, body = text.partition("\n")
     return subject.strip(), body.strip() + "\n"
 

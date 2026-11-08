@@ -152,7 +152,9 @@ class EnrolmentTests(EnrolmentTestCase):
         self.assertEqual(enrolment.captured_card_number, CARD)
 
     def test_known_fobs_work_as_usual_during_a_window(self):
-        keyholder = member(trusted=True, key_holder=True, photo_approved=True)
+        keyholder = member(
+            trusted=True, key_holder=True, photo_approved=True, induction_completed=True, inducted_at=timezone.now()
+        )
         fob = fobs.issue_fob(keyholder, card_number=123)
         enrolment = self.open()
         self.assertEqual(self.v1_tap(tags.full_tag("55", fob.card_number)).status_code, 201)
@@ -216,6 +218,7 @@ class EnrolmentTests(EnrolmentTestCase):
 
     def test_confirm_issues_the_fob_and_the_door_then_knows_it(self):
         self.newcomer.trusted = self.newcomer.key_holder = self.newcomer.photo_approved = True
+        self.newcomer.induction_completed, self.newcomer.inducted_at = True, timezone.now()
         self.newcomer.save()
         enrolment = self.open()
         self.v1_tap(tags.full_tag("55", CARD))

@@ -50,6 +50,9 @@ class AccountPageTests(TestCase):
         self.assertContains(self.client.get("/account/"), "a keyholder lets you in")
         self.member.trusted = self.member.key_holder = True
         self.member.save()
+        self.assertContains(self.client.get("/account/"), "until your general induction is confirmed")
+        self.member.induction_completed, self.member.inducted_at = True, timezone.now()
+        self.member.save()
         self.assertContains(self.client.get("/account/"), "approved photo")
         self.member.photo_approved = True
         self.member.save()

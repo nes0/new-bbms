@@ -1,6 +1,7 @@
 """The v1 device API must behave exactly as today's front-door firmware expects (spec 05 §5.4)."""
 
 from django.test import TestCase
+from django.utils import timezone
 
 from apps.access import tags
 from apps.access.models import Device, KeyFob
@@ -23,6 +24,8 @@ class DeviceApiV1Tests(TestCase):
             trusted=True,
             key_holder=True,
             photo_approved=True,
+            induction_completed=True,
+            inducted_at=timezone.now(),
         )
         self.fob = KeyFob.objects.create(member=self.member, tag_id=tags.full_tag("55", CARD))
         # Like the real door: JSON body, ApiKey header, no CSRF token or session.

@@ -12,7 +12,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.views.decorators.http import require_http_methods, require_POST
 
-from . import id_documents
+from . import id_documents, induction
 from .forms import IdCheckForm, IdDocumentsForm, RegistrationForm
 from .models import IdDocument, Member
 
@@ -143,3 +143,28 @@ def id_document_file(request, document_id):
     response["Referrer-Policy"] = "no-referrer"
     response["Content-Security-Policy"] = "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'"
     return response
+
+
+# --- The general induction: confirming it (05 §5.9; the member's side is in account_views.py) ---
+
+confirm_permission = permission_required("members.confirm_general_inductions", raise_exception=True)
+
+
+@login_required
+@confirm_permission
+def general_inductions(request):
+    return render(request, "members/general_inductions.html", {"waiting": induction.waiting()})
+
+
+@login_required
+@confirm_permission
+@require_POST
+def confirm_induction(request, member_id):
+    member = get_object_or_404(Member, pk=member_id)
+    try:
+        member = induction.confirm(member, request.user)
+    except induction.InductionError as error:
+        messages.error(request, str(error))
+    else:
+        messages.success(request, f"Confirmed {member.full_name}'s general induction.")
+    return redirect("members:general-inductions")

@@ -25,7 +25,9 @@ SECRET = "whsec_test_secret"
 class CardTestCase(TestCase):
     def setUp(self):
         self.stripe = cards.reset_fake()
-        self.member = member(trusted=True, monthly_subscription_pence=2500)
+        self.member = member(
+            trusted=True, induction_completed=True, inducted_at=timezone.now(), monthly_subscription_pence=2500
+        )
         self.client.force_login(self.member)
 
     def start(self, item, **data):
@@ -68,6 +70,11 @@ class PayablesTests(CardTestCase):
             items,
             {f"charge:{charge.pk}": 2500, "key-deposit": 1500, "storage-box": 1500, f"induction:{laser.pk}": 1000},
         )
+
+    def test_no_key_deposit_until_the_general_induction_is_confirmed(self):
+        self.member.inducted_at = None
+        self.member.save()
+        self.assertNotIn("key-deposit", [item.key for item in checkout.payables(self.member)])
 
     def test_paid_things_and_untrusted_members(self):
         self.member.trusted = False

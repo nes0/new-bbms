@@ -8,6 +8,10 @@ The membership system for Build Brighton: members, payments, door and machine ac
 
 - members can log in (including with passwords migrated from the legacy system) and admins can manage them;
 - online **registration** (`/register`) and proof-of-identity uploads checked by trustees (`/id-checks/`);
+- the **general induction**: members read the guidance and the rules and agree (`/account/induction/`); the comms
+  role confirms it (`/general-inductions/`);
+- **admin member controls**: an audit log of trusted, key holder, induction, photo and banned changes, the "you're
+  now trusted" email, the "trusted, with no photo" filter, and approving addresses from the member's admin page;
 - the member's **account page** (`/account/`): membership, credit, fobs and training at a glance; editing their
   details, address (approved by a trustee), monthly amount and password; deleting an account that's still setting up;
 - key fobs, devices and the v1 device API, so the current front-door firmware works unchanged, plus a QR-code call

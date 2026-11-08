@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}General inductions · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>General inductions to confirm</h1>
+  <p>Members who have read the guidance for members and the rules online, and said they agree to follow them.
+    Confirm each one when you've shown them round. If you're with someone who has just done it, reload this page to
+    see their name.</p>
+  <p class="hint">To do it, a member logs in and opens <strong>Your account</strong>, then <strong>Complete the
+    general induction</strong> ({{ request.scheme }}://{{ request.get_host }}{% url 'members:induction' %}).</p>
+  {% if waiting %}
+    <table class="table">
+      <thead><tr><th>Member</th><th>Email</th><th>Status</th><th>Joined</th><th></th></tr></thead>
+      <tbody>
+        {% for member in waiting %}
+          <tr>
+            <td>{{ member.full_name }}</td>
+            <td>{{ member.email }}</td>
+            <td>{{ member.get_status_display }}</td>
+            <td>{{ member.date_joined|date:"j M Y" }}</td>
+            <td>
+              <form method="post" action="{% url 'members:confirm-induction' member.pk %}" class="inline">
+                {% csrf_token %}
+                <button type="submit">Confirm induction</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>Nobody waiting.</p>
+  {% endif %}
+{% endblock %}

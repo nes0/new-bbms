@@ -32,6 +32,7 @@ class V2TestCase(TestCase):
         )
 
     def keyholder(self, card=1234567, **fields):
+        fields = {"induction_completed": True, "inducted_at": timezone.now(), **fields}
         who = member(trusted=True, key_holder=True, photo_approved=True, **fields)
         fob = KeyFob.objects.create(member=who, tag_id=tags.full_tag("70", card))
         return who, fob

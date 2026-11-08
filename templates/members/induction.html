@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}General induction · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>General induction</h1>
+  {% if member.general_induction_status == "confirmed" %}
+    <p class="ok">Done: confirmed{% if member.inducted_at %} on {{ member.inducted_at|date:"j F Y" }}{% endif %}.
+      The guidance and the rules are below if you'd like to read them again.</p>
+  {% elif member.general_induction_status == "waiting" %}
+    <p class="hint">You've done this part. Someone from the space will confirm your induction when you visit.</p>
+  {% else %}
+    <p>Every member reads this guidance and the rules of the space, and agrees to follow them. Once you have,
+      someone from the space confirms your induction, usually on your first visit.</p>
+  {% endif %}
+
+  <section class="policy">
+    <h2>Guidance for members</h2>
+    {{ agreement|safe }}
+  </section>
+
+  <section class="policy">
+    {{ rules|safe }}
+  </section>
+
+  {% if member.general_induction_status == "to-do" %}
+    <form method="post" class="stack form" novalidate>
+      {% csrf_token %}
+      {% include "members/_field.html" with field=form.induction_completed %}
+      {% include "members/_field.html" with field=form.rules_agreed %}
+      <button type="submit">Confirm</button>
+    </form>
+  {% endif %}
+  <p><a href="{% url 'members:account' %}">Back to your account</a></p>
+{% endblock %}

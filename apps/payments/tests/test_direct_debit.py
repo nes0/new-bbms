@@ -16,7 +16,7 @@ from apps.payments.models import Payment
 class DirectDebitPayTests(WebhookTestCase):
     def setUp(self):
         super().setUp()
-        self.member = payer(trusted=True)
+        self.member = payer(trusted=True, induction_completed=True, inducted_at=timezone.now())
         self.client.force_login(self.member)
 
     def pay(self, item, **data):

@@ -51,7 +51,9 @@ class PaymentAdmin(admin.ModelAdmin):
     def record_view(self, request):
         if not self.has_view_or_change_permission(request) or not request.user.has_perm("payments.add_payment"):
             return redirect("admin:index")
-        form = RecordPaymentForm(request.POST or None)
+        member_id = request.GET.get("member", "")
+        initial = {"member": member_id} if member_id.isdigit() else {}  # from the member's admin page
+        form = RecordPaymentForm(request.POST or None, initial=initial)
         if request.method == "POST" and form.is_valid():
             try:
                 payment = form.save(created_by=request.user)

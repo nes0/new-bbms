@@ -1,0 +1,8 @@
+{% extends "admin/change_form.html" %}
+{# Shortcuts for the admin member controls (03 §3.9). Fobs are issued from the fobs section below. #}
+{% block object-tools-items %}
+  {% if perms.payments.add_payment %}<li><a href="{% url 'admin:payments_payment_record' %}?member={{ original.pk }}">Record a payment</a></li>{% endif %}
+  {% if perms.payments.view_payment %}<li><a href="{% url 'admin:payments_payment_changelist' %}?member__id__exact={{ original.pk }}">Payments</a></li>{% endif %}
+  {% if perms.members.view_memberchange %}<li><a href="{% url 'admin:members_memberchange_changelist' %}?member__id__exact={{ original.pk }}">Audit log</a></li>{% endif %}
+  {{ block.super }}
+{% endblock %}

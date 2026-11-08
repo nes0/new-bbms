@@ -11,3 +11,4 @@ pymysql>=1.1            # reads the legacy MySQL database during migration (pure
 cryptography>=44        # encrypts proofs of identity in the database (Fernet, spec 03 §3.1)
 gocardless-pro==3.21.0  # Direct Debit through GoCardless (spec 04 §4.2); pinned, update deliberately
 stripe==16.0.1          # card payments through Stripe Checkout (spec 04 §4.3); pinned, update deliberately
+markdown>=3.7           # renders the policies (member agreement, rules) from markdown files in the repo (spec 06 §6.8)
