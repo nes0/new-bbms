@@ -55,7 +55,10 @@ The membership system for Build Brighton: members, payments, door and machine ac
 - **Discord**: members link their Discord account (`/account/discord/`) before they can set up their payment; BBMS
   adds them to the server, sets their nickname to their real name, posts a welcome message (text in Settings) and
   keeps their member / former-member role right. Without the `DISCORD_*` settings, development uses a fake
-  Discord page (`/dev/discord/`).
+  Discord page (`/dev/discord/`);
+- **proposals and voting**: trustees write proposals in the admin, current members vote at `/proposals/` (a secret
+  ballot; votes can be changed while voting is open). An hourly job opens proposals (emails every voter, posts on
+  Discord), counts them when voting closes against the quorum in Settings, and posts the result.
 
 ## What's in this repository
 
@@ -71,6 +74,7 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `apps/storage/` | Lockers: locations, sizes, default rents, overrides, availability, rentals, limits and their log |
 | `apps/profiles/` | Member profiles and photos (upload, approval, who may see them), the member directory, the groups page |
 | `apps/discord/` | Linking members' Discord accounts, their roles on the server, the welcome message |
+| `apps/proposals/` | Proposals and voting, the hourly job that opens and counts them |
 | `apps/billing/` | Subscription and locker rent charges, GoCardless (Direct Debit) and its webhook, the nightly billing and membership jobs |
 | `templates/`, `static/` | Page templates; CSS and HTMX (kept locally, no build step) |
 | `docs/spec/` | The specification |
@@ -80,7 +84,7 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `tools/clone_test/` | How to build and run the Docker image on the legacy clone droplet, with its data imported |
 
 Still to come (one app per area of the spec): the standing-order statement import, the box flag and
-self-service locker renting, governance (proposals, expenses), notifications, reports.
+self-service locker renting, expenses, reports.
 
 ## Getting started on your own computer
 
@@ -181,3 +185,4 @@ sent to GoCardless or emailed).
 | daily | `manage.py shred_stale_id_documents` |
 | nightly | `manage.py sync_discord` (Discord member / former-member roles; welcome messages that failed) |
 | hourly | `manage.py tidy_equipment_sessions` |
+| hourly | `manage.py update_proposals` (opens proposals and emails voters, counts closed ones, posts both on Discord; `--dry-run` only) |

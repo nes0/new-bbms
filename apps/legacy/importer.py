@@ -73,8 +73,6 @@ SESSION_REASONS = {
 }
 
 NOT_IMPORTED_YET = [
-    ("proposals", "governance app"),
-    ("proposal_votes", "governance app"),
     ("expenses", "governance app"),
 ]
 NEVER_IMPORTED = ["storage_boxes", "detected_devices", "settings", "failed_jobs", "password_reminders", "migrations"]
@@ -229,6 +227,8 @@ class Importer:
             "equipment_log",
             "payments",
             "access_log",
+            "proposals",
+            "proposal_votes",
         ):
             self.report.read[table] += 0
         self.import_members()
@@ -245,6 +245,7 @@ class Importer:
         self.import_sessions()
         self.import_payments()
         self.import_access_log()
+        self.import_proposals()
         self.list_not_imported()
         return self.report
 
@@ -1123,6 +1124,88 @@ class Importer:
             report.note(
                 "door log services with no device: " + ", ".join(f"{s or '(blank)'} {n}" for s, n in services.items())
             )
+
+    # -- Proposals ---------------------------------------------------------------------------------------------------
+
+    def import_proposals(self):
+        """Proposals and their votes (06 §6.3). Legacy's totals are counted again from the votes (it didn't keep the
+        neutral count) under legacy's rule: no quorum, passed if more for than against. Proposals that have started
+        count as already announced, so the import emails nobody; one still to come is announced when it opens.
+        """
+        from apps.proposals.models import Proposal, Vote
+
+        report, now = self.report, self.now
+        proposals = {}
+        for row in self.source.rows("proposals"):
+            report.read["proposals"] += 1
+            start, end = day(row.get("start_date")), day(row.get("end_date"))
+            if start is None or end is None or end < start:
+                report.skip("proposals", "missing or impossible dates", row["id"])
+                continue
+            proposal = Proposal(
+                legacy_id=row["id"],
+                title=text(row.get("title"), 100) or "(untitled)",
+                description=text(row.get("description")),
+                start_date=start,
+                end_date=end,
+                created_by=self.members.get(row.get("user_id")),
+                created_at=when(row.get("created_at")) or now,
+            )
+            if proposal.has_started(now):
+                proposal.opened_at, proposal.opening_posted = proposal.opens_at, True
+            proposals[row["id"]] = (proposal, row)
+        Proposal.objects.bulk_create([proposal for proposal, _ in proposals.values()])
+
+        votes = {}  # (legacy proposal id, member pk) -> Vote; a later row replaces an earlier one, as legacy did
+        vote_rows = {}  # the same key -> the legacy id of the row kept
+        for row in self.source.rows("proposal_votes"):
+            report.read["proposal_votes"] += 1
+            found, member = proposals.get(row.get("proposal_id")), self.members.get(row.get("user_id"))
+            if found is None or member is None:
+                report.skip("proposal_votes", "no such proposal or member", row["id"])
+                continue
+            abstain = flag(row.get("abstain"))
+            try:
+                choice = None if abstain else int(str(row.get("vote")).replace("+", ""))
+            except ValueError:
+                choice = 99
+            if not abstain and choice not in (1, 0, -1):
+                report.skip("proposal_votes", "not a vote", row["id"])
+                continue
+            key = (row["proposal_id"], member.pk)
+            if key in vote_rows:
+                report.skip("proposal_votes", "replaced by the member's later vote", vote_rows[key])
+            vote_rows[key] = row["id"]
+            votes[key] = Vote(
+                proposal=found[0],
+                member=member,
+                choice=choice,
+                abstain=abstain,
+                voted_at=when(row.get("updated_at")) or when(row.get("created_at")) or now,
+            )
+        Vote.objects.bulk_create(votes.values(), batch_size=500)
+        report.imported["proposals"], report.imported["proposal_votes"] = len(proposals), len(votes)
+
+        different = []
+        for proposal, row in proposals.values():
+            if not proposal.has_closed(now):
+                continue
+            mine = [vote for (legacy_id, _), vote in votes.items() if legacy_id == row["id"]]
+            proposal.votes_for = sum(1 for v in mine if v.choice == 1)
+            proposal.votes_neutral = sum(1 for v in mine if v.choice == 0)
+            proposal.votes_against = sum(1 for v in mine if v.choice == -1)
+            proposal.abstentions = sum(1 for v in mine if v.abstain)
+            proposal.quorum_percent, proposal.quorum_met = 0, True
+            proposal.passed = proposal.votes_for > proposal.votes_against
+            proposal.counted_at, proposal.result_posted = proposal.closes_at, True
+            proposal.save()
+            if flag(row.get("processed")) and (row.get("votes_for"), row.get("votes_against")) != (
+                proposal.votes_for,
+                proposal.votes_against,
+            ):
+                different.append(str(row["id"]))
+        if different:
+            report.note("proposals whose recount differs from legacy's totals: " + ", ".join(different))
 
     def list_not_imported(self):
         waiting = [f"{table} ({self.source.count(table)} rows, {why})" for table, why in NOT_IMPORTED_YET]

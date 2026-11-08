@@ -7,6 +7,16 @@
   <h1>Your account</h1>
   <p>{{ member.full_name }} · {{ member.email }}</p>
 
+  {% if proposals_to_vote_on %}
+    <section class="card">
+      <h2>Have your say</h2>
+      <ul>{% for proposal in proposals_to_vote_on %}
+        <li><a href="{% url 'proposals:detail' proposal.pk %}">{{ proposal.title }}</a>
+          <span class="hint">voting closes at the end of {{ proposal.end_date|date:"l j F" }}</span></li>
+      {% endfor %}</ul>
+    </section>
+  {% endif %}
+
   {% if member.status == "setting-up" %}
     <section class="card">
       <h2>Next steps</h2>

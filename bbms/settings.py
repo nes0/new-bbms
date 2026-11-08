@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "apps.profiles",
     "apps.discord",
     "apps.notifications",
+    "apps.proposals",
 ]
 
 MIDDLEWARE = [
@@ -202,6 +203,7 @@ DISCORD_MEMBER_ROLE_ID = env("DISCORD_MEMBER_ROLE_ID", default="")  # given whil
 DISCORD_FORMER_MEMBER_ROLE_ID = env("DISCORD_FORMER_MEMBER_ROLE_ID", default="")  # given once they've left
 # Where BBMS posts the welcome message (its text is in the admin's Settings). Empty: no welcome message.
 DISCORD_WELCOME_CHANNEL_ID = env("DISCORD_WELCOME_CHANNEL_ID", default="")
+DISCORD_ANNOUNCEMENT_CHANNEL_ID = env("DISCORD_ANNOUNCEMENT_CHANNEL_ID", default="")  # proposals (06 §6.3)
 
 # PayPal (subscriptions and credit top-ups, spec 04 §4.4; not built yet). The space's PayPal account: every PayPal
 # button pays it, and IPNs for any other account are refused. Old accounts, during a switch to a new one: their

@@ -1,0 +1,48 @@
+<section class="card" id="vote">
+{% if proposal.status == "open" %}
+  <h2>Your vote</h2>
+  {% if why_not %}
+    <p>{{ why_not }}</p>
+  {% else %}
+    <form method="post" action="{% url 'proposals:vote' proposal.pk %}"
+          hx-post="{% url 'proposals:vote' proposal.pk %}" hx-target="#vote" hx-swap="outerHTML">
+      {% csrf_token %}
+      <fieldset class="choices">
+        <legend>{% if vote %}You voted <strong>{{ vote.label }}</strong>. You can change your vote until voting closes.{% else %}Choose one:{% endif %}</legend>
+        {% for value, label, help in choices %}
+          <label><input type="radio" name="vote" value="{{ value }}" required{% if current == value %} checked{% endif %}>
+            <strong>{{ label }}</strong> <span class="hint">{{ help }}</span></label><br>
+        {% endfor %}
+      </fieldset>
+      <p><button type="submit">{% if vote %}Change your vote{% else %}Vote{% endif %}</button>
+        {% if saved %}<span class="ok" role="status">Saved.</span>{% endif %}
+        {% if error %}<span class="error" role="alert">{{ error }}</span>{% endif %}</p>
+    </form>
+  {% endif %}
+  <p class="hint">{{ turnout }} member{{ turnout|pluralize }} {{ turnout|pluralize:"has,have" }} voted so far.
+    The totals are shown when voting closes.</p>
+{% elif proposal.status == "upcoming" %}
+  <p>Voting hasn't started yet. It opens on {{ proposal.start_date|date:"l j F" }}.</p>
+{% else %}
+  <h2>Result</h2>
+  {% if proposal.counted_at %}
+    <p><strong>{% if proposal.passed %}Passed{% else %}Not passed{% endif %}</strong></p>
+    <table>
+      <tr><th scope="row">For</th><td>{{ proposal.votes_for }}</td></tr>
+      <tr><th scope="row">Against</th><td>{{ proposal.votes_against }}</td></tr>
+      <tr><th scope="row">Neutral</th><td>{{ proposal.votes_neutral }}</td></tr>
+      <tr><th scope="row">Abstained</th><td>{{ proposal.abstentions }}</td></tr>
+    </table>
+    {% if proposal.quorum_needed %}
+      <p>Quorum: {{ proposal.quorum_needed }} of the {{ proposal.eligible_voters }} members who could vote
+        ({{ proposal.quorum_percent }}%). {{ proposal.turnout }} voted:
+        {% if proposal.quorum_met %}<span class="ok">met</span>{% else %}<span class="error">not met</span>{% endif %}.</p>
+    {% elif proposal.eligible_voters %}
+      <p class="hint">{{ proposal.turnout }} of the {{ proposal.eligible_voters }} members who could vote did.</p>
+    {% endif %}
+  {% else %}
+    <p>Voting has closed. The votes will be counted within the hour.</p>
+  {% endif %}
+  {% if vote %}<p class="hint">You voted {{ vote.label }}.</p>{% endif %}
+{% endif %}
+</section>

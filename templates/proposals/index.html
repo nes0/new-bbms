@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Proposals · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<h1>Proposals</h1>
+<p>Have your say in what happens at {{ SITE_NAME }}.
+  {% if can_add %}<a href="{% url 'admin:proposals_proposal_add' %}">Write a proposal</a>{% endif %}</p>
+
+{% for name, proposals in sections.items %}{% if proposals %}
+  <h2>{% if name == "open" %}Open for voting{% elif name == "upcoming" %}Coming up{% else %}Closed{% endif %}</h2>
+  <ul class="proposals">
+  {% for proposal in proposals %}
+    <li><a href="{% url 'proposals:detail' proposal.pk %}">{{ proposal.title }}</a>
+      <span class="hint">
+      {% if name == "open" %}until the end of {{ proposal.end_date|date:"l j F" }}.
+        {% if proposal.has_voted %}<span class="ok">You've voted.</span>{% elif can_vote %}<strong>You haven't voted yet.</strong>{% endif %}
+      {% elif name == "upcoming" %}voting opens {{ proposal.start_date|date:"l j F" }}.
+      {% else %}closed {{ proposal.end_date|date:"j M Y" }}. {{ proposal.outcome|default:"Waiting for the count." }}{% endif %}
+      </span></li>
+  {% endfor %}
+  </ul>
+{% endif %}{% empty %}{% endfor %}
+{% if not sections.open and not sections.upcoming and not sections.closed %}<p>No proposals yet.</p>{% endif %}
+
+<p class="hint">A proposal passes if more members vote for it than against it{% if quorum %}, and enough members vote{% endif %}.
+  Neutral votes and abstentions don't count either way. Your vote is secret: other members see only the totals,
+  once voting has closed.</p>
+{% endblock %}

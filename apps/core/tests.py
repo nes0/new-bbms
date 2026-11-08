@@ -1,7 +1,8 @@
 from django.contrib.staticfiles import finders
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
+from apps.core import markup
 from apps.members.models import Member
 
 
@@ -51,3 +52,25 @@ class BrandingTests(TestCase):
     def test_the_logo_and_backdrop_files_are_in_the_static_folder(self):
         for name in ("logo.png", "login-backdrop.jpg", "favicon.svg", "favicon.ico", "apple-touch-icon.png"):
             self.assertIsNotNone(finders.find(f"img/{name}"), name)
+
+
+class MarkupTests(SimpleTestCase):
+    """Markdown typed into the site (core/markup.py) can't inject HTML or script links."""
+
+    def test_formatting_works(self):
+        html = markup.to_html("# Plan\n\n- **one**\n- [two](https://example.com/x)\n\n<https://example.org>")
+        self.assertIn("<strong>one</strong>", html)
+        self.assertIn('<a href="https://example.com/x" rel="nofollow noopener">two</a>', html)
+        self.assertIn('href="https://example.org"', html)
+
+    def test_html_and_unsafe_links_are_removed(self):
+        for text, banned in (
+            ("<script>alert(1)</script>", "<script"),
+            ("<div onclick=x>hi</div>", "<div"),
+            ("a <img src=x onerror=alert(1)> b", "<img"),
+            ("[x](javascript:alert(1))", "javascript:"),
+            ("[x](JaVa\nScRiPt:alert(1))", "alert"),
+            ("![x](data:text/html,hi)", "data:"),
+            ("[x](//evil.example/)", "evil"),
+        ):
+            self.assertNotIn(banned, markup.to_html(text).lower(), text)

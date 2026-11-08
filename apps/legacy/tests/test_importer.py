@@ -74,6 +74,13 @@ def payment(id, user_id, reason, source, amount, *, fee=0.0, ref="", source_id="
     )
 
 
+def proposal(id, title, start, end, **results):
+    row = dict(id=id, title=title, description=f"About {title}.", user_id=3, start_date=start, end_date=end)
+    row.update(votes_cast=0, votes_for=0, votes_against=0, abstentions=0, quorum=1, result=0, processed=0)
+    row.update(created_at=T, **results)
+    return row
+
+
 def legacy_tables():
     return {
         "users": [
@@ -388,6 +395,19 @@ def legacy_tables():
             ),
             dict(id=5, user_id=1, key_fob_id=1, device="spark", started=T, finished=T, removed=0, billed=0, reason=""),
         ],
+        "proposals": [
+            proposal(1, "Buy a new laser", "2025-03-01", "2025-03-04", votes_for=1, votes_against=1, processed=1),
+            proposal(2, "Paint the kitchen", "2025-06-01", "2099-01-01"),  # open
+            proposal(3, "Backwards", "2025-06-01", "2025-05-01"),
+        ],
+        "proposal_votes": [
+            dict(id=1, proposal_id=1, user_id=1, vote=1, abstain=0, created_at=T, updated_at=T),
+            dict(id=2, proposal_id=1, user_id=2, vote=-1, abstain=0, created_at=T, updated_at=T),
+            dict(id=3, proposal_id=1, user_id=2, vote=0, abstain=0, created_at=T, updated_at=T2),  # changed their mind
+            dict(id=4, proposal_id=1, user_id=3, vote=None, abstain=1, created_at=T, updated_at=T),
+            dict(id=5, proposal_id=2, user_id=1, vote="+1", abstain=0, created_at=T2, updated_at=T2),
+            dict(id=6, proposal_id=1, user_id=99, vote=1, abstain=0, created_at=T, updated_at=T),
+        ],
         "access_log": [
             dict(id=1, user_id=1, key_fob_id=1, response="200", service="main-door", delayed=0, created_at=T),
             dict(id=2, user_id=2, key_fob_id=2, response="402", service="main-door", delayed=1, created_at=T),
@@ -600,10 +620,29 @@ class ImportTests(TestCase):
         self.assertIn("door log services with no device: old-cctv 1", self.output)
 
     def test_report_lists_tables_not_imported_and_shows_no_personal_data(self):
-        self.assertIn("proposals (0 rows, governance app)", self.output)
+        self.assertIn("expenses (0 rows, governance app)", self.output)
         self.assertNotIn("Street", self.output)
         self.assertNotIn("@example.com", self.output)
         self.assertNotIn("Given", self.output)
+
+    def test_proposals(self):
+        from apps.proposals.models import Proposal
+
+        closed, open_now = Proposal.objects.get(legacy_id=1), Proposal.objects.get(legacy_id=2)
+        self.assertFalse(Proposal.objects.filter(legacy_id=3).exists())
+        self.assertEqual(closed.created_by, self.member(3))
+        votes = {v.member.legacy_id: (v.choice, v.abstain) for v in closed.votes.select_related("member")}
+        self.assertEqual(votes, {1: (1, False), 2: (0, False), 3: (None, True)})
+        self.assertEqual(
+            (closed.votes_for, closed.votes_neutral, closed.votes_against, closed.abstentions), (1, 1, 0, 1)
+        )
+        self.assertTrue(closed.passed and closed.result_posted and closed.counted_at)
+        self.assertIn("proposals whose recount differs from legacy's totals: 1", self.output)  # legacy said 1 against
+        # Open: counted as announced already (nobody is emailed at cutover), not counted yet.
+        self.assertTrue(open_now.opened_at and open_now.opening_posted)
+        self.assertIsNone(open_now.counted_at)
+        self.assertEqual(open_now.votes.get().choice, 1)
+        self.assertIn("replaced by the member's later vote: 1 (legacy ids 2)", self.output)
 
 
 class ImportedDataWorksTests(TestCase):

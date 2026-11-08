@@ -129,9 +129,13 @@ Choices made in the script (change them there if the trustees decide otherwise):
 
 - **Notifications:** each becomes a notification for the member, read or unread, keeping legacy's `hash` as its key
   (a repeat of the same hash for a member is skipped and listed) and the time it was sent.
+- **Proposals and votes:** a member's later vote replaces an earlier one. Closed proposals are counted again from
+  their votes under legacy's rule (no quorum; passed if more for than against), and any that differ from legacy's
+  stored totals are listed. Proposals whose voting has started count as already announced, so the import emails
+  nobody; one still to come is announced when it opens.
 
-Not imported yet (waiting for their apps): proposals, expenses, profiles' social links and
-descriptions, equipment photos and receipts. Tested on the legacy clone's data inside the Docker image
+Not imported yet (waiting for their apps): expenses, equipment photos and receipts. Tested on the legacy clone's data
+inside the Docker image
 (`tools/clone_test/`).
 
 ## 8.3 Testing before cutover, and phases

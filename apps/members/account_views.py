@@ -16,6 +16,7 @@ from apps.core import policies
 from apps.discord import client as discord
 from apps.equipment.models import Equipment
 from apps.payments.credit import credit_pence
+from apps.proposals.voting import proposals_waiting_for
 
 from . import id_documents, induction
 from .account_forms import AddressForm, DetailsForm, InductionForm, LeaveForm, LeaveMembershipForm, SubscriptionForm
@@ -55,6 +56,7 @@ def account(request):
         "unpaid_charges": member.charges.filter(status__in=("due", "failed")).count(),
         "payment_day_suffix": _ordinal(member.payment_day) if member.payment_day else "",
         "discord_enabled": discord.enabled(),
+        "proposals_to_vote_on": proposals_waiting_for(member),
     }
     return render(request, "members/account.html", context)
 

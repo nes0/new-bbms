@@ -22,4 +22,5 @@ urlpatterns = [
     path("", include("apps.notifications.urls")),
     path("", include("apps.profiles.urls")),
     path("", include("apps.discord.urls")),
+    path("", include("apps.proposals.urls")),
 ]

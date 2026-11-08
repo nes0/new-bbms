@@ -174,17 +174,32 @@ Related policies: *member storage*, *3-week bins*.
 
 ## 6.3 Proposals and voting
 
-- **Create/edit** (admin): title, description (markdown), start date (today or later), end date (after today).
-  Default window: today + 3 days. Editable only until voting starts.
-- **Vote** (any logged-in member): **For (+1)**, **Neutral (0)**, **Against (−1)** or **Abstain**. Members can change their vote
-  while the proposal is open. Members with the `storage-box-user` role cannot vote.
-- **Results** (hourly job, after end date): counts for/neutral/against/abstain, `votes_cast`, `result = for − against`.
-  The proposal page lists how each member voted.
+**Built** (`apps/proposals`). Decided with the user 2026-11-08: current members vote; a quorum setting; a secret
+ballot; new proposals announced by email and on Discord.
 
-⚠️ Legacy issues to decide on:
-- Any logged-in user can vote, **including `setting-up`, `left` and `suspended` accounts**. ❓ Restrict to current members.
-- `quorum` is always recorded as true. ❓ Define the quorum rule (from the constitution).
-- Vote values are stored as strings `+1`/`0`/`−1`; store as integers.
+- **Write** (trustees, in the admin: Proposals and voting → Proposals): title, description (markdown), start date
+  (today or later) and end date (on or after the start). Default window: today to three days from now. Voting is open
+  from the start of the start date to the end of the end date (UK time). A proposal can be changed or deleted only
+  until voting starts. The list page links to the admin for those allowed to add proposals.
+- **Read**: members (anyone who sees the member directory: active, leaving, suspended or honorary, and admins), at
+  `/proposals/`. The description's markdown is shown safely: raw HTML is shown as text and only http(s), mailto and
+  on-site links are kept (`apps/core/markup.py`).
+- **Vote** (current members: **active, leaving or honorary**, not banned, and not storage-only accounts with the
+  `storage-box-user` role): **For (+1)**, **Neutral (0)**, **Against (−1)** or **Abstain**. Members can change their vote
+  while voting is open. Votes are stored as integers (abstain: no value, flagged). The account page lists open
+  proposals the member hasn't voted on.
+- **Secret ballot**: a member sees their own vote and how many members have voted so far; everyone sees the totals
+  once voting has closed. The admin shows who voted, never how.
+- **Opening** (`update_proposals`, hourly): when voting opens, the number of members who can vote and the quorum
+  setting are fixed on the proposal, every voter is emailed, and the bot posts in the Discord announcement channel
+  (`DISCORD_ANNOUNCEMENT_CHANNEL_ID`).
+- **Counting** (the same job, after the end date): for, neutral, against, abstentions. **Quorum** (Settings →
+  Proposals, `proposal_quorum_percent`, default 0 = none): at least this percentage of the members who could vote
+  when it opened must vote, abstentions included. A proposal **passes** if the quorum is met and more members voted
+  for than against (`result = for − against`). The result is posted on Discord; a Discord failure is retried by the
+  next run.
+
+⚠️ Still open: the constitution's quorum rule (01 §1.7, Q2): set the quorum setting once it is known.
 
 ## 6.4 Expenses (reimbursement)
 
@@ -403,8 +418,9 @@ Built in `apps/discord`:
 - BBMS keeps the member's Discord id and username, never their Discord token (used once, to add them).
 - Configuration (environment): `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` (the application's OAuth2 page; add
   `https://<site>/account/discord/done/` as a redirect), `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`,
-  `DISCORD_MEMBER_ROLE_ID`, `DISCORD_FORMER_MEMBER_ROLE_ID`, `DISCORD_WELCOME_CHANNEL_ID`. The bot needs "Create
-  Invite", "Manage Roles", "Manage Nicknames" and "Send Messages" in the welcome channel, with its role above the
+  `DISCORD_MEMBER_ROLE_ID`, `DISCORD_FORMER_MEMBER_ROLE_ID`, `DISCORD_WELCOME_CHANNEL_ID`, and
+  `DISCORD_ANNOUNCEMENT_CHANNEL_ID` (new proposals and their results, §6.3). The bot needs "Create
+  Invite", "Manage Roles", "Manage Nicknames" and "Send Messages" in those two channels, with its role above the
   member and former-member roles. Without the settings, development and tests use a fake (`/dev/discord/`), and a
   live site doesn't ask members to link Discord (a deploy check warns).
 - ⚠️ At cutover: existing members aren't linked. They can link from their account page; the trustees may want to ask

@@ -1,0 +1,16 @@
+{% autoescape off %}{{ site_name }} proposal: {{ proposal.title }}
+Hello {{ member.given_name }},
+
+There's a new proposal for {{ site_name }} members to vote on:
+
+  {{ proposal.title }}
+
+Voting is open until the end of {{ proposal.end_date|date:"l j F" }}. Read it and vote here:
+
+{{ link }}
+
+You can vote For, Neutral, Against or Abstain, and change your vote until voting closes. Your vote is secret:
+members see only the totals.
+
+{{ site_name }}
+{% endautoescape %}
