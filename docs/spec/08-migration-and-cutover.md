@@ -134,7 +134,12 @@ Choices made in the script (change them there if the trustees decide otherwise):
   stored totals are listed. Proposals whose voting has started count as already announced, so the import emails
   nobody; one still to come is announced when it opens.
 
-Not imported yet (waiting for their apps): expenses, equipment photos and receipts. Tested on the legacy clone's data
+- **Expenses:** each claim, approved / declined / waiting, linked to the reimbursement payment legacy made for it
+  (source `reimbursement`, source id = the expense id); approved claims with no such payment are listed. Unknown
+  categories become "other". Receipts are copied from legacy's S3 bucket with `--photos-from` (they sit beside the
+  photos' folder); otherwise legacy's path is kept on the claim. The `finance` role is given "see all expenses".
+
+Not imported yet: equipment photos. Tested on the legacy clone's data
 inside the Docker image
 (`tools/clone_test/`).
 

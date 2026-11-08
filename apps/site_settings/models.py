@@ -66,6 +66,14 @@ class SiteSettings(models.Model):
         "formatting works, e.g. <#channel id> links a channel. Up to 2,000 characters; empty for no message.",
     )
 
+    # --- expenses (06 §6.4) ---
+    expense_maximum_pence = models.PositiveIntegerField(
+        "largest expense a member can claim",
+        default=100_000,
+        validators=[MinValueValidator(100), MaxValueValidator(1_000_000)],
+        help_text="Legacy's limit was £1,000. Bigger spending should be agreed with the trustees first.",
+    )
+
     # --- proposals (06 §6.3) ---
     proposal_quorum_percent = models.PositiveSmallIntegerField(
         "quorum for proposals (% of members who can vote)",
@@ -237,6 +245,7 @@ class SiteSettings(models.Model):
         ("Fob readers", ("reader_check_in_seconds", "session_heartbeat_seconds")),
         ("Storage", ("lockers_per_member",)),
         ("Proposals", ("proposal_quorum_percent",)),
+        ("Expenses", ("expense_maximum_pence",)),
         ("Privacy", ("id_document_max_age_days", "public_member_directory")),
         ("Discord", ("discord_welcome_message",)),
     )

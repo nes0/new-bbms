@@ -41,6 +41,7 @@ DEFAULTS = {
     "max_active_fobs": "2",
     "fob_enrolment_seconds": "60",
     "proposal_quorum_percent": "0",
+    "expense_maximum_pounds": "1000.00",
 }
 
 

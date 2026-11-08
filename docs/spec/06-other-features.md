@@ -203,16 +203,25 @@ ballot; new proposals announced by email and on Discord.
 
 ## 6.4 Expenses (reimbursement)
 
-- **Submit** (member, for themselves only): category, description, amount (**pence**, max £1,000), date of expense
-  (not in the future), receipt (**required**; JPEG, PNG or PDF).
-- Trustees are emailed about each new expense.
-- **Approve/decline** (admin): sets `approved_by_user`, sends an in-app notification and an email.
-  **Approval credits the amount to the member's credit** (`balance` payment from `reimbursement`), so the member can
-  spend it or request a withdrawal.
-- Expense list: filter by member, sort, paginate.
+**Built** (`apps/expenses`, 2026-11-08).
 
-⚠️ Legacy lets any member list **all** members' expenses (and receipts) via the JSON endpoint. **New:** members see only
-their own; admins/finance see all.
+- **Claim** (`/expenses/claim/`; members, for themselves only): category (legacy's list plus "other"), description,
+  amount (in pence; at most the "largest expense" setting, £1,000 like legacy), date of purchase (not in the future),
+  receipt (**required**: JPEG, PNG or PDF, up to 10 MB). Photos of receipts are re-saved, which removes the camera's
+  metadata (e.g. where it was taken); PDFs are kept as sent. Receipts are private files with random names, served
+  only through BBMS (`/expenses/<id>/receipt/`, sandboxed).
+- Everyone who can approve expenses is told about each new claim, in BBMS and by email (legacy emailed a fixed
+  trustees@ address).
+- **Approve** (the "approve expenses" permission: admins, or a role given it): **credits the amount to the member's
+  credit** (a `balance` payment from `reimbursement`, reference = the expense id), so the member can spend it or request
+  a withdrawal. It can only happen once; **nobody decides on their own claim**.
+- **Decline**: needs a reason, which the member is sent. Approved and declined are final: a mistake is put right
+  with a correcting payment.
+- The member is told in BBMS (legacy's keys `<id>-expense_approved` / `<id>-expense_declined`) and by email.
+- A member can **withdraw** a claim still waiting; it's deleted with its receipt.
+- **Lists** (`/expenses/`): members see only their own claims; those who can approve, and the `finance` role ("see
+  all expenses" permission, given by the import), see everyone's, filtered by member and status, sorted, 25 a page.
+  The admin (Expenses) is a read-only record; decisions are made on the expense's page, next to the receipt.
 
 ## 6.5 In-app notifications
 

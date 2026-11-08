@@ -56,6 +56,8 @@ The membership system for Build Brighton: members, payments, door and machine ac
   adds them to the server, sets their nickname to their real name, posts a welcome message (text in Settings) and
   keeps their member / former-member role right. Without the `DISCORD_*` settings, development uses a fake
   Discord page (`/dev/discord/`);
+- **expenses**: members claim back what they spent for the space, with a receipt (`/expenses/claim/`); admins
+  approve or decline each claim beside its receipt, and an approved claim is added to the member's credit;
 - **proposals and voting**: trustees write proposals in the admin, current members vote at `/proposals/` (a secret
   ballot; votes can be changed while voting is open). An hourly job opens proposals (emails every voter, posts on
   Discord), counts them when voting closes against the quorum in Settings, and posts the result.
@@ -75,6 +77,7 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `apps/profiles/` | Member profiles and photos (upload, approval, who may see them), the member directory, the groups page |
 | `apps/discord/` | Linking members' Discord accounts, their roles on the server, the welcome message |
 | `apps/proposals/` | Proposals and voting, the hourly job that opens and counts them |
+| `apps/expenses/` | Expense claims, private receipts, approving them into members' credit |
 | `apps/billing/` | Subscription and locker rent charges, GoCardless (Direct Debit) and its webhook, the nightly billing and membership jobs |
 | `templates/`, `static/` | Page templates; CSS and HTMX (kept locally, no build step) |
 | `docs/spec/` | The specification |
@@ -84,7 +87,7 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `tools/clone_test/` | How to build and run the Docker image on the legacy clone droplet, with its data imported |
 
 Still to come (one app per area of the spec): the standing-order statement import, the box flag and
-self-service locker renting, expenses, reports.
+self-service locker renting, reports.
 
 ## Getting started on your own computer
 

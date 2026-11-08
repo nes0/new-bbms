@@ -1,0 +1,12 @@
+{% autoescape off %}{% load money %}{{ site_name }}: your expense was approved
+Hello {{ member.given_name }},
+
+Your expense claim for {{ expense.amount_pence|pounds }} ({{ expense.get_category_display|lower }}, bought on {{ expense.spent_on|date:"j F Y" }}) has been approved, and the money has been added to your credit.
+
+You can spend your credit on fees and machine time, or ask for it to be paid to your bank account from your credit page:
+{{ site_url }}/credit/
+
+Thank you for helping the space.
+
+{{ site_name }}
+{% endautoescape %}

@@ -1,0 +1,14 @@
+{% autoescape off %}{% load money %}{{ site_name }}: new expense claim from {{ claimant.full_name }}
+Hello {{ member.given_name }},
+
+{{ claimant.full_name }} has claimed {{ expense.amount_pence|pounds }} back.
+
+  Category: {{ expense.get_category_display }}
+  Bought on: {{ expense.spent_on|date:"j F Y" }}
+  What for: {{ expense.description }}
+
+Check the receipt and approve or decline it here:
+{{ site_url }}{{ link }}
+
+{{ site_name }}
+{% endautoescape %}

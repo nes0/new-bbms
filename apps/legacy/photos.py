@@ -15,6 +15,8 @@ import urllib.request
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 MAX_BYTES = 5 * 1024 * 1024  # legacy photos are at most 500 x 500 px
+RECEIPT_MAX_BYTES = 15 * 1024 * 1024
+RECEIPT_SIGNATURES = (b"%PDF-", PNG_SIGNATURE, b"\xff\xd8\xff")
 TIMEOUT_SECONDS = 20
 
 # kind -> (photo suffix, thumbnail suffix)
@@ -36,7 +38,7 @@ class PhotoSource:
     def _download(url):
         request = urllib.request.Request(url, headers={"User-Agent": "BBMS legacy import"})
         with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:  # noqa: S310 (https only)
-            return response.read(MAX_BYTES + 1)
+            return response.read(RECEIPT_MAX_BYTES + 1)
 
     def fetch(self, user_hash, kind):
         """(photo, thumbnail) as PNG bytes, or None if either is missing or isn't a PNG. `user_hash` is `users.hash`."""
@@ -51,3 +53,18 @@ class PhotoSource:
                 return None
             found.append(data)
         return tuple(found)
+
+    def fetch_receipt(self, path):
+        """An expense receipt (PDF, PNG or JPEG bytes), or None. `path` is legacy's `expenses.file`, e.g.
+        "production/expenses/<random>.pdf": it's found next to the photos' folder, in the bucket's root.
+        """
+        root = self.base_url.rsplit("/", 1)[0]
+        if not path or ".." in path or path.startswith("/"):
+            return None
+        try:
+            data = self._open(f"{root}/{path}")
+        except (urllib.error.URLError, TimeoutError, OSError):
+            return None
+        if not data or len(data) > RECEIPT_MAX_BYTES or not data.startswith(RECEIPT_SIGNATURES):
+            return None
+        return data

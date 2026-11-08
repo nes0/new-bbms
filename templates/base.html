@@ -19,6 +19,7 @@
       {% if user.is_authenticated %}
         <a href="{% url 'profiles:directory' %}">Members</a>
         <a href="{% url 'proposals:index' %}">Proposals</a>
+        {% if perms.expenses.approve_expense or perms.expenses.see_all_expenses %}<a href="{% url 'expenses:index' %}?status=waiting">Expenses</a>{% endif %}
         <a href="{% url 'members:account' %}">{{ user.get_short_name }}</a>
         <a href="{% url 'notifications:list' %}">Notifications{% if unread_notifications %} <span class="badge" title="Unread">{{ unread_notifications }}</span>{% endif %}</a>
         {% if perms.members.review_id_documents %}<a href="{% url 'members:id-checks' %}">ID checks</a>{% endif %}

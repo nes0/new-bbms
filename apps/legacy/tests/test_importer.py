@@ -620,7 +620,7 @@ class ImportTests(TestCase):
         self.assertIn("door log services with no device: old-cctv 1", self.output)
 
     def test_report_lists_tables_not_imported_and_shows_no_personal_data(self):
-        self.assertIn("expenses (0 rows, governance app)", self.output)
+        self.assertNotIn("not imported yet", self.output)
         self.assertNotIn("Street", self.output)
         self.assertNotIn("@example.com", self.output)
         self.assertNotIn("Given", self.output)
@@ -729,3 +729,78 @@ class ImportOptionsTests(TestCase):
         self.assertEqual(change.new_value, "the legacy import (--mark-inducted)")
         self.assertIn("--mark-inducted: 4 member(s) given a confirmed general induction", output)
         self.assertNotIn("key holder(s) without a confirmed general induction", output)
+
+
+def expense(id, user_id, amount, *, approved=0, declined=0, by=0, file="", category="tools"):
+    return dict(
+        id=id,
+        user_id=user_id,
+        category=category,
+        description=f"Bought thing {id}",
+        amount=amount,
+        approved=approved,
+        declined=declined,
+        approved_by_user=by,
+        file=file,
+        expense_date=T.date(),
+        created_at=T,
+        updated_at=T2,
+    )
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp(prefix="bbms-test-media-"))
+class ExpenseImportTests(TestCase):
+    """Legacy expenses (06 §6.4), with their reimbursement payments and receipts."""
+
+    def tables(self):
+        tables = legacy_tables()
+        tables["roles"].append(dict(id=4, name="finance"))
+        tables["payments"].append(payment(120, 2, "balance", "reimbursement", 12.5, source_id="1"))
+        tables["expenses"] = [
+            expense(1, 2, 1250, approved=1, by=3, file="production/expenses/abc.pdf"),
+            expense(2, 2, 400, declined=1, by=3, category="snacks"),
+            expense(3, 1, 999, file="production/expenses/gone.jpg"),  # waiting
+            expense(4, 1, 500, approved=1, by=3),  # approved, but legacy never paid it
+            expense(5, 42, 100),
+        ]
+        return tables
+
+    def run_import(self, photos=None):
+        return "\n".join(Importer(ListSource(self.tables()), photos=photos).run().lines())
+
+    def test_expenses(self):
+        from apps.expenses.models import Expense
+
+        output = self.run_import()
+        paid = Expense.objects.get(legacy_id=1)
+        self.assertEqual((paid.status, paid.amount_pence, paid.decided_by.legacy_id), ("approved", 1250, 3))
+        self.assertEqual((paid.payment.amount_pence, paid.payment.source), (1250, "reimbursement"))
+        self.assertEqual(paid.legacy_receipt, "production/expenses/abc.pdf")
+        declined = Expense.objects.get(legacy_id=2)
+        self.assertEqual((declined.status, declined.category, declined.payment), ("declined", "other", None))
+        self.assertEqual(Expense.objects.get(legacy_id=3).status, "waiting")
+        self.assertFalse(Expense.objects.filter(legacy_id=5).exists())
+        self.assertIn("1 approved expense(s) with no reimbursement payment (legacy ids 4)", output)
+        self.assertIn("expense categories not on the list, imported as 'other': snacks 1", output)
+        self.assertIn("run with --photos-from to copy them", output)
+        finance = Group.objects.get(name="finance")
+        self.assertTrue(finance.permissions.filter(codename="see_all_expenses").exists())
+
+    def test_receipts_are_copied(self):
+        from apps.expenses.models import Expense
+
+        pdf = b"%PDF-1.4 made-up receipt"
+
+        def opener(url):
+            if url == "https://photos.example.com/bucket/production/expenses/abc.pdf":
+                return pdf
+            raise urllib.error.HTTPError(url, 404, "Not Found", None, None)
+
+        output = self.run_import(PhotoSource(PHOTO_FOLDER, opener=opener))
+        paid = Expense.objects.get(legacy_id=1)
+        self.assertTrue(paid.receipt.name.endswith(".pdf"))
+        self.assertNotIn("abc", paid.receipt.name)
+        with paid.receipt.open("rb") as file:
+            self.assertEqual(file.read(), pdf)
+        self.assertEqual(Expense.objects.get(legacy_id=3).legacy_receipt, "production/expenses/gone.jpg")
+        self.assertIn("expense receipts copied: 1; couldn't fetch 1", output)

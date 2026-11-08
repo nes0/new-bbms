@@ -1,0 +1,12 @@
+{% autoescape off %}{% load money %}{{ site_name }}: your expense was declined
+Hello {{ member.given_name }},
+
+Your expense claim for {{ expense.amount_pence|pounds }} ({{ expense.get_category_display|lower }}, bought on {{ expense.spent_on|date:"j F Y" }}) was declined. The reason given:
+
+{{ expense.decline_reason }}
+
+If you have questions, please reply to a trustee or ask on Discord. The claim:
+{{ site_url }}{{ link }}
+
+{{ site_name }}
+{% endautoescape %}

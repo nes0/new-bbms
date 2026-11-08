@@ -139,6 +139,9 @@ AcsNode (devices)   Settings (key/value)   AuditLog
 - **`proposal_votes`**: `proposal_id`, `user_id`, `vote` (+1/0/−1), `abstain`. New (`proposals.Vote`): `choice`
   (1/0/−1, empty when abstaining), `abstain`, `voted_at`; one per member per proposal.
 - **`expenses`**: `user_id`, `category`, `description`, `amount` (**pence**), `expense_date`, `file` (receipt on S3), `approved`, `declined`, `approved_by_user`.
+  New (`expenses.Expense`): `member`, `category`, `description`, `amount_pence`, `spent_on`, `receipt` (private),
+  `legacy_receipt`, `submitted_at`, `status` (waiting / approved / declined), `decided_by`, `decided_at`,
+  `decline_reason`, `payment` (the credit paid), `legacy_id`.
 - **`settings`**: key/value. Legacy's only key, `emergency_door_key_storage_pin`, is defunct and is not migrated. See §2.8 for the new system's settings.
 - **`roles`**, **`role_user`**: see 01 §1.3.
 - **`detected_devices`**: `type`, `mac_address`, `display_name`. **Dropped**; not migrated.
@@ -189,7 +192,7 @@ row a new field whose default is the starting value.
 Stored on S3 (bucket per environment):
 - Member photos: `<env>/user-photo/<md5(hash)>.png` + thumbnail (500px / 200px square crops), pending ones under a `new` prefix until approved.
 - Equipment photos: under `equipment.getPhotoBasePath()`.
-- Expense receipts: `<env>/expenses/<random>.<ext>`.
+- Expense receipts: `<env>/expenses/<random>.<ext>`. New: `expense-receipts/<random>.<ext>`, private.
 
 **New:** a private DigitalOcean Spaces bucket; serve through signed URLs or through the app with permission checks.
 Member photos must not be guessable (md5 of a short value is guessable).
