@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Confirm your email address · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Confirm your email address</h1>
+  {% if outcome == "confirmed" %}
+    <p class="ok">Thank you: your email address is confirmed.</p>
+  {% elif outcome == "changed" %}
+    <p class="ok">Done: you now log in with <strong>{{ confirmed.email }}</strong>, and it's confirmed.</p>
+  {% elif outcome == "already" %}
+    <p>That address is already confirmed. Nothing more to do.</p>
+  {% elif outcome == "taken" %}
+    <p class="error">Another account is now using that address, so we couldn't change your login to it. Nothing has
+      changed.</p>
+  {% else %}
+    <p class="error">That link doesn't work any more. Links last a week, and stop working if you've changed your
+      address since.</p>
+    {% if user.is_authenticated and not user.email_verified %}
+      <form method="post" action="{% url 'members:resend-confirmation' %}" class="inline">
+        {% csrf_token %}<button type="submit" class="link">Send me a new link</button>
+      </form>
+    {% else %}
+      <p>Log in and we can send you a new one from your account page.</p>
+    {% endif %}
+  {% endif %}
+  <p>{% if user.is_authenticated %}<a href="{% url 'members:account' %}">Your account</a>{% else %}<a href="{% url 'login' %}">Log in</a>{% endif %}</p>
+{% endblock %}

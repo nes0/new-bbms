@@ -14,6 +14,8 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods, require_POST
 
+from apps.members.decorators import email_confirmed_required
+
 from . import checkout, paypal, paypal_ipn
 from .cards import CardError
 from .credit import credit_movements, credit_pence
@@ -60,6 +62,7 @@ AFTER = {CardCheckout.Purpose.TOP_UP: "payments:credit", CardCheckout.Purpose.CH
 
 
 @login_required
+@email_confirmed_required
 def pay(request):
     member = request.user
     low, high = checkout.top_up_limits()
@@ -77,6 +80,7 @@ def pay(request):
 
 @login_required
 @require_POST
+@email_confirmed_required
 def pay_by_card(request):
     member = request.user
     key = request.POST.get("item", "")
@@ -111,6 +115,7 @@ def pay_by_card(request):
 
 @login_required
 @require_POST
+@email_confirmed_required
 def pay_with_direct_debit(request):
     """A one-off Direct Debit from the member's mandate (04 §4.2)."""
     from apps.billing.gocardless import GoCardlessError
@@ -154,6 +159,7 @@ def pay_with_direct_debit(request):
 
 @login_required
 @require_POST
+@email_confirmed_required
 def pay_with_credit(request):
     item = checkout.find_payable(request.user, request.POST.get("item", ""))
     if item is None:
@@ -248,6 +254,7 @@ def paypal_urls(request, purpose):
 
 @login_required
 @require_POST
+@email_confirmed_required
 def pay_by_paypal(request):
     """A credit top-up by PayPal. PayPal only says what it took once the member has paid, and that's what's added."""
     back = BACK.get(request.POST.get("back"), "payments:pay")

@@ -306,6 +306,7 @@ class Importer:
                     founder=flag(row.get("founder")),
                     induction_completed=flag(row.get("induction_completed")),
                     rules_agreed_at=when(row.get("rules_agreed")),
+                    email_verified_at=self.now,  # assumed confirmed by hand in the past (03 §3.1)
                     profile_private=flag(row.get("profile_private")),
                     banned=flag(row.get("banned")),
                     banned_at=when(row.get("banned_date")),

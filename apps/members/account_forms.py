@@ -4,7 +4,7 @@ from django import forms
 from django.core.validators import MinLengthValidator
 from django.db.models import Q
 
-from . import notices
+from . import email_confirmation, notices
 from .forms import normalise_postcode, subscription_field
 from .models import Address, Member
 
@@ -106,3 +106,30 @@ class InductionForm(forms.Form):
         label="I have read and understand this guidance for members and I agree to follow it."
     )
     rules_agreed = forms.BooleanField(label="I agree to the rules of the space.")
+
+
+class EmailChangeForm(forms.Form):
+    """Log in with a different email address (03 §3.1). The password is asked for again, so someone at an unlocked
+    laptop can't redirect the account's email."""
+
+    new_email = forms.EmailField(label="New email address")
+    password = forms.CharField(
+        label="Your password", widget=forms.PasswordInput(attrs={"autocomplete": "current-password"})
+    )
+
+    def __init__(self, member, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.member = member
+
+    def clean_new_email(self):
+        email = self.cleaned_data["new_email"].strip().lower()
+        if email == self.member.email.lower():
+            raise forms.ValidationError("That is the address you already have.")
+        if email_confirmation.address_in_use(email, except_member=self.member):
+            raise forms.ValidationError("There is already an account with that email address.")
+        return email
+
+    def clean_password(self):
+        if not self.member.check_password(self.cleaned_data["password"]):
+            raise forms.ValidationError("That isn't your password.")
+        return self.cleaned_data["password"]

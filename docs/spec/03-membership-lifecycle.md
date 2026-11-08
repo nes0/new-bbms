@@ -37,6 +37,44 @@ On submit: user created with `status = setting-up`, `active = false`; an empty p
 
 **Welcome email** is sent the moment status first changes away from `setting-up`.
 
+### Confirming the email address (added 2026-11-09; built)
+
+The spec had overlooked this: legacy stored an `email_verified` flag and emailed a confirmation link, but nothing ever
+checked it, and the new site had no step for it. The address is the login and where every email goes, and "Log in with
+BBMS" tells Moodle who someone is by it (06 §6.12), so BBMS must know it's really theirs.
+
+- **On joining** the member is emailed a confirmation link (`/account/confirm-email/<token>/`). Following it records
+  `email_verified_at`. It works without logging in: the link is the proof. It is the first of a setting-up member's
+  next steps, and the account page shows "✓ confirmed" or "not confirmed" with "email me a link" (not more than once a
+  minute).
+- **The link is a signed token** (nothing stored): the member, the address, what it's for, and when it was made.
+  It lasts **7 days**; a link for an address the member has since changed does nothing.
+- **Changing the address** (`/account/email/`, new): the member gives the new address **and their password**. A link is
+  sent to the **new** address, and the old one is warned that a change was asked for. The login changes only when the
+  new address's link is followed, so a typo or someone else's address can't take over an account. The old address is
+  then told it was changed. A new address another account uses (compared without regard to case) is refused, at the
+  form and again when the link is followed.
+- **What needs a confirmed address** (decided 2026-11-09):
+  - **Paying:** every page a member uses to start a payment (card, Direct Debit, PayPal, from credit, top-ups,
+    setting up or changing how they pay, paying a charge, rejoining) asks them to confirm first. They can still see what
+    they owe and their credit. Nightly billing, webhooks and what admins record aren't affected: money already moving
+    carries on.
+  - **Being signed off** on a machine: the admin won't record someone as trained until their address is confirmed.
+  - **Entry:** a key holder's fob doesn't open the front door (reason `email_not_confirmed`); their tap is recorded as
+    a visit, like any member who isn't a key holder (05 §5.2).
+  - **Moodle:** signing in to "Log in with BBMS" (06 §6.12).
+  - ❓ **Not gated, so the trustees can decide:** using a machine they're already trained on, and logging in to BBMS.
+- **Admins can withdraw or reinstate it.** On a member's page there's an "Email address confirmed" box (untick to
+  withdraw, tick to reinstate), and the member list has actions for the same on many members at once, plus a filter for
+  who hasn't confirmed. Every change is written to the audit log with who made it (§3.9). A member whose confirmation
+  is withdrawn is told in their notifications, and can confirm again with a link. Changing the address on a member's
+  page clears it (unless the admin ticks the box in the same save) and emails the member's new address a link.
+- **Existing members are taken as confirmed:** the import marks every member confirmed (08 §8.2), on the assumption
+  that their addresses were checked by hand in the past, so **nobody is emailed at cutover** and nobody loses access.
+  Legacy's own `email_verified` flag is ignored, as it was never used. An admin withdraws it for any address that turns
+  out to be wrong.
+- If the mail server is down when someone joins, joining still works; they use "email me a link" once it's back.
+
 ### Proof of identity (added 2026-11-07; built)
 
 New members prove who they are with **two documents**: **photo ID** (passport, driving licence) and **proof of
@@ -258,7 +296,7 @@ Built (`/account/`): membership status, monthly amount, credit (linked to the cr
 trained on, what the front door does for them (from the door rules, 05 §5.2), proof-of-identity status and, for a
 `setting-up` member, the next steps. A member can:
 - **edit their details**: name, phone (at least 10 characters) and emergency contact, all required. The **email
-  address** is the login, so changing it is an admin job for now (it needs confirming by email first);
+  address** is the login: they change it themselves from `/account/email/`, once the new address is confirmed (§3.1);
 - **change their address**: the new one waits for a trustee and the old one stays current until then (02 §2.3). A
   second change replaces a waiting one. Trustees approve or decline in the admin ("Addresses", filtered to "not
   approved"); approving deletes the out-of-date addresses;
@@ -282,7 +320,7 @@ From the member's account page, admins can:
 - edit any field (bypassing phone/emergency-contact requirements);
 - see a "trusted members missing photos" report (`/account/trusted_missing_photos`).
 
-All changes to `trusted`, `key_holder`, `induction_completed` are written to the **audit log**.
+All changes to `trusted`, `key_holder`, `induction_completed` (and, built later, whether the email address is confirmed) are written to the **audit log**.
 
 ### Admin member controls: build status (2026-11-08)
 

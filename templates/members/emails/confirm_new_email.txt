@@ -1,0 +1,10 @@
+{% autoescape off %}Confirm your new email address
+Hello {{ member.given_name }},
+
+Someone asked to change the email address you log in to {{ site_name }} with, to this one. If that was you, follow
+this link to confirm it:
+
+{{ link }}
+
+The link works for {{ days }} days. Until you follow it nothing changes. If it wasn't you, ignore this email.
+{% endautoescape %}

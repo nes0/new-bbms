@@ -10,7 +10,12 @@ _count = 0
 def member(**fields):
     global _count
     _count += 1
-    defaults = dict(given_name="Mo", family_name=f"Member{_count}", status=Member.Status.ACTIVE)
+    defaults = dict(
+        given_name="Mo",
+        family_name=f"Member{_count}",
+        status=Member.Status.ACTIVE,
+        email_verified_at=timezone.now(),  # confirmed, unless a test says otherwise (03 §3.1)
+    )
     defaults.update(fields)
     return Member.objects.create_user(f"m{_count}@example.com", "a-good-password", **defaults)
 

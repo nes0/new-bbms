@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Confirm your email address first · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Confirm your email address first</h1>
+  <p>Before you can {{ what }} we need to know that <strong>{{ user.email }}</strong> is really your address. We
+    emailed you a link when you joined (check your spam folder). Follow it, then come back.</p>
+  <form method="post" action="{% url 'members:resend-confirmation' %}">
+    {% csrf_token %}<button type="submit">Email me a new link</button>
+  </form>
+  <p class="hint">Wrong address? <a href="{% url 'members:change-email' %}">Change it</a>. Still stuck? Ask a trustee.</p>
+  <p><a href="{% url 'members:account' %}">Back to your account</a></p>
+{% endblock %}

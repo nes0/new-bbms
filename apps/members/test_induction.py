@@ -17,7 +17,12 @@ _count = 0
 def person(**fields):
     global _count
     _count += 1
-    defaults = {"given_name": "Kim", "family_name": f"Maker{_count}", "status": Member.Status.ACTIVE}
+    defaults = {
+        "given_name": "Kim",
+        "family_name": f"Maker{_count}",
+        "status": Member.Status.ACTIVE,
+        "email_verified_at": timezone.now(),
+    }
     defaults.update(fields)
     return Member.objects.create_user(f"person{_count}@example.com", "a-good-password", **defaults)
 

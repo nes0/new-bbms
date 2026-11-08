@@ -1,0 +1,8 @@
+{% autoescape off %}A change of email address was asked for
+Hello {{ member.given_name }},
+
+Someone logged in to your {{ site_name }} account and asked to change its email address. Nothing has changed yet:
+it only changes if they follow a link we've sent to the new address.
+
+If this wasn't you, change your password now ({{ site_url }}/accounts/password_change/) and tell a trustee.
+{% endautoescape %}

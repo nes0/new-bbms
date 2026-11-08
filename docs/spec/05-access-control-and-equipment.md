@@ -81,6 +81,9 @@ had their general induction confirmed, has an approved photo (or photo on the wa
 key issued to them (date, and key number if keys are numbered; returned date when it comes back).
 ❓ Is the key deposit refunded (to credit) when the key is returned? Suggested: yes; it's kept if the key is lost.
 
+**Email (2026-11-09):** a key holder whose email address isn't confirmed (03 §3.1) is refused with reason
+`email_not_confirmed`, and their tap is recorded as a visit. It's checked before the general induction.
+
 **Built (2026-11-08):** the admin won't tick key holder for a member who isn't trusted or whose general induction
 isn't confirmed (existing key holders can still be edited); the key deposit is offered on the Pay page only once both
 are done; and the door doesn't open for a key holder without a confirmed induction (reason `no_induction`: their tap
@@ -404,6 +407,7 @@ as `training` or `testing` once. If it was already billed, the matching fee paym
    (decided 2026-11-07, 06 §6.12); the waiting list shows each member's course status. **Built (2026-11-09):** the
    admin won't save a sign-off until the course is recorded, and Inductions → "Waiting for training" checks Moodle for
    the members listed and shows "Online course: Finished / Not finished".
+   Nor until their email address is confirmed (03 §3.1).
    ❓ Trustees: legacy restricts this to admins. Should **trainers** be able to mark their own trainees?
 4. An admin can promote a trained member to **trainer** for that category.
 5. An unpaid-for or untrained induction can be **cancelled**, which refunds the fee to credit.

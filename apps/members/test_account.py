@@ -15,7 +15,13 @@ from .models import Address, IdDocument, Member
 
 
 def person(**fields):
-    defaults = {"given_name": "Kim", "family_name": "Maker", "phone": "01273 123456", "emergency_contact": "Sam"}
+    defaults = {
+        "given_name": "Kim",
+        "family_name": "Maker",
+        "phone": "01273 123456",
+        "emergency_contact": "Sam",
+        "email_verified_at": timezone.now(),
+    }
     defaults.update(fields)
     return Member.objects.create_user("kim@example.com", "a-good-password", **defaults)
 

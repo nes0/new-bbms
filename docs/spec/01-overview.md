@@ -121,7 +121,7 @@ same, so MySQL saves nothing. Django is also built and tested primarily against 
 12. Database: confirm PostgreSQL (§1.6).
 13. Fobs and keys (05 §5.1–5.2): ~~who may issue fobs~~ (decided: trustees, as a permission a role can be given); ~~free replacement for a lost fob~~ (decided: free); key deposit refunded when the key is returned (suggested yes, kept if lost).
 14. Attendance threshold for the trusted-status review list (05 §5.10; suggested 8 visits over at least 4 weeks).
-15. Moodle (06 §6.12): who may log in to Moodle (suggested any non-banned account); online training expiry (suggested none); members already signed off when a course is added (suggested they keep access).
+15. Moodle (06 §6.12): who may log in to Moodle (built as: any non-banned account with a confirmed email address, 03 §3.1); online training expiry (suggested none); members already signed off when a course is added (suggested they keep access).
 16. Reports (04 §4.9, 06 §6.13): who sees membership statistics (suggested all members; money figures finance and admins only); whether to build expenditure tracking later.
 17. Proof of identity (03 §3.1): whether an unchecked ID blocks anything (today it doesn't); who checks (suggested
     trustees); how long unchecked uploads are kept (suggested 30 days); whether members who emailed documents before

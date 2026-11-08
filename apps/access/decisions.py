@@ -99,6 +99,8 @@ def door_refusal_reason(member) -> str:
         return "not_member"
     if not (member.trusted and member.key_holder):
         return "not_keyholder"
+    if not member.email_verified:
+        return "email_not_confirmed"  # 24-hour access needs a confirmed email address (03 §3.1)
     if not member.induction_confirmed:
         return "no_induction"  # 24-hour access needs a confirmed general induction (05 §5.9)
     if not (member.photo_approved or member.photo_on_wall):

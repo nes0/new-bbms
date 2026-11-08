@@ -9,6 +9,9 @@ urlpatterns = [
     # The member's own account. Changing the password uses Django's page at /accounts/password_change/.
     path("account/", account_views.account, name="account"),
     path("account/details/", account_views.edit_details, name="edit-details"),
+    path("account/email/", account_views.change_email, name="change-email"),
+    path("account/confirm-email/resend", account_views.resend_confirmation, name="resend-confirmation"),
+    path("account/confirm-email/<str:token>/", account_views.confirm_email, name="confirm-email"),
     path("account/address/", account_views.change_address, name="change-address"),
     path("account/subscription/", account_views.change_subscription, name="change-subscription"),
     path("account/leave/", account_views.leave, name="leave"),

@@ -11,7 +11,7 @@
     {% include "members/_field.html" with field=form.phone autocomplete="tel" %}
     {% include "members/_field.html" with field=form.emergency_contact %}
     {% include "members/_field.html" with field=form.paypal_email autocomplete="email" %}
-    <p class="hint">To change your email address, ask a trustee.</p>
+    <p class="hint">Your login email is {{ user.email }}. <a href="{% url 'members:change-email' %}">Change it</a>.</p>
     <button type="submit">Save</button>
   </form>
   <p><a href="{% url 'members:account' %}">Back to your account</a></p>
