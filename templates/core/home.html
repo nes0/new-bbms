@@ -4,8 +4,12 @@
   <h1>{{ SITE_NAME }} members</h1>
   {% if user.is_authenticated %}
     <p>Hello {{ user.get_short_name }}. Your membership status is <strong>{{ user.get_status_display }}</strong>.</p>
+    <p><a href="{% url 'access:activity' %}">Who's in the space, and today's activity</a></p>
   {% else %}
     <p>This is the new membership system, under construction. <a href="{% url 'login' %}">Log in</a> to continue,
       or <a href="{% url 'members:register' %}">join</a>.</p>
+    {% if in_space is not None %}
+      <p class="occupancy">{% if in_space %}{{ in_space }} {{ in_space|pluralize:"person is,people are" }} in the space now.{% else %}Nobody is in the space just now.{% endif %}</p>
+    {% endif %}
   {% endif %}
 {% endblock %}

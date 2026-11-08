@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Who's in · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<h1>Who's in</h1>
+{% include "access/_in_now.html" %}
+
+<h2 id="day">{% if date == today %}Today{% else %}{{ date|date:"l j F Y" }}{% endif %}</h2>
+<form method="get" action="#day" class="filters">
+  <a href="?date={{ previous|date:'Y-m-d' }}#day">← {{ previous|date:"D j M" }}</a>
+  <label>Day <input type="date" name="date" value="{{ date|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}"></label>
+  <button type="submit">Show</button>
+  {% if next %}<a href="?date={{ next|date:'Y-m-d' }}#day">{{ next|date:"D j M" }} →</a>{% endif %}
+</form>
+
+{% if moments %}
+  <p class="hint">{{ visitors }} member{{ visitors|pluralize }} used {{ visitors|pluralize:"their fob,their fobs" }} at the space.</p>
+  <ul class="timeline">
+  {% for row in moments %}{% with card=row.card moment=row.moment %}
+    <li><time datetime="{{ moment.at|date:'c' }}">{{ moment.at|time:"H:i" }}</time>
+      {% include "profiles/_avatar.html" with small=True %}
+      {% if card.listed %}<a href="{% url 'profiles:member' card.member.pk %}">{{ card.member.full_name }}</a>{% else %}{{ card.member.full_name }}{% endif %}
+      <span>{{ moment.what }}{% if moment.minutes %} <span class="hint">({{ moment.minutes }} min)</span>{% endif %}</span>
+      {% if moment.offline %}<span class="hint" title="The reader was offline and sent this later">· recorded offline</span>{% endif %}</li>
+  {% endwith %}{% endfor %}
+  </ul>
+{% else %}
+  <p>Nobody used their fob at the space{% if date == today %} yet today{% else %} that day{% endif %}.</p>
+{% endif %}
+{% endblock %}

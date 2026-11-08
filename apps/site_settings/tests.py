@@ -42,6 +42,8 @@ DEFAULTS = {
     "fob_enrolment_seconds": "60",
     "proposal_quorum_percent": "0",
     "expense_maximum_pounds": "1000.00",
+    "occupancy_timeout_hours": "4",
+    "occupancy_reset_hour": "4",
 }
 
 

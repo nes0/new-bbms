@@ -66,6 +66,27 @@ class SiteSettings(models.Model):
         "formatting works, e.g. <#channel id> links a channel. Up to 2,000 characters; empty for no message.",
     )
 
+    # --- who's in the space (06 §6.7) ---
+    occupancy_timeout_hours = models.PositiveSmallIntegerField(
+        "count a member as gone after (hours without fob activity)",
+        default=4,
+        validators=[MinValueValidator(1), MaxValueValidator(24)],
+        help_text="Tapping out is a courtesy, so someone who didn't is taken to have left this long after their "
+        "last tap or machine use.",
+    )
+    occupancy_reset_hour = models.PositiveSmallIntegerField(
+        "everyone is counted as gone at (hour of the day)",
+        default=4,
+        validators=[MaxValueValidator(23)],
+        help_text="0 to 23, UK time. 4 means 4am.",
+    )
+    public_occupancy_count = models.BooleanField(
+        "show visitors how many people are in the space",
+        default=False,
+        help_text="A number only, never names: on the home page for visitors who aren't logged in, and at "
+        "/occupancy.json for the space's website. Logged-in members always see who's in.",
+    )
+
     # --- expenses (06 §6.4) ---
     expense_maximum_pence = models.PositiveIntegerField(
         "largest expense a member can claim",
@@ -246,6 +267,7 @@ class SiteSettings(models.Model):
         ("Storage", ("lockers_per_member",)),
         ("Proposals", ("proposal_quorum_percent",)),
         ("Expenses", ("expense_maximum_pence",)),
+        ("Who's in", ("occupancy_timeout_hours", "occupancy_reset_hour", "public_occupancy_count")),
         ("Privacy", ("id_document_max_age_days", "public_member_directory")),
         ("Discord", ("discord_welcome_message",)),
     )

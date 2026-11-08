@@ -4,7 +4,7 @@ from django.urls import path
 
 from apps.equipment import api_v2 as machine_api
 
-from . import api_v1, api_v2, views
+from . import activity_views, api_v1, api_v2, views
 
 app_name = "access"
 
@@ -25,6 +25,10 @@ urlpatterns = [
     path("api/devices/v2/sessions/<int:session_id>/end", machine_api.session_end, name="v2-end"),
     path("api/devices/v2/machine-status", machine_api.machine_status, name="v2-machine-status"),
     path("api/devices/v2/meter", machine_api.meter, name="v2-meter"),
+    # Activity and who's in the space (06 §6.7)
+    path("activity/", activity_views.activity_page, name="activity"),
+    path("activity/in-now/", activity_views.in_now, name="in-now"),
+    path("occupancy.json", activity_views.occupancy, name="occupancy"),
     # Device pages, linked from the QR code on each device's screen
     path("d/<slug:device_id>", views.device_short_link, name="device-short-link"),
     path("devices/<slug:device_id>/", views.device_page, name="device-page"),

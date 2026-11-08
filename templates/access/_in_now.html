@@ -1,0 +1,16 @@
+<section class="card" id="in-now" hx-get="{% url 'access:in-now' %}" hx-trigger="every 60s" hx-swap="outerHTML">
+  <h2>In the space now{% if people %}: {{ people|length }}{% endif %}</h2>
+  {% if people %}
+    <ul class="people">
+    {% for row in people %}{% with card=row.card presence=row.presence %}
+      <li>{% include "profiles/_avatar.html" with small=True %}
+        {% if card.listed %}<a href="{% url 'profiles:member' card.member.pk %}">{{ card.member.full_name }}</a>{% else %}{{ card.member.full_name }}{% endif %}
+        <span class="hint">{% if presence.using %}using the {{ presence.using|join:", the " }}{% if presence.since %}; {% endif %}{% endif %}{% if presence.since %}in since {{ presence.since|time:"H:i" }}{% endif %}</span></li>
+    {% endwith %}{% endfor %}
+    </ul>
+  {% else %}
+    <p>Nobody, as far as we know.</p>
+  {% endif %}
+  <p class="hint">A best guess: members who tapped in at the door, haven't tapped out, and have used their fob in the
+    last few hours, and anyone using a machine. Updated {{ updated|time:"H:i" }}.</p>
+</section>
