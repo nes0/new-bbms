@@ -17,13 +17,15 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
+SORT_ORDER_HELP = "Lower numbers are listed first; ties are listed alphabetically."
+
 
 class StorageLocation(models.Model):
     """Where lockers are in the space, e.g. "Workshop wall"."""
 
     name = models.CharField(max_length=100, unique=True)
     description = models.CharField(max_length=255, blank=True)
-    sort_order = models.PositiveSmallIntegerField(default=0)
+    sort_order = models.PositiveSmallIntegerField(default=0, help_text=SORT_ORDER_HELP)
 
     class Meta:
         ordering = ["sort_order", "name"]
@@ -37,7 +39,7 @@ class LockerSize(models.Model):
 
     name = models.CharField(max_length=100, unique=True)
     description = models.CharField(max_length=255, blank=True, help_text="Inside dimensions, what fits, etc.")
-    sort_order = models.PositiveSmallIntegerField(default=0)
+    sort_order = models.PositiveSmallIntegerField(default=0, help_text=SORT_ORDER_HELP)
 
     class Meta:
         ordering = ["sort_order", "name"]
