@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Leave · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Leave {{ SITE_NAME }}</h1>
+  <p>We'll stop your monthly payments{% if member.mandate_id %} and cancel your Direct Debit{% endif %}.
+    {% if member.subscription_expires %}You can keep using the space until {{ member.subscription_expires|date:"j F Y" }},
+    when your membership ends.{% else %}Your membership ends tomorrow morning.{% endif %}
+    {% if has_lockers %}Any lockers you rent are given up when it ends.{% endif %}</p>
+  <p>You're welcome to rejoin at any time.</p>
+  <form method="post" class="stack form" novalidate>
+    {% csrf_token %}
+    {% include "members/_field.html" with field=form.confirm %}
+    <button type="submit" class="danger">Leave</button>
+  </form>
+  <p><a href="{% url 'members:account' %}">Back to your account</a></p>
+{% endblock %}

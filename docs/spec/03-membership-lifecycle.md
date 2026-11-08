@@ -149,6 +149,8 @@ All times Europe/London. Each must be **idempotent** and must **alert on failure
 | 01:30 | `bill-members` | Bills subscription and **locker rent** charges together: Direct Debit payers get **one** GoCardless payment per payment day covering both; credit payers have both taken from credit. (1) Every `pending` charge dated today or earlier → `due`. (2) For each `due` charge: **balance** payers — if credit ≥ subscription, record a `subscription` payment from `balance` (marks the charge paid); otherwise, if their backup method is Direct Debit, bill that and email "trying DD", else email "payment failed". **gocardless-variable** payers — create a GoCardless payment for `monthly_subscription`, record it as `pending` against the charge (charge → `processing`). |
 | 02:00 | `calculate-equipment-fees` | Backstop: bill any finished, unbilled equipment sessions (sessions are normally charged when they end; 05 §5.4, §5.6). |
 | 06:00 | `check-memberships` | Four passes, in this order (below). |
+| 07:00 (new) | `retry_direct_debits` | In "BBMS retries" mode, asks GoCardless to retry failed Direct Debits whose retry day has come. **Built** |
+| every 15 min (new) | `process_gocardless_events` | Backstop for webhook events that were stored but not handled. **Built** |
 | daily (new) | `shred_stale_id_documents` | Delete proofs of identity nobody has checked within the time limit (§3.1, "Proof of identity"). |
 | hourly | `fix-equipment-log` | Close stale sessions; merge sessions with gaps ≤ 60 s; mark sessions ≤ 60 s as removed. |
 | hourly | `calculate-proposal-votes` | Tally proposals whose end date has passed. |
@@ -186,6 +188,45 @@ to `due`, so it was billed again at every 01:30 run). How retries happen is an *
 
 **"Becomes left" side effects:** locker rentals end (the storage team is told to clear and release their lockers, and to look for their labelled box if they paid for one), `active = false`, `status = left`, `payment_day` cleared, all pending/due charges cancelled, left email sent.
 
+### Subscriptions and billing: build status (2026-11-07)
+
+Built in `apps/billing` (charges, GoCardless, the jobs) with the member's pages at `/account/payment/`. Choices made
+while building (change them in the code if the trustees decide otherwise):
+
+- **One charge table for subscriptions and locker rent** (`Charge`, with a `kind`), so a Direct Debit payer's
+  subscription and rent go in **one GoCardless payment**, with one ledger row per charge sharing its payment id.
+- **The amount is taken when a charge is billed**, not when it's created a week ahead, so a new monthly amount
+  applies to the next charge not yet billed.
+- **Activation** (§3.4) as specified: a credit payer's first charge is due straight away but taken from credit at
+  the next nightly run; a Direct Debit payer's is billed at once.
+- **Credit payers** without enough credit are emailed once per charge, and it's tried again each night. With a
+  mandate, Direct Debit is their backup (a credit payer with a mandate *is* the "secondary method").
+- **Failed Direct Debits:** in "BBMS retries" mode, only `insufficient_funds` and `refer_to_payer` are retried
+  (once, after 5 days, by default; other causes are final). While a retry is due, the charge stays `processing` and
+  the paid-until date stays where it was; when it finally fails, the paid-until date goes back to the last paid
+  charge + 1 month, or the failure date. The member is emailed each time it fails. A charge-back marks the charge
+  failed too.
+- **Mandate cancelled, failed or expired** (webhook): a Direct Debit payer starts leaving; a credit payer just loses
+  the backup. `mandates.replaced` (the member's bank changed) moves them to the new mandate.
+- **Suspended members with no recorded suspension date** (imported ones) get today's date, so the 30 days start
+  from the first check after cutover rather than marking them left at once.
+- **Leaving** (the member's "Leave", or a cancelled mandate) cancels the mandate at GoCardless and charges not yet
+  billed. Locker rent isn't charged while leaving; lockers are released when they become `left`.
+- **Becoming left** ends locker rentals, cancels charges not yet billed, clears the payment day, and emails the member
+  and (if they had lockers or a paid box) the `storage` role.
+- **Honorary** members are never charged a subscription or suspended, but pay locker rent.
+- Direct Debit set-up uses GoCardless's **billing request flow** (its current hosted pages; the older "redirect
+  flow" is the same idea). If the member doesn't come back to BBMS, the `billing_requests.fulfilled` webhook
+  finishes the set-up. A new mandate replaces (and cancels) an old one.
+- **Emails** (plain text, `templates/billing/emails/`): welcome, credit too low, trying Direct Debit, Direct Debit
+  failed, suspended, leaving, left, and to the storage team. Dry runs send none.
+- Admins: charges (read-only, with "retry the failed Direct Debit" and "cancel"), GoCardless events (with "try failed
+  events again"), Direct Debit set-ups, and billing fields on the member's page. A subscription paid in cash is
+  recorded with "Record a payment" and pays the oldest unpaid charge (or one dated today).
+
+Still to build: card payments (Stripe), the standing-order statement import (04 §4.6), self-service locker renting
+with its first pro-rata payment (06 §6.2), shadow-site comparisons (08), and a heartbeat alert per job.
+
 ## 3.7 Changing a subscription
 
 - **Amount** (member): only if method is `gocardless-variable` or `balance`. Minimum is a setting (02 §2.8: **£25**, decided 2026-11-07; legacy £20; admins may go down to £5). Applies from the next charge. Raising the minimum doesn't change what existing members pay: a member below it keeps their amount until they change it, and must then choose at least the new minimum.
@@ -217,8 +258,9 @@ trained on, what the front door does for them (from the door rules, 05 §5.2), p
 - **leave, if still `setting-up`**: the account is deleted with its address, uploads and ID checks. If anything that
   must be kept refers to it (a payment, a fob), it isn't deleted and the member is asked to contact the trustees.
 
-Waiting for the subscriptions work: payment method and day, "paid until", the charges list, the "method" change,
-and leaving for current members (cancel the Direct Debit → `leaving`). Waiting for other apps: the profile and photo
+Since the subscriptions work: payment method and day, "paid until", the charges list (on `/account/payment/`), the
+"method" change, leaving for current members (cancel the Direct Debit → `leaving`) and rejoining. Members paying by
+standing order or cash ask a trustee to change their amount. Waiting for other apps: the profile and photo
 (06 §6.1), the general induction step (05 §5.9) and emails about address decisions.
 
 ## 3.9 Admin member controls

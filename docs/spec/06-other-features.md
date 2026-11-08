@@ -131,9 +131,10 @@ Built (`apps/storage`):
   limit (`/lockers/`, linked from the account page). The admin's locker list shows status, holder, rent (overrides
   marked) and start date, filtered by status (including "rented by someone who has left"), location and size.
 
-Waiting for the subscriptions and billing work: **self-service renting** with a Direct Debit or credit to pay from
-and the first (pro-rata) payment; monthly rent charges with the subscription; unpaid rent; rent notice periods;
-ending rentals when a member leaves. Members ask the storage team to rent or give up a locker until then. The box
+Built with billing (03 §3.6): **monthly rent charges** with the subscription (one Direct Debit for both), unpaid
+rent (the storage team is emailed when a rent payment finally fails), rent charges not yet billed are cancelled when
+a rental ends, and rentals end when a member leaves. Still waiting: **self-service renting** with a Direct Debit or
+credit to pay from and the first (pro-rata) payment, and rent notice periods. Members ask the storage team to rent or give up a locker until then. The box
 flag (above) is still to build.
 
 Related policies: *member storage*, *3-week bins*.

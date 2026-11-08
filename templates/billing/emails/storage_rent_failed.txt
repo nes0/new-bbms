@@ -1,0 +1,3 @@
+{% autoescape off %}{{ site_name }}: locker rent not paid
+The rent for {{ locker }} ({{ member }}, member {{ member.pk }}) of £{{ amount }} couldn't be collected.
+{% endautoescape %}

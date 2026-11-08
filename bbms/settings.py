@@ -8,6 +8,7 @@ The defaults are safe for local development only.
 
 import base64
 import hashlib
+import sys
 from pathlib import Path
 
 import environ
@@ -24,6 +25,8 @@ env = environ.Env(
 environ.Env.read_env(BASE_DIR / ".env")
 
 DEBUG = env("DEBUG")
+# True while `manage.py test` runs (the test runner turns DEBUG off, so code can't rely on it).
+TESTING = len(sys.argv) > 1 and sys.argv[1] == "test"
 
 # Never use the development key in production: settings refuse to start without a real one.
 SECRET_KEY = env("SECRET_KEY", default="dev-only-insecure-key" if DEBUG else None)
@@ -49,6 +52,7 @@ INSTALLED_APPS = [
     "apps.legacy",
     "apps.site_settings",
     "apps.storage",
+    "apps.billing",
 ]
 
 MIDDLEWARE = [
@@ -145,6 +149,13 @@ if not ID_DOCUMENT_KEYS and DEBUG:
     ID_DOCUMENT_KEYS = [
         base64.urlsafe_b64encode(hashlib.sha256(b"bbms id documents, development only:" + SECRET_KEY.encode()).digest())
     ]
+
+# GoCardless (Direct Debit, spec 04 §4.2). Without a token, development and tests use a fake that sends nothing.
+# Use a sandbox token everywhere but the live site; the shadow site gets a read-only one (08).
+GOCARDLESS_ACCESS_TOKEN = env("GOCARDLESS_ACCESS_TOKEN", default="")
+GOCARDLESS_ENVIRONMENT = env("GOCARDLESS_ENVIRONMENT", default="sandbox")  # or "live"
+# Webhook endpoint secret, from GoCardless's dashboard (Developers → Webhooks). Webhooks are refused without it.
+GOCARDLESS_WEBHOOK_SECRET = env("GOCARDLESS_WEBHOOK_SECRET", default="")
 
 # Security settings for production (behind DigitalOcean App Platform's HTTPS proxy).
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

@@ -14,3 +14,4 @@ media/
 # The front-door firmware is its own git repository (github.com/nes0/BBMSDoorEntry),
 # cloned here so tests/door_compat can run it.
 BBMSDoorEntry/
+.fake-gocardless.json

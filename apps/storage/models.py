@@ -122,7 +122,7 @@ class LockerRental(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
     end_reason = models.CharField(max_length=255, blank=True)
-    # TODO(subscriptions app): locker rent charges, billed with the subscription on the member's payment day (03 §3.6).
+    # Rent is billed with the subscription on the member's payment day: apps/billing (Charge, kind locker-rent).
 
     class Meta:
         ordering = ["-started_at"]

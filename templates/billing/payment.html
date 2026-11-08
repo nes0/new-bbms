@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Your payments · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<h1>Your monthly payment</h1>
+
+<dl class="details">
+  <dt>Status</dt><dd>{{ member.get_status_display }}</dd>
+  <dt>Monthly subscription</dt>
+  <dd>{% if member.monthly_subscription_pence %}{{ member.monthly_subscription_pence|pounds }}{% else %}—{% endif %}
+    <a href="{% url 'members:change-subscription' %}">Change</a></dd>
+  <dt>How you pay</dt>
+  <dd>{{ member.get_payment_method_display|default:"Not set up yet" }}{% if member.payment_method == "balance" and member.mandate_id %}, with Direct Debit as a backup if your credit runs low{% endif %}</dd>
+  {% if member.payment_day %}<dt>Payment day</dt><dd>The {{ member.payment_day }}{% if member.payment_day == 1 or member.payment_day == 21 %}st{% elif member.payment_day == 2 or member.payment_day == 22 %}nd{% elif member.payment_day == 3 or member.payment_day == 23 %}rd{% else %}th{% endif %} of each month</dd>{% endif %}
+  <dt>Paid until</dt><dd>{{ member.subscription_expires|date:"j F Y"|default:"—" }}</dd>
+  <dt>Credit</dt><dd>{{ credit_pence|pounds }} <a href="{% url 'payments:credit' %}">History</a></dd>
+</dl>
+
+{% if member.status == "left" %}
+  <section class="card">
+    <h2>Rejoin</h2>
+    <p>Your membership has ended. Rejoin, then set up your monthly payment.</p>
+    <form method="post" action="{% url 'billing:rejoin' %}">{% csrf_token %}<button type="submit">Rejoin</button></form>
+  </section>
+{% else %}
+  {% if unpaid %}
+    <section class="card">
+      <h2>To pay</h2>
+      <ul>
+        {% for charge in unpaid %}
+          <li>{{ charge.get_kind_display }}{% if charge.rental %} ({{ charge.rental.locker }}){% endif %},
+            {{ charge.charge_date|date:"j F Y" }}{% if charge.amount_pence %}: {{ charge.amount_pence|pounds }}{% endif %}
+            {% if charge.status == "failed" %}<span class="error">(the Direct Debit failed)</span>{% endif %}
+            <form method="post" action="{% url 'billing:pay-charge' charge.pk %}" style="display:inline">{% csrf_token %}
+              <button type="submit">Pay from credit</button></form></li>
+        {% endfor %}
+      </ul>
+      <p class="hint">Not enough credit? <a href="{% url 'payments:credit' %}">Top it up</a> first.</p>
+    </section>
+  {% endif %}
+
+  <section>
+    <h2>Direct Debit</h2>
+    {% if member.mandate_id %}
+      <p class="ok">Your Direct Debit is set up.</p>
+    {% elif can_set_up_direct_debit %}
+      <p>Pay each month by Direct Debit, through GoCardless. It takes a couple of minutes: you'll need your bank
+        account number and sort code.</p>
+      <form method="post" action="{% url 'billing:direct-debit-start' %}">{% csrf_token %}
+        <button type="submit">Set up a Direct Debit</button></form>
+    {% endif %}
+  </section>
+
+  {% if can_set_up_credit %}
+    <section>
+      <h2>Or pay from your credit</h2>
+      <p>Your subscription is taken from your credit each month, so keep it topped up. If it runs out, your
+        membership is suspended.</p>
+      <form method="post" action="{% url 'billing:credit-start' %}">{% csrf_token %}
+        <button type="submit">Pay from my credit</button></form>
+    </section>
+  {% endif %}
+
+  {% if can_switch %}
+    <section>
+      <h2>Change how you pay</h2>
+      <form method="post" action="{% url 'billing:change-method' %}">{% csrf_token %}
+        {% if member.payment_method == "gocardless-variable" %}
+          <input type="hidden" name="method" value="balance">
+          <p>Pay from your credit instead. Your Direct Debit stays as a backup if your credit runs low.</p>
+          <button type="submit">Pay from credit</button>
+        {% elif member.mandate_id %}
+          <input type="hidden" name="method" value="gocardless-variable">
+          <button type="submit">Pay by Direct Debit</button>
+        {% endif %}
+      </form>
+    </section>
+  {% endif %}
+{% endif %}
+
+<h2>Your charges</h2>
+{% if charges %}
+  <table class="table">
+    <thead><tr><th>Date</th><th>What</th><th>Amount</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for charge in charges %}
+        <tr>
+          <td>{{ charge.charge_date|date:"j M Y" }}</td>
+          <td>{{ charge.get_kind_display }}{% if charge.rental %} ({{ charge.rental.locker }}){% endif %}</td>
+          <td>{% if charge.amount_pence %}{{ charge.amount_pence|pounds }}{% else %}—{% endif %}</td>
+          <td>{{ charge.get_status_display }}{% if charge.paid_on %}, {{ charge.paid_on|date:"j M" }}{% endif %}{% if charge.retry_on %}; trying again {{ charge.retry_on|date:"j M" }}{% endif %}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>None yet.</p>
+{% endif %}
+<p><a href="{% url 'members:account' %}">Back to your account</a></p>
+{% endblock %}

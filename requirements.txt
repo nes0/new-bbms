@@ -4,16 +4,24 @@ asgiref==3.13.0
     # via django
 bcrypt==5.0.0
     # via -r requirements.in
+certifi==2026.10.23
+    # via requests
 cffi==2.1.1
     # via cryptography
+charset-normalizer==3.5.2
+    # via requests
 cryptography==50.0.2
     # via -r requirements.in
 django==5.2.19
     # via -r requirements.in
 django-environ==0.14.0
     # via -r requirements.in
+gocardless-pro==3.21.0
+    # via -r requirements.in
 gunicorn==26.2.0
     # via -r requirements.in
+idna==3.20
+    # via requests
 psycopg==3.3.8
     # via -r requirements.in
 psycopg-binary==3.3.8
@@ -22,11 +30,15 @@ pycparser==3.12
     # via cffi
 pymysql==1.2.3
     # via -r requirements.in
+requests==2.34.2
+    # via gocardless-pro
 segno==1.6.6
     # via -r requirements.in
 sqlparse==0.6.1
     # via django
 typing-extensions==4.16.0
     # via psycopg
+urllib3==2.8.0
+    # via requests
 whitenoise==6.12.0
     # via -r requirements.in

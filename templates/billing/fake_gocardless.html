@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Fake GoCardless{% endblock %}
+{% block content %}
+<h1>Fake GoCardless</h1>
+<p class="hint">Local development only: this stands in for GoCardless's Direct Debit pages because no
+  GOCARDLESS_ACCESS_TOKEN is set. Nothing is sent anywhere.</p>
+<p>Billing request {{ request_id }} for member {{ member }}.</p>
+<form method="post">{% csrf_token %}<button type="submit">Authorise the Direct Debit</button></form>
+<p><a href="{{ exit_uri }}">Cancel</a></p>
+{% endblock %}

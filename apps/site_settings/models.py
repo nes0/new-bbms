@@ -40,6 +40,64 @@ class SiteSettings(models.Model):
         "(03 §3.1, §3.7). Members already paying less keep their amount until they change it.",
     )
 
+    admin_minimum_subscription_pence = models.PositiveIntegerField(
+        "minimum monthly subscription an admin can set",
+        default=500,
+        validators=[MinValueValidator(100), whole_pounds],
+        help_text="Admins may set a member's amount below the usual minimum, down to this (03 §3.7).",
+    )
+
+    # --- billing (03 §3.5-3.6) ---
+    grace_direct_debit_days = models.PositiveIntegerField(
+        "grace period for Direct Debit payers (days)",
+        default=10,
+        validators=[MaxValueValidator(366)],
+        help_text="How long after their paid-until date a member is suspended (03 §3.5).",
+    )
+    grace_standing_order_days = models.PositiveIntegerField(
+        "grace period for standing order payers (days)",
+        default=183,
+        validators=[MaxValueValidator(366)],
+        help_text="Six months in the legacy system: standing orders are only matched when a statement is imported.",
+    )
+    grace_other_days = models.PositiveIntegerField(
+        "grace period for everyone else (days)",
+        default=7,
+        validators=[MaxValueValidator(366)],
+        help_text="Members paying from credit, by cash, and so on.",
+    )
+    suspended_to_left_days = models.PositiveIntegerField(
+        "suspended members are marked as left after (days)",
+        default=30,
+        validators=[MinValueValidator(1), MaxValueValidator(366)],
+        help_text="A payment before then re-activates them (03 §3.6).",
+    )
+
+    class RetryMode(models.TextChoices):
+        BBMS = "bbms", "BBMS retries"
+        GOCARDLESS = "gocardless", "Let GoCardless retry (Success+)"
+
+    dd_retry_mode = models.CharField(
+        "who retries a failed Direct Debit",
+        max_length=20,
+        choices=RetryMode.choices,
+        default=RetryMode.BBMS,
+        help_text="Choose GoCardless only if the account has automatic retries (Success+). BBMS never re-bills a "
+        "failed Direct Debit as a new payment (03 §3.6).",
+    )
+    dd_retries = models.PositiveSmallIntegerField(
+        "retries by BBMS",
+        default=1,
+        validators=[MaxValueValidator(3)],
+        help_text="How many times BBMS asks GoCardless to try a failed payment again. Only for failures worth "
+        "retrying, such as not enough money in the account.",
+    )
+    dd_retry_after_days = models.PositiveSmallIntegerField(
+        "days before BBMS retries",
+        default=5,
+        validators=[MinValueValidator(1), MaxValueValidator(30)],
+    )
+
     # --- fixed prices (04 §4.1) ---
     key_deposit_pence = models.PositiveIntegerField(
         "key deposit",
@@ -116,7 +174,19 @@ class SiteSettings(models.Model):
     # How the admin groups them.
     GROUPS = (
         ("The site", ("space_name",)),
-        ("Membership", ("minimum_subscription_pence",)),
+        ("Membership", ("minimum_subscription_pence", "admin_minimum_subscription_pence")),
+        (
+            "Billing",
+            (
+                "grace_direct_debit_days",
+                "grace_standing_order_days",
+                "grace_other_days",
+                "suspended_to_left_days",
+                "dd_retry_mode",
+                "dd_retries",
+                "dd_retry_after_days",
+            ),
+        ),
         ("Prices", ("key_deposit_pence", "box_fee_pence")),
         ("Machines", ("minimum_session_minutes", "machine_credit_limit_pence")),
         ("Key fobs", ("max_active_fobs", "fob_enrolment_seconds")),
@@ -150,6 +220,14 @@ class SiteSettings(models.Model):
     @property
     def minimum_subscription_pounds(self) -> int:
         return self.minimum_subscription_pence // 100
+
+    def grace_days(self, payment_method: str) -> int:
+        """The grace period for a payment method (03 §3.5)."""
+        if payment_method == "gocardless-variable":
+            return self.grace_direct_debit_days
+        if payment_method == "standing-order":
+            return self.grace_standing_order_days
+        return self.grace_other_days
 
     @property
     def minimum_session(self) -> timedelta:

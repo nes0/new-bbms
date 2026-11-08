@@ -29,7 +29,13 @@ The membership system for Build Brighton: members, payments, door and machine ac
 - the **legacy import** (`manage.py import_legacy`), tested on the legacy clone's data inside the Docker image;
 - **lockers**: the inventory, default rents per size and location, price overrides for one member's rental and for
   an empty locker, availability, per-member limits and rentals in the admin, all logged; and the members' page
-  (`/lockers/`). Self-service renting and monthly rent wait for billing.
+  (`/lockers/`). Self-service renting waits for its own slice;
+- **subscriptions and billing**: members set up a **Direct Debit** (GoCardless) or pay from credit
+  (`/account/payment/`), change how they pay, pay a failed charge from credit, leave and rejoin. Monthly
+  subscription and **locker rent charges**, billed together on the payment day; the GoCardless webhook
+  (`/gocardless/webhook`); failed Direct Debits retried as the settings say; suspension and leaving; billing emails.
+  The scheduled jobs are below. Without a GoCardless token, development uses a fake (`/dev/gocardless/payments/`
+  plays GoCardless's part).
 
 ## What's in this repository
 
@@ -43,6 +49,7 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `apps/site_settings/` | Settings the trustees change in the admin (prices, limits, reader timings, the space's name), with a log of changes |
 | `apps/payments/` | The ledger, member credit, machine fees charged from credit, cash and manual payments, withdrawals |
 | `apps/storage/` | Lockers: locations, sizes, default rents, overrides, availability, rentals, limits and their log |
+| `apps/billing/` | Subscription and locker rent charges, GoCardless (Direct Debit) and its webhook, the nightly billing and membership jobs |
 | `templates/`, `static/` | Page templates; CSS and HTMX (kept locally, no build step) |
 | `docs/spec/` | The specification |
 | `tests/door_compat/` | Runs the real front-door firmware against a server (needs the `BBMSDoorEntry` clone) |
@@ -135,3 +142,19 @@ uv pip compile requirements-dev.in -o requirements-dev.txt
 The app is a Docker image (`Dockerfile`) for DigitalOcean App Platform, with managed PostgreSQL and Spaces
 (spec 01 §1.8). Database migrations run as a pre-deploy job (`python manage.py migrate`). Testing before the
 switch-over from the legacy system is described in spec 08 §8.3.
+
+## Scheduled jobs
+
+Plain management commands, run by the platform's scheduler (spec 03 §3.6), Europe/London time. Each is safe to run
+twice; each takes `--date YYYY-MM-DD` (to catch up a missed night) and `--dry-run` (report only: nothing is changed,
+sent to GoCardless or emailed).
+
+| When | Command |
+|---|---|
+| 01:00 | `manage.py create_charges` |
+| 01:30 | `manage.py bill_members` |
+| 06:00 | `manage.py check_memberships` |
+| 07:00 | `manage.py retry_direct_debits` |
+| every 15 minutes | `manage.py process_gocardless_events` (a backstop: the webhook normally handles events at once) |
+| daily | `manage.py shred_stale_id_documents` |
+| hourly | `manage.py tidy_equipment_sessions` |

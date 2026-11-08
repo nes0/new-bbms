@@ -13,9 +13,9 @@
       <button type="submit" class="danger">Delete my account</button>
     </form>
   {% else %}
-    {# TODO(subscriptions app): cancel the Direct Debit here; status → leaving until the paid period ends (03 §3.8). #}
-    <p>To leave, please contact the trustees. Soon you'll be able to cancel your membership here: your access will
-      carry on until the end of the period you've paid for.</p>
+    {% if member.status == "leaving" %}<p>You're already leaving.</p>
+    {% elif member.status == "left" %}<p>Your membership has already ended.</p>
+    {% else %}<p>To leave, please contact the trustees.</p>{% endif %}
   {% endif %}
   <p><a href="{% url 'members:account' %}">Back to your account</a></p>
 {% endblock %}

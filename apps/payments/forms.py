@@ -25,6 +25,7 @@ class PoundsField(forms.DecimalField):
 def what_choices():
     """What an admin can record. Built each time, so the labels show the current prices from Settings."""
     return [
+        ("subscription", "Monthly subscription (pays what's owed, or a month from today)"),
         ("topup", "Credit top-up (cash received)"),
         ("withdrawal", "Cash paid out of the member's credit"),
         ("induction", "Induction fee"),
@@ -49,7 +50,9 @@ class RecordPaymentForm(forms.Form):
     member = forms.ModelChoiceField(queryset=Member.objects.order_by("given_name", "family_name"))
     what = forms.ChoiceField(choices=what_choices)
     paid_how = forms.ChoiceField(
-        choices=PAID_HOW, required=False, help_text="For induction fees, key deposits and box fees."
+        choices=PAID_HOW,
+        required=False,
+        help_text="For subscriptions, induction fees, key deposits and box fees.",
     )
     equipment = forms.ModelChoiceField(
         queryset=Equipment.objects.filter(archived=False, induction_fee_pence__gt=0),
@@ -72,6 +75,9 @@ class RecordPaymentForm(forms.Form):
                 self.add_error("paid_how", "Say how it was paid.")
         if what == "induction" and not cleaned.get("equipment"):
             self.add_error("equipment", "Choose the machine.")
+        member = cleaned.get("member")
+        if what == "subscription" and member is not None and not member.monthly_subscription_pence:
+            self.add_error("member", "This member has no monthly subscription amount: set one on their page first.")
         return cleaned
 
     def save(self, created_by) -> Payment:
@@ -85,6 +91,12 @@ class RecordPaymentForm(forms.Form):
             )
         if what == "withdrawal":
             return services.pay_from_credit(member, Payment.Reason.WITHDRAWAL, to_pence(data["amount"]), **extra)
+        if what == "subscription":
+            from django.utils import timezone
+
+            from apps.billing.billing import pay_subscription_manually
+
+            return pay_subscription_manually(member, how, timezone.localdate(), **extra)
         if what == "induction":
             return services.pay_induction(member, data["equipment"], how, **extra)
         if what == "key-deposit":

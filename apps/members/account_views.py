@@ -16,10 +16,14 @@ from apps.equipment.models import Equipment
 from apps.payments.credit import credit_pence
 
 from . import id_documents
-from .account_forms import AddressForm, DetailsForm, LeaveForm, SubscriptionForm
+from .account_forms import AddressForm, DetailsForm, LeaveForm, LeaveMembershipForm, SubscriptionForm
 from .models import Member
 
 logger = logging.getLogger(__name__)
+
+
+def _ordinal(day):
+    return "th" if 10 <= day % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
 
 
 def _trained_on(member):
@@ -46,6 +50,8 @@ def account(request):
         "fobs": fobs,
         "trained_on": _trained_on(member),
         "door_reason": door_refusal_reason(member),  # "" when their fob opens the front door (05 §5.2)
+        "unpaid_charges": member.charges.filter(status__in=("due", "failed")).count(),
+        "payment_day_suffix": _ordinal(member.payment_day) if member.payment_day else "",
     }
     return render(request, "members/account.html", context)
 
@@ -88,18 +94,24 @@ def _address_initial(address):
     return {name: getattr(address, name) for name in ("line_1", "line_2", "line_3", "line_4", "postcode")}
 
 
+# Members choose their own amount only when it's billed by BBMS (03 §3.7); others ask a trustee.
+SELF_SERVICE_METHODS = ("", Member.PaymentMethod.DIRECT_DEBIT, Member.PaymentMethod.CREDIT)
+
+
 @login_required
 @require_http_methods(["GET", "POST"])
 def change_subscription(request):
     member = request.user
     current = (member.monthly_subscription_pence or 0) // 100 or None
+    if member.payment_method not in SELF_SERVICE_METHODS:
+        messages.info(request, f"You pay by {member.get_payment_method_display().lower()}: ask a trustee to change it.")
+        return redirect("members:account")
     if request.method == "POST":
         form = SubscriptionForm(request.POST)
         if form.is_valid():
             member.monthly_subscription_pence = form.cleaned_data["monthly_subscription"] * 100
             member.save(update_fields=["monthly_subscription_pence"])
-            # TODO(subscriptions app): only for Direct Debit and credit payers (03 §3.7); applies from the next
-            # charge, and a charge already created keeps its amount.
+            # Charges take the amount when they're billed, so this applies from the next one not yet billed.
             messages.success(request, f"Your monthly subscription is now £{form.cleaned_data['monthly_subscription']}.")
             return redirect("members:account")
     else:
@@ -110,9 +122,14 @@ def change_subscription(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def leave(request):
-    """Leaving (03 §3.8). For now only an account still setting up can do it here: it is deleted outright."""
+    """Leaving (03 §3.8). An account still setting up is deleted outright; anyone else stops paying and leaves when
+    their paid-up time runs out.
+    """
     member = request.user
     can_delete = member.status == Member.Status.SETTING_UP
+    can_leave = member.status in (Member.Status.ACTIVE, Member.Status.SUSPENDED, Member.Status.HONORARY)
+    if can_leave:
+        return _leave_membership(request, member)
     form = LeaveForm(request.POST) if request.method == "POST" else LeaveForm()
     if request.method == "POST" and can_delete and form.is_valid():
         member_id = member.pk
@@ -127,5 +144,22 @@ def leave(request):
         logger.info("Setting-up account %s deleted by its owner", member_id)
         messages.success(request, "Your account has been deleted.")
         return redirect("home")
-    # TODO(subscriptions app): for other members, "leave" cancels the Direct Debit and sets status = leaving.
     return render(request, "members/leave.html", {"form": form, "can_delete": can_delete})
+
+
+def _leave_membership(request, member):
+    from apps.billing import gocardless, membership
+
+    form = LeaveMembershipForm(request.POST) if request.method == "POST" else LeaveMembershipForm()
+    if request.method == "POST" and form.is_valid():
+        try:
+            membership.start_leaving(member)
+        except gocardless.GoCardlessError:
+            messages.error(request, "We couldn't reach GoCardless to stop your Direct Debit. Please try again later.")
+            return redirect("members:leave")
+        messages.success(request, "You're leaving. We've stopped your monthly payments.")
+        return redirect("members:account")
+    has_lockers = member.locker_rentals.filter(ended_at__isnull=True).exists()
+    return render(
+        request, "members/leave_membership.html", {"form": form, "member": member, "has_lockers": has_lockers}
+    )

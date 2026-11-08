@@ -43,6 +43,14 @@ class Member(AbstractBaseUser, PermissionsMixin):
         LEFT = "left", "Left"
         HONORARY = "honorary", "Honorary"
 
+    class PaymentMethod(models.TextChoices):
+        # 02 §2.2. Old-style GoCardless subscriptions and PayPal are dropped (03 §3.7, 04 §4.4).
+        NONE = "", "None"
+        DIRECT_DEBIT = "gocardless-variable", "Direct Debit"
+        CREDIT = "balance", "Member credit"
+        STANDING_ORDER = "standing-order", "Standing order"
+        CASH = "cash", "Cash"
+
     # Statuses that may be in the space (05 §5.2; the exact list is a trustee decision, spec 01 §1.7).
     STATUSES_WITH_ACCESS = (Status.ACTIVE, Status.LEAVING, Status.HONORARY)
 
@@ -60,6 +68,16 @@ class Member(AbstractBaseUser, PermissionsMixin):
     rules_agreed_at = models.DateTimeField(null=True, blank=True)
     # Whole pounds in the legacy system; pence here (02 §2.2). The minimums are settings (02 §2.8).
     monthly_subscription_pence = models.PositiveIntegerField(null=True, blank=True)
+    # Billing (03 §3.3-3.7). A credit payer with a mandate has Direct Debit as their backup.
+    payment_method = models.CharField(max_length=30, choices=PaymentMethod.choices, blank=True, default="")
+    payment_day = models.PositiveSmallIntegerField(
+        null=True, blank=True, help_text="Day of the month the subscription is charged (1-28)."
+    )
+    mandate_id = models.CharField("GoCardless mandate", max_length=50, blank=True)
+    subscription_expires = models.DateField(
+        "paid until", null=True, blank=True, help_text="Membership is paid up to this date (03 §3.3)."
+    )
+    suspended_at = models.DateTimeField(null=True, blank=True, help_text="When the member was last suspended.")
     profile_private = models.BooleanField(default=False, help_text="Hide from the public member list.")
     # Needed for door access (05 §5.2). These become part of the profile/photo app when it's built.
     photo_approved = models.BooleanField(default=False, help_text="Has an approved photo on the system.")
@@ -89,6 +107,12 @@ class Member(AbstractBaseUser, PermissionsMixin):
 
     class Meta:
         ordering = ["given_name", "family_name"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(payment_day__isnull=True) | models.Q(payment_day__gte=1, payment_day__lte=28),
+                name="member_payment_day_1_to_28",
+            )
+        ]
 
     def __str__(self):
         return self.full_name or self.email
@@ -120,6 +144,15 @@ class Member(AbstractBaseUser, PermissionsMixin):
     def has_space_access(self):
         """Whether this member's status lets them be in the space at all (door and machines add more rules)."""
         return self.status in self.STATUSES_WITH_ACCESS and not self.banned
+
+    @property
+    def has_direct_debit(self):
+        return bool(self.mandate_id)
+
+    @property
+    def is_billable(self):
+        """Gets a monthly subscription charge (03 §3.6): active and not honorary."""
+        return self.status == self.Status.ACTIVE
 
     @property
     def current_address(self):

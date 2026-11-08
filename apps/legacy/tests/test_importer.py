@@ -50,12 +50,53 @@ def user(id, email, status="active", **fields):
 def legacy_tables():
     return {
         "users": [
-            user(1, "Kim@Example.com", key_holder=1, trusted=1),
-            user(2, "sam@example.com", status="payment-warning"),
-            user(3, "admin@example.com"),
+            user(
+                1,
+                "Kim@Example.com",
+                key_holder=1,
+                trusted=1,
+                payment_method="gocardless-variable",
+                payment_day=31,
+                monthly_subscription=25,
+                mandate_id="MD-MADE-UP-1",
+                subscription_expires=datetime(2025, 4, 1),
+            ),
+            user(2, "sam@example.com", status="payment-warning", payment_method="paypal", monthly_subscription=20),
+            user(3, "admin@example.com", payment_method="balance", payment_day=0),
             user(4, "kim@example.com"),  # same email as user 1, differently cased
             user(5, "gone@example.com", status="left", password=""),
             user(6, "odd@example.com", status="on-hold"),
+        ],
+        "subscription_charge": [
+            dict(
+                id=1,
+                user_id=1,
+                charge_date=datetime(2025, 3, 1),
+                payment_date=datetime(2025, 3, 4),
+                amount=2500,
+                status="paid",
+                created_at=T,
+            ),
+            dict(
+                id=2,
+                user_id=1,
+                charge_date=datetime(2025, 4, 1),
+                payment_date=None,
+                amount=0,
+                status="pending",
+                created_at=T,
+            ),
+            dict(
+                id=3,
+                user_id=1,
+                charge_date=datetime(2025, 4, 1),
+                payment_date=None,
+                amount=0,
+                status="due",
+                created_at=T,
+            ),
+            dict(id=4, user_id=99, charge_date=datetime(2025, 4, 1), amount=0, status="due", created_at=T),
+            dict(id=5, user_id=3, charge_date=datetime(2025, 4, 1), amount=0, status="weird", created_at=T),
         ],
         "profile_data": [
             dict(id=1, user_id=1, profile_photo=1, profile_photo_on_wall=0, new_profile_photo=0),
@@ -253,6 +294,27 @@ class ImportTests(TestCase):
         self.assertEqual(self.member(2).status, Member.Status.ACTIVE)  # payment-warning
         self.assertTrue(self.member(2).photo_on_wall)
         self.assertEqual(self.member(6).status, Member.Status.SUSPENDED)  # on-hold
+
+    def test_how_members_pay(self):
+        kim = self.member(1)
+        self.assertEqual(
+            (kim.payment_method, kim.payment_day, kim.monthly_subscription_pence, kim.mandate_id),
+            ("gocardless-variable", 1, 2500, "MD-MADE-UP-1"),  # day 31 becomes the 1st, as in legacy
+        )
+        self.assertEqual(kim.subscription_expires.isoformat(), "2025-04-01")
+        self.assertEqual((self.member(3).payment_method, self.member(3).payment_day), ("balance", None))
+        self.assertEqual(self.member(2).payment_method, "")  # PayPal is dropped
+        self.assertIn("1 member(s) paying by 'paypal'", self.output)
+
+    def test_subscription_charges(self):
+        from apps.billing.models import Charge
+
+        paid = Charge.objects.get(legacy_id=1)
+        self.assertEqual((paid.status, paid.amount_pence, paid.paid_on.isoformat()), ("paid", 2500, "2025-03-04"))
+        self.assertEqual(Charge.objects.get(legacy_id=2).amount_pence, None)
+        self.assertIn("a second charge for the same member and date: 1 (legacy ids 3)", self.output)
+        self.assertIn("no such member: 1 (legacy ids 4)", self.output)
+        self.assertIn("unknown status 'weird': 1 (legacy ids 5)", self.output)
 
     def test_duplicate_emails_are_skipped_and_reported(self):
         self.assertFalse(Member.objects.filter(legacy_id=4).exists())

@@ -67,7 +67,11 @@ page with withdrawal requests, and finance's handling of those requests. Choices
 - Consumables use the reason `consumable`, with the service in the reference.
 - Withdrawal requests keep the bank details only until finance marks the request paid or rejected.
 
-Still to build: GoCardless, Stripe, subscription charges and billing (03), the statement import (4.6), the finance
+Built since (03 §3.6 build status): GoCardless (set-up, billing, webhook, retries), subscription and locker rent
+charges and billing, and "subscription" in "Record a payment". The webhook stores every event, ignores duplicates,
+handles them in the order GoCardless created them, and keeps failures for review (admin: GoCardless events).
+
+Still to build: Stripe, the statement import (4.6), the finance
 overview and money summary (4.8, 4.9), member-facing top-ups and paying fees from the credit page, and importing the
 legacy payments (08 §8.2). The key deposit and box fee are admin settings (02 §2.8, built 2026-11-07), read through
 `apps/payments/prices.py`.
