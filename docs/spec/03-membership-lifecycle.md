@@ -27,6 +27,7 @@ On submit: user created with `status = setting-up`, `active = false`; an empty p
 **Next steps shown to a setting-up member:**
 1. **Set up payment** — either
    - **Direct Debit** (GoCardless redirect flow → mandate). On return: store `mandate_id`, `payment_method = gocardless-variable`, `payment_day = today's day`, then *activate* (§3.4); or
+   - **PayPal subscription** (`payment_method = paypal`): for members without a UK bank account; the page says Direct Debit is preferred (PayPal costs the space more). BBMS shows PayPal's subscribe button for their monthly amount; PayPal's first IPN sets the payment day and *activates* them (04 §4.4); or
    - **Pay from credit** (`payment_method = balance`) — only offered if the member has no payment method and is `setting-up`/`leaving`/`left`. Sets `payment_day = today`, then *activate*.
 2. **Proof of identity** (`/account/id-documents/`): upload photo ID and proof of address (below).
 3. **General induction** (`/account/{id}/induction`): read the member agreement (markdown policy), tick "rules agreed" and "induction completed". Then a `comms` role holder confirms it from `/member_inductions` (sets `inducted_by`).
@@ -132,9 +133,10 @@ A member is only suspended when `subscription_expires` is earlier than *today mi
 |---|---|
 | `gocardless-variable` | 10 days |
 | `standing-order` | **6 months** |
+| `paypal` | 7 days |
 | anything else (`balance`, `cash`, …) | 7 days |
 
-(Legacy also had 14 days for old-style `gocardless` and 7 days for `paypal`; both methods are dropped.)
+(Legacy also had 14 days for old-style `gocardless`, which is dropped.)
 
 These are **settings** in the new system (02 §2.8), starting with the legacy values, which are **kept** (decided
 2026-11-07, provisionally; easy to change later).
@@ -146,7 +148,7 @@ All times Europe/London. Each must be **idempotent** and must **alert on failure
 | Time | Job | What it does |
 |---|---|---|
 | 01:00 | `create-todays-sub-charges` | Also creates a pending **locker rent** charge for each rented locker on the same dates (06 §6.2). For each date from **today+7 back to today**, for every billable member (`active`, not `honorary`) whose `payment_day` equals that date's day, create a `pending` charge if none exists for that date. |
-| 01:30 | `bill-members` | Bills subscription and **locker rent** charges together: Direct Debit payers get **one** GoCardless payment per payment day covering both; credit payers have both taken from credit. (1) Every `pending` charge dated today or earlier → `due`. (2) For each `due` charge: **balance** payers — if credit ≥ subscription, record a `subscription` payment from `balance` (marks the charge paid); otherwise, if their backup method is Direct Debit, bill that and email "trying DD", else email "payment failed". **gocardless-variable** payers — create a GoCardless payment for `monthly_subscription`, record it as `pending` against the charge (charge → `processing`). |
+| 01:30 | `bill-members` | Bills subscription and **locker rent** charges together: Direct Debit payers get **one** GoCardless payment per payment day covering both; credit payers have both taken from credit. (1) Every `pending` charge dated today or earlier → `due`. (2) For each `due` charge: **balance** payers — if credit ≥ subscription, record a `subscription` payment from `balance` (marks the charge paid); otherwise, if their backup method is Direct Debit, bill that and email "trying DD", else email "payment failed". **gocardless-variable** payers — create a GoCardless payment for `monthly_subscription`, record it as `pending` against the charge (charge → `processing`). **paypal** payers (new, 04 §4.4) — taken from credit if there's enough (an early PayPal payment goes there); otherwise the charge waits for PayPal's payment, with no email. |
 | 02:00 | `calculate-equipment-fees` | Backstop: bill any finished, unbilled equipment sessions (sessions are normally charged when they end; 05 §5.4, §5.6). |
 | 06:00 | `check-memberships` | Four passes, in this order (below). |
 | 07:00 (new) | `retry_direct_debits` | In "BBMS retries" mode, asks GoCardless to retry failed Direct Debits whose retry day has come. **Built** |
@@ -231,8 +233,8 @@ with its first pro-rata payment (06 §6.2), shadow-site comparisons (08), and a 
 
 ## 3.7 Changing a subscription
 
-- **Amount** (member): only if method is `gocardless-variable` or `balance`. Minimum is a setting (02 §2.8: **£25**, decided 2026-11-07; legacy £20; admins may go down to £5). Applies from the next charge. Raising the minimum doesn't change what existing members pay: a member below it keeps their amount until they change it, and must then choose at least the new minimum.
-- **Method** (member): `gocardless-variable` ⇄ `balance`. Switching to balance keeps Direct Debit as the **backup** method.
+- **Amount** (member): only if method is `gocardless-variable`, `balance` or `paypal` (a PayPal payer gets a new subscribe button and cancels the old subscription at PayPal; 04 §4.4). Minimum is a setting (02 §2.8: **£25**, decided 2026-11-07; legacy £20; admins may go down to £5). Applies from the next charge. Raising the minimum doesn't change what existing members pay: a member below it keeps their amount until they change it, and must then choose at least the new minimum.
+- **Method** (member): `gocardless-variable` ⇄ `balance`. Switching to balance keeps Direct Debit as the **backup** method. A PayPal payer can switch to Direct Debit (setting up a mandate) or credit, and is told to cancel the PayPal subscription; a later PayPal payment then goes to their credit.
 - **Method/day** (admin): any method and payment day 1–28.
 - **Migrate old DD**: not rebuilt. Any member still on an old-style `gocardless` subscription is moved to a variable mandate before cutover (08).
 
@@ -241,7 +243,8 @@ with its first pro-rata payment (06 §6.2), shadow-site comparisons (08), and a 
 - **Member cancels Direct Debit**: mandate cancelled at GoCardless; `mandate_id` and method cleared; status → `leaving`;
   pending/due charges cancelled. Access continues until `subscription_expires`; then the 06:00 job marks them `left`.
 - **Mandate cancelled at GoCardless** (bank, or member via their bank) → webhook → same as above.
-- **"Leave" button**: a `setting-up` account is **deleted outright**; anyone else → `leaving`.
+- **"Leave" button**: a `setting-up` account is **deleted outright**; anyone else → `leaving`. A PayPal payer is told to cancel the subscription at PayPal (BBMS can't).
+- **PayPal subscription cancelled or ended** (IPN `subscr_cancel` / `subscr_eot`) while the member still pays by PayPal → `leaving` (04 §4.4).
 - **Rejoin** (a `left` member): status → `setting-up`, then the normal payment set-up flow.
 
 ### The member's account page: build status (2026-11-07)

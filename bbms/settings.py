@@ -186,6 +186,13 @@ STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 # The webhook endpoint's signing secret (whsec_...), from Stripe's dashboard. Webhooks are refused without it.
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
 
+# PayPal (subscriptions and credit top-ups, spec 04 §4.4; not built yet). The space's PayPal account: every PayPal
+# button pays it, and IPNs for any other account are refused. Old accounts, during a switch to a new one: their
+# payments are still recorded, but members are never asked to pay them.
+PAYPAL_ACCOUNT_EMAIL = env("PAYPAL_ACCOUNT_EMAIL", default="")
+PAYPAL_OLD_ACCOUNT_EMAILS = env.list("PAYPAL_OLD_ACCOUNT_EMAILS", default=[])
+PAYPAL_SANDBOX = env.bool("PAYPAL_SANDBOX", default=True)  # False only on the live site
+
 # Security settings for production (behind DigitalOcean App Platform's HTTPS proxy).
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = env("SECURE_SSL_REDIRECT")

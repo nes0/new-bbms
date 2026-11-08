@@ -24,7 +24,7 @@ But nightly billing, new fobs and revocations all depend on BBMS, so it is still
 | **Role holders** | Members with delegated duties (see §1.3). |
 | **Admin (trustees)** | Everything: edit any member, approve photos/addresses, grant trusted/keyholder, issue fobs, record cash, manage roles, approve expenses, create proposals, change settings. |
 | **Devices** | Door controllers and equipment controllers calling the device API. |
-| **Payment providers** | GoCardless (webhooks) and Stripe (card payments). |
+| **Payment providers** | GoCardless (webhooks), Stripe (card payments) and PayPal (subscriptions and credit top-ups, by IPN). |
 
 ## 1.3 Roles
 
@@ -63,7 +63,6 @@ These legacy features will **not** be rebuilt:
 | Legacy feature | Notes |
 |---|---|
 | Old fixed-amount GoCardless *subscriptions* (`payment_method = gocardless`) | Any remaining members are moved to variable Direct Debit (mandate + per-charge payments) before cutover. |
-| PayPal subscriptions and IPN | Including `secondary_email` (only used to match PayPal payers) and "unknown PayPal donation" handling. |
 | Legacy device endpoints `/access-control/*`, `/acs`, `/acs/spark` | The front door uses only the `/acs/*` API (05). A new device API is being designed alongside new firmware. |
 | CCTV image upload → animated GIFs | |
 | Detected devices (MAC address log) | |
