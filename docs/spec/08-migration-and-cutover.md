@@ -127,7 +127,10 @@ Choices made in the script (change them there if the trustees decide otherwise):
   Postcodes are upper-cased.
 - **Audit log:** each legacy row becomes a change with the field "legacy" and legacy's description.
 
-Not imported yet (waiting for their apps): proposals, expenses, notifications, profiles' social links and
+- **Notifications:** each becomes a notification for the member, read or unread, keeping legacy's `hash` as its key
+  (a repeat of the same hash for a member is skipped and listed) and the time it was sent.
+
+Not imported yet (waiting for their apps): proposals, expenses, profiles' social links and
 descriptions, equipment photos and receipts. Tested on the legacy clone's data inside the Docker image
 (`tools/clone_test/`).
 

@@ -19,6 +19,7 @@ urlpatterns = [
     path("", include("apps.payments.urls")),
     path("", include("apps.storage.urls")),
     path("", include("apps.billing.urls")),
+    path("", include("apps.notifications.urls")),
     path("", include("apps.profiles.urls")),
     path("", include("apps.discord.urls")),
 ]

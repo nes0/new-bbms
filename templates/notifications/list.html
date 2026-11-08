@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Notifications</h1>
+
+  <div class="actions">
+    {% if only_unread %}<a href="{% url 'notifications:list' %}">Show all</a>
+    {% else %}<a href="{% url 'notifications:list' %}?show=unread">Show only unread</a>{% endif %}
+    {% if unread_notifications %}
+      <form method="post" action="{% url 'notifications:read-all' %}" class="inline">
+        {% csrf_token %}<input type="hidden" name="page" value="{{ page.number }}">
+        <button type="submit" class="link">Mark all as read</button>
+      </form>
+    {% endif %}
+  </div>
+
+  {% for notification in page %}
+    <div class="card notification{% if notification.unread %} unread{% endif %}">
+      <p>
+        {% if notification.unread %}<strong>{{ notification.message }}</strong>{% else %}{{ notification.message }}{% endif %}
+        {% if notification.url %}<br><a href="{% url 'notifications:open' notification.pk %}">Open</a>{% endif %}
+      </p>
+      <div class="hint">{{ notification.created_at|date:"j F Y, H:i" }} ·
+        <form method="post" action="{% url 'notifications:mark' notification.pk 'read' %}" class="inline">
+          {% csrf_token %}<input type="hidden" name="page" value="{{ page.number }}">
+          {% if notification.unread %}<button type="submit" class="link">Mark as read</button>{% endif %}
+        </form>
+        <form method="post" action="{% url 'notifications:mark' notification.pk 'unread' %}" class="inline">
+          {% csrf_token %}<input type="hidden" name="page" value="{{ page.number }}">
+          {% if not notification.unread %}<button type="submit" class="link">Mark as unread</button>{% endif %}
+        </form>
+      </div>
+    </div>
+  {% empty %}
+    <p>{% if only_unread %}You've read everything.{% else %}You have no notifications.{% endif %}</p>
+  {% endfor %}
+
+  {% if page.has_other_pages %}
+    <div class="actions">
+      {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}{% if only_unread %}&show=unread{% endif %}">Newer</a>{% endif %}
+      <span class="hint">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+      {% if page.has_next %}<a href="?page={{ page.next_page_number }}{% if only_unread %}&show=unread{% endif %}">Older</a>{% endif %}
+    </div>
+  {% endif %}
+{% endblock %}

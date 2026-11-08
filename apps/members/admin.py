@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 
-from . import changes
+from . import changes, notices
 from .models import Address, IdCheck, Member, MemberChange
 
 # IdDocument is deliberately NOT registered: the uploads are only seen through the ID check pages, which log each
@@ -61,13 +61,17 @@ class AddressAdmin(admin.ModelAdmin):
         count = 0
         for address in queryset.filter(approved=False):
             address.approve()
+            notices.address_approved(address.member)
             count += 1
         self.message_user(request, f"Approved {count} address(es).")
 
     @admin.action(description="Decline the selected address changes (deletes them)")
     def decline(self, request, queryset):
-        deleted, _ = queryset.filter(approved=False).delete()
-        # TODO(notifications app): tell the member their address change wasn't accepted.
+        waiting = queryset.filter(approved=False)
+        members = list(Member.objects.filter(pk__in=waiting.values("member")))
+        deleted, _ = waiting.delete()
+        for member in members:
+            notices.address_declined(member)
         self.message_user(request, f"Declined {deleted} address change(s).")
 
 
@@ -219,6 +223,10 @@ class MemberAdmin(UserAdmin):
             ticked = "approved" in address_form.changed_data and address.approved
             if ticked and address.pk and address_form not in formset.deleted_forms:
                 address.approve()  # deletes the out-of-date addresses
+                notices.address_approved(address.member)
+        for address in formset.deleted_objects:
+            if not address.approved:  # deleting a waiting change declines it
+                notices.address_declined(address.member)
 
 
 @admin.register(MemberChange)

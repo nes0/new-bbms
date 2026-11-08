@@ -13,10 +13,12 @@ import logging
 
 from django.core.files.base import ContentFile
 from django.db import transaction
+from django.urls import reverse
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from apps.members import changes
 from apps.members.models import Member, MemberPhoto
+from apps.notifications.notify import notify_role
 
 logger = logging.getLogger(__name__)
 
@@ -70,8 +72,15 @@ def upload(member, file) -> MemberPhoto:
     """A new photo waiting for approval, replacing one already waiting. Raises BadPhoto."""
     full, thumb = process(file)
     MemberPhoto.objects.filter(member=member, kind=MemberPhoto.Kind.PENDING).delete()  # files go once committed
-    # TODO(notifications app): tell the admins there's a photo to approve (06 §6.5).
-    return _store(member, MemberPhoto.Kind.PENDING, full, thumb)
+    stored = _store(member, MemberPhoto.Kind.PENDING, full, thumb)
+    notify_role(
+        admins=True,
+        message=f"{member.get_short_name()} has uploaded a photo. It needs approving.",
+        kind="photo_waiting",
+        key=f"photo-waiting-{stored.pk}",
+        url=reverse("admin:members_memberphoto_changelist") + "?kind__exact=pending",
+    )
+    return stored
 
 
 @transaction.atomic

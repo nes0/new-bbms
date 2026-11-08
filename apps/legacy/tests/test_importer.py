@@ -16,6 +16,7 @@ from apps.legacy.importer import Importer
 from apps.legacy.photos import PNG_SIGNATURE, PhotoSource
 from apps.legacy.source import ListSource
 from apps.members.models import Member, MemberChange, MemberPhoto
+from apps.notifications.models import Notification
 from apps.payments.credit import credit_pence
 from apps.payments.models import Payment
 
@@ -120,6 +121,30 @@ def legacy_tables():
         "audit_log": [
             dict(id=1, user_id=1, admin_id=3, action="user_updated", description="trusted", created_at=T),
             dict(id=2, user_id=42, admin_id=3, action="user_updated", description="key_holder", created_at=T),
+        ],
+        "notifications": [
+            dict(
+                id=1,
+                user_id=1,
+                type="trusted",
+                message="You are now trusted",
+                hash="trusted_status",
+                unread=0,
+                notified_at=T,
+                created_at=T2,
+            ),
+            dict(
+                id=2,
+                user_id=1,
+                type="trusted",
+                message="Sent again",
+                hash="trusted_status",
+                unread=1,
+                notified_at=T2,
+                created_at=T2,
+            ),
+            dict(id=3, user_id=2, type="x", message="Something", hash="", unread=1, notified_at=None, created_at=T3),
+            dict(id=4, user_id=42, type="x", message="Nobody", hash="", unread=1, notified_at=T, created_at=T),
         ],
         "subscription_charge": [
             dict(
@@ -456,6 +481,16 @@ class ImportTests(TestCase):
         self.assertEqual((change.field, change.new_value), ("legacy", "trusted"))
         self.assertEqual(change.changed_at.isoformat(), "2025-03-01T12:00:00+00:00")
         self.assertIn("no such member: 1 (legacy ids 2)", self.output)
+
+    def test_notifications(self):
+        read, waiting = Notification.objects.order_by("legacy_id")
+        self.assertEqual((read.member, read.key, read.unread), (self.member(1), "trusted_status", False))
+        self.assertEqual(read.message, "You are now trusted")
+        self.assertEqual(read.created_at.isoformat(), "2025-03-01T12:00:00+00:00")
+        self.assertEqual((waiting.member, waiting.key, waiting.unread), (self.member(2), "", True))
+        self.assertEqual(waiting.created_at.isoformat(), "2025-09-01T12:00:00+00:00")  # no notified_at: created_at
+        self.assertIn("no such member: 1 (legacy ids 4)", self.output)
+        self.assertIn("the same notification twice for a member: 1 (legacy ids 2)", self.output)
 
     def test_fobs(self):
         kim = KeyFob.objects.get(legacy_id=1)

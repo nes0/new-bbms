@@ -4,6 +4,7 @@ from django import forms
 from django.core.validators import MinLengthValidator
 from django.db.models import Q
 
+from . import notices
 from .forms import normalise_postcode, subscription_field
 from .models import Address, Member
 
@@ -72,7 +73,7 @@ class AddressForm(forms.ModelForm):
         for name in ("line_1", "line_2", "line_3", "line_4"):
             setattr(address, name, getattr(address, name).strip())
         address.save()
-        # TODO(notifications app): tell the trustees there's an address to approve.
+        notices.address_waiting(address)
         return address
 
 

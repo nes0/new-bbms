@@ -339,6 +339,12 @@ in v2.
   `acs` role holder (once per missed heartbeat).
 - `acs` role holders manage devices (`/devices`): name, device id, entry vs equipment, monitor flag, API key.
 
+**Built (2026-11-08):** `manage.py check_devices` (every 15 minutes) tells the `acs` role and the admins in their
+notifications (06 §6.5). The notification's key includes the device's last heartbeat, so one outage is reported once
+however often the job runs, and again if the device comes back and goes quiet again. A device that has never sent a
+heartbeat, or one switched off in the admin ("enabled" unticked), isn't reported. Devices are managed in the Django
+admin, not a `/devices` page.
+
 ## 5.6 Usage sessions and billing
 
 Lifecycle of an `equipment_log` row: started → (heartbeats update `last_update`) → finished.

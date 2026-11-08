@@ -67,7 +67,7 @@ AcsNode (devices)   Settings (key/value)   AuditLog
 - **`profile_data`** (1:1): social links (twitter, facebook, google_plus, github, irc, website), `tagline`, `description`, `skills_array` (JSON list of skill keys), and photo flags:
   `profile_photo` (approved photo exists), `new_profile_photo` (awaiting approval), `profile_photo_private` (only show to members), `profile_photo_on_wall` (physical photo on the wall — counts instead of an online photo for door access).
 - **`user_address`**: `line_1..4`, `postcode`, `approved`. A member edit creates an **unapproved** row; an admin approves/declines it. Admin edits are approved immediately.
-- **`notifications`**: in-app messages `message`, `type`, `hash` (dedupe key, e.g. `trusted_status`, `<expenseId>-expense_approved`), `unread`, `notified_at/method`.
+- **`notifications`**: in-app messages `message`, `type`, `hash` (dedupe key, e.g. `trusted_status`, `<expenseId>-expense_approved`), `unread`, `notified_at/method`. **Built** (`apps/notifications`): `member`, `kind` (legacy `type`), `message`, `url`, `key` (legacy `hash`), `unread`, `created_at`; one per member and key. Legacy's `notified_method` is dropped (nothing was ever sent another way).
 - **New: `IdDocument`** (proof of identity, 03 §3.1): `member`, `kind` (`photo_id` / `proof_of_address`, one of
   each), `filename`, `content_type` (from the file's contents), `size`, `data` (the file itself), `uploaded_at`.
   Deleted once checked, or after 30 days. Not in the admin; never migrated or copied to staging/shadow.

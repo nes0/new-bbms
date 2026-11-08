@@ -211,7 +211,8 @@ def machine_status(request):
         )
         label = "out of order" if status == Equipment.Status.OUT_OF_ORDER else "working again"
         rules.notify_team(
-            equipment, f"{session.member.display_name} reported it {label}. {equipment.status_note}".strip()
+            equipment,
+            f"{session.member.display_name} reported {equipment.name} {label}. {equipment.status_note}".strip(),
         )
     return JsonResponse({"changed": True, "machine": machine_payload(equipment)})
 

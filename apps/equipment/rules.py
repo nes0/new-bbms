@@ -9,8 +9,10 @@ from datetime import datetime, time, timedelta
 
 from django.db import transaction
 from django.db.models import Sum
+from django.urls import reverse
 from django.utils import timezone
 
+from apps.notifications.notify import notify_role
 from apps.payments import credit, services
 from apps.site_settings.models import SiteSettings
 
@@ -39,8 +41,17 @@ def member_credit_pence(member) -> int:
 
 
 def notify_team(equipment: Equipment, message: str):
-    # TODO(notifications app): tell the machine's team (email/Discord). For now it only logs.
+    """Tell everyone on the machine's team (its managing role) in their notifications, and log it. `message` is a
+    whole sentence that says which machine it's about. If the machine has no team, only the admins are told."""
     logger.info("Notify team of %s: %s", equipment.slug, message)
+    roles = [equipment.team.name] if equipment.team_id else []
+    notify_role(
+        *roles,
+        admins=not roles,
+        message=message,
+        kind="equipment_team",
+        url=reverse("admin:equipment_equipment_change", args=[equipment.pk]),
+    )
 
 
 def is_on_team(member, equipment: Equipment) -> bool:
@@ -203,7 +214,7 @@ def check_service_reminders():
     sent = 0
     for equipment in Equipment.objects.filter(archived=False, service_interval_hours__isnull=False):
         if equipment.service_reminder_sent_at is None and service_due(equipment):
-            notify_team(equipment, "is due for a service")
+            notify_team(equipment, f"{equipment.name} is due for a service.")
             Equipment.objects.filter(pk=equipment.pk).update(service_reminder_sent_at=timezone.now())
             sent += 1
     return sent

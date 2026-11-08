@@ -72,3 +72,7 @@ body.backdrop main { background: var(--bg); max-width: 34rem; margin: 2rem auto;
 select, textarea { font: inherit; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); }
 .skills-choice { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 0.25rem 1rem; padding: 0; list-style: none; }
 .skills-choice label { display: flex; gap: 0.5rem; align-items: center; }
+.badge { display: inline-block; min-width: 1.4em; padding: 0 0.4em; border-radius: 1em; background: var(--accent);
+  color: #fff; font-size: 0.8em; line-height: 1.4em; text-align: center; }
+.notification { border-left-width: 4px; }
+.notification.unread { border-left-color: var(--accent); }

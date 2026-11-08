@@ -1,0 +1,9 @@
+{% autoescape off %}Your proof of identity has been checked
+Hello {{ member.given_name }},
+
+A trustee has checked your proof of identity at {{ site_name }}, and we've deleted the copies you sent.
+
+Nothing more is needed from you for this.
+
+Your account: {{ site_url }}/account/
+{% endautoescape %}

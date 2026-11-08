@@ -8,6 +8,8 @@ from django.utils import timezone
 
 from apps.equipment.models import UsageSession
 from apps.members.models import Member
+from apps.notifications.models import Notification
+from apps.payments import services
 
 from .helpers import laser, member
 
@@ -55,6 +57,18 @@ class SessionAdjustmentTests(TestCase):
         self.assertEqual(self.session.fee_pence, 300)
         self.assertEqual(self.session.original_ended_at, self.start + timedelta(hours=4))
         self.assertEqual(self.session.adjusted_by, self.admin)
+
+    def test_the_member_is_told_the_old_and_new_times_and_the_refund(self):
+        services.settle_session(self.session)  # the original £12 charge
+        self.post(self.start + timedelta(hours=1))
+        notification = Notification.objects.get(member=self.session.member, kind="session_adjusted")
+        self.assertIn("Red laser", notification.message)
+        self.assertIn("now it's", notification.message)
+        self.assertIn("refunded £9.00", notification.message)
+
+    def test_nobody_is_told_if_the_times_didnt_change(self):
+        self.post(self.start + timedelta(hours=4))
+        self.assertFalse(Notification.objects.exists())
 
     def test_a_reason_is_required(self):
         response = self.post(self.start + timedelta(hours=1), reason="")

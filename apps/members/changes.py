@@ -11,6 +11,7 @@ import logging
 from django.utils import timezone
 
 from apps.billing import emails
+from apps.notifications.notify import notify
 
 from .models import Member, MemberChange
 
@@ -64,6 +65,13 @@ def record(member, before, changed_by):
             ", ".join(c.field for c in changes),
         )
     if after["trusted"] and not before["trusted"]:
-        # TODO(notifications app, 06 §6.5): also an in-app notification, deduplicated as "trusted_status".
         emails.send(member, "members/emails/trusted")
+        # Once only, even if they're made trusted again later (06 §6.5).
+        notify(
+            member,
+            "You're now a trusted member. Pay the key deposit to get a key.",
+            kind="trusted_status",
+            key="trusted_status",
+            url="/pay/",
+        )
     return changes

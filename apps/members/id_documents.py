@@ -21,6 +21,7 @@ from django.utils import timezone
 
 from apps.site_settings.models import SiteSettings
 
+from . import notices
 from .models import IdCheck, IdDocument
 
 MAX_FILE_BYTES = 10 * 1024 * 1024
@@ -130,7 +131,7 @@ def record_check(member, reviewer, result: str, note: str = "") -> IdCheck:
     seen = ", ".join(sorted(documents.values_list("kind", flat=True)))
     check = IdCheck.objects.create(member=member, result=result, note=note, documents_seen=seen, checked_by=reviewer)
     documents.delete()
-    # TODO(notifications app): email the member: approved, or "please send again" with the note.
+    notices.id_checked(check)
     return check
 
 

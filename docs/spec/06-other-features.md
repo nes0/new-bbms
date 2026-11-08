@@ -51,7 +51,7 @@ Built in `apps/profiles`. Choices made while building:
   (linked on Discord, 06 §6.14; a group can have several, as groups are broader than the server's topics), edited in
   the admin (Users → Groups), where a role can also be hidden from the page. The import fills them from legacy's
   roles (its private role email isn't shown, so isn't kept; its Slack channel names are dropped with Slack).
-- Still to do: telling admins there's a photo to approve (06 §6.5, notifications).
+- Admins are told in their notifications when a photo is waiting for approval (06 §6.5).
 
 ## 6.2 Storage: boxes and lockers
 
@@ -203,6 +203,34 @@ their own; admins/finance see all.
 
 - Created by the system (trusted status granted, expense approved/declined, device offline, …), deduplicated by a hash.
 - `/notifications`: member's list; mark read/unread (own notifications only).
+
+### Build status (2026-11-08)
+
+Built in `apps/notifications`. Anything that wants to tell a member something calls one function, `notify(member,
+message, kind=, key=, url=)`; `notify_role(role, ..., admins=True)` tells everyone in a role (and the admins:
+superusers and the `admin` role). Choices made while building:
+- **A notification** is plain text (escaped when shown), with an optional link to a page on this site (anything else is
+  refused, so a notification can't send a member elsewhere). It's unread until the member reads it, or follows its link.
+- **`key` stops repeats** (legacy's `hash`): a member can have only one notification with a given key, and a second
+  is quietly dropped. Leave it out for something that can happen again.
+- **`/notifications/`** lists the member's own, newest first (25 a page, "show only unread", "mark all as read"),
+  with mark read or unread on each. The page header shows how many are unread. The admin has a read-only list.
+- **Who is told what:**
+
+  | When | Who is told | Key |
+  |---|---|---|
+  | Made trusted | the member (with the email) | `trusted_status`: once ever, as legacy |
+  | A member changes their address | the `trustees` role and the admins | one per change |
+  | An address change is approved or declined (by an admin, in the queue or on the member's page) | the member | none |
+  | A trustee checks a proof of identity | the member, and by email (03 §3.1) | none |
+  | A member uploads a photo | the admins | one per photo |
+  | An admin adjusts a machine session's times | the member: old and new times and any refund or extra charge (05 §5.6) | none |
+  | A machine's team is told (reported out of order or fixed, due for a service) | the machine's role; the admins if it has none | none |
+  | A monitored device is quiet for over an hour (05 §5.5) | the `acs` role and the admins | one per outage |
+
+- **Not built yet:** expenses (waiting for their app) and proposals; both will call `notify`. Notifications aren't
+  emailed or sent to Discord; the emails in §6.6 are separate.
+- The import brings in legacy's notifications (08 §8.2), read and unread, keeping their `hash` as the key.
 
 ## 6.6 Email
 

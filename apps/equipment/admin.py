@@ -4,7 +4,7 @@ from django.utils import timezone
 
 from apps.payments import services
 
-from . import rules
+from . import notices, rules
 from .models import Equipment, Induction, MachineStatusChange, ServiceRecord, TrainingCompletion, UsageSession
 
 
@@ -192,8 +192,10 @@ class UsageSessionAdmin(admin.ModelAdmin):
         return f"{minutes // 60}h {minutes % 60:02d}m" + ("" if session.ended_at else " (open)")
 
     def save_model(self, request, obj, form, change):
+        times_before = None
         if change and {"started_at", "ended_at"} & set(form.changed_data):
             original = UsageSession.objects.get(pk=obj.pk)
+            times_before = (original.started_at, original.ended_at)
             if obj.original_started_at is None:  # keep the very first times, even after several adjustments
                 obj.original_started_at = original.started_at
                 obj.original_ended_at = original.ended_at
@@ -208,8 +210,9 @@ class UsageSessionAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
         if obj.ended_at:
             # Charge, or refund, the difference as a new ledger row (05 §5.6).
-            # TODO(notifications app): tell the member the old and new times and any change to the charge.
             correction = services.settle_session(obj)
+            if times_before is not None:
+                notices.session_adjusted(obj, times_before, correction)
             if correction is not None and correction.corrects_id:
                 verb = "refunded" if correction.amount_pence < 0 else "charged"
                 messages.info(request, f"The member was {verb} £{abs(correction.amount_pence) / 100:.2f}.")
