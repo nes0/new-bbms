@@ -167,8 +167,8 @@ row a new field whose default is the starting value.
 | Key deposit (physical key for 24-hour access; legacy door-key deposit) | £15. **Built** |
 | Active fobs per member (fobs are free) | 2, 1–10. **Built** |
 | How long a reader waits for a new fob to be tapped | new; 60 seconds (05 §5.1), 15 seconds–10 minutes. **Built** |
-| Occupancy timeout (no tap-out) | new; default 4 hours after last fob activity, everyone cleared at 4am |
-| Public occupancy count on the website | new; on/off |
+| Occupancy timeout (no tap-out) | new; default 4 hours after last fob activity (1–24), everyone cleared at 4am (the hour is a setting too). **Built** |
+| Public occupancy count on the website | new; on/off, off to start with. **Built** |
 | Attendance threshold for the trusted-status review list | new; ❓ suggested 8 visits over 4 weeks (05 §5.10) |
 | Box fee (one-off, non-refundable) | £15 (charged outside BBMS today). **Built** |
 | Lockers allowed per member (admins can override per member) | new; ❓ suggested 1, so it starts at 1 (0–20). **Built** |

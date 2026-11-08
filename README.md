@@ -56,6 +56,9 @@ The membership system for Build Brighton: members, payments, door and machine ac
   adds them to the server, sets their nickname to their real name, posts a welcome message (text in Settings) and
   keeps their member / former-member role right. Without the `DISCORD_*` settings, development uses a fake
   Discord page (`/dev/discord/`);
+- **who's in and activity** (`/activity/`): who's in the space now (a best guess from door taps, tap-outs and
+  machine use, refreshed every minute) and each day's door and machine activity; optionally a public count of
+  people in the space (home page and `/occupancy.json`);
 - **expenses**: members claim back what they spent for the space, with a receipt (`/expenses/claim/`); admins
   approve or decline each claim beside its receipt, and an approved claim is added to the member's credit;
 - **proposals and voting**: trustees write proposals in the admin, current members vote at `/proposals/` (a secret
@@ -69,7 +72,7 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `bbms/` | Django project settings and top-level URLs |
 | `apps/core/` | Site-wide pieces: home page, health check (`/healthz`), shared templates |
 | `apps/members/` | Members and their login accounts, including the legacy password hasher |
-| `apps/access/` | Key fobs, devices (door and machine readers), door decisions, the device API |
+| `apps/access/` | Key fobs, devices (door and machine readers), door decisions, the device API, the activity and who's-in pages |
 | `apps/equipment/` | Equipment, inductions, Moodle course completions, machine usage sessions and fees |
 | `apps/site_settings/` | Settings the trustees change in the admin (prices, limits, reader timings, the space's name), with a log of changes |
 | `apps/payments/` | The ledger, member credit, machine fees charged from credit, cash and manual payments, withdrawals, card (Stripe) and PayPal payments |

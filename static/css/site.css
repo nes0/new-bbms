@@ -80,3 +80,9 @@ select, textarea { font: inherit; padding: 0.5rem; border: 1px solid var(--borde
 .scroll { overflow-x: auto; }
 .table .number { text-align: right; white-space: nowrap; }
 img.receipt { max-width: 100%; height: auto; border: 1px solid var(--border); }
+/* Who's in and activity (06 §6.7) */
+.people, .timeline { list-style: none; padding: 0; }
+.people li, .timeline li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; padding: 0.3rem 0;
+  border-bottom: 1px solid var(--border); }
+.timeline time { min-width: 3rem; font-variant-numeric: tabular-nums; color: var(--muted); }
+.timeline .avatar.small, .people .avatar.small { width: 2rem; font-size: 0.8rem; margin-right: 0; }

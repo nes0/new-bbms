@@ -5,7 +5,14 @@ from django.views.decorators.cache import never_cache
 
 
 def home(request):
-    return render(request, "core/home.html")
+    """The home page. Visitors see how many people are in the space, if the trustees turned that on (06 §6.7)."""
+    from apps.access import activity
+    from apps.site_settings.models import SiteSettings
+
+    in_space = None
+    if not request.user.is_authenticated and SiteSettings.load().public_occupancy_count:
+        in_space = activity.count()
+    return render(request, "core/home.html", {"in_space": in_space})
 
 
 @never_cache

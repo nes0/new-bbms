@@ -295,6 +295,23 @@ email its trained members"?
   setting** (decided 2026-11-07).
 - Dropped: the "reveal door key" button (the emergency PIN is defunct) and the Pusher real-time feed.
 
+### Build status (2026-11-08)
+
+Built in `apps/access` (`activity.py`, `activity_views.py`). Choices made while building:
+- **`/activity/`** ("Who's in" in the header), for members (anyone who sees the member directory): the "in the space
+  now" panel at the top, refreshed every minute with HTMX, then the chosen day (today by default; previous / next
+  day and a date picker, never the future), newest first: front-door entries, check-ins, tap-outs and machine
+  sessions started that day (with their length), each with the member's photo or initials. Offline taps are marked
+  "recorded offline". Refusals aren't shown (legacy showed only successful taps too). Members who aren't in the
+  directory (e.g. leaving) are shown by name without a link or photo.
+- **In the space now**: from an entry tap or check-in until a tap-out; gone after the timeout without fob activity
+  (door taps and machine use, including heartbeats); everyone gone at the reset hour. **Also**: anyone with a machine
+  session running now counts as in, even without a door tap (someone let them in), shown as "using the …".
+- **Settings → Who's in**: the timeout (4 hours), the reset hour (4am) and the public count (off).
+- **Public count** (when on): "N people are in the space now" on the home page for visitors, and
+  `GET /occupancy.json` → `{"in_space": N, "as_of": "<time>"}` (any website may fetch it), 404 when off. Never names.
+- Not built yet: the count on the exit reader's screen (09).
+
 ## 6.8 Resources and policies
 
 - `/resources`: index of policy documents; `/resources/policy/{name}` renders a markdown policy (public).
