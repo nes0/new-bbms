@@ -6,8 +6,12 @@ cut: identity, status and the flags that control access. Payment details, fobs, 
 arrive with their own apps.
 """
 
+import uuid
+
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models, transaction
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.utils import timezone
 
 
@@ -214,6 +218,44 @@ class MemberChange(models.Model):
 
     def __str__(self):
         return f"{self.member} · {self.field}: {self.old_value} → {self.new_value}"
+
+
+def _photo_path(photo, filename):
+    # A random name, so a photo's address says nothing about whose it is (legacy used md5 of the member's id, 02 §2.2).
+    return f"member-photos/{uuid.uuid4().hex}.png"
+
+
+class MemberPhoto(models.Model):
+    """A member's photo (06 §6.1): a 500 px square and a 200 px thumbnail, as PNGs, in private file storage.
+
+    A member has at most one current (approved) photo and one waiting for approval. `Member.photo_approved` says
+    whether they have an approved photo (05 §5.2). The upload and approval pages come with the profiles app; for now
+    photos arrive from the legacy import.
+    """
+
+    class Kind(models.TextChoices):
+        CURRENT = "current", "Approved"
+        PENDING = "pending", "Waiting for approval"
+
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name="photos")
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    image = models.FileField(upload_to=_photo_path)
+    thumbnail = models.FileField(upload_to=_photo_path)
+    uploaded_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["member", "kind"], name="one_member_photo_per_kind")]
+
+    def __str__(self):
+        return f"{self.member} · {self.get_kind_display()}"
+
+
+@receiver(post_delete, sender=MemberPhoto)
+def _delete_photo_files(sender, instance, **kwargs):
+    """Photos are personal data: deleting one (or its member) deletes its files, once the deletion is committed."""
+    names = [f.name for f in (instance.image, instance.thumbnail) if f]
+    storage = instance.image.storage
+    transaction.on_commit(lambda: [storage.delete(name) for name in names])
 
 
 class Address(models.Model):

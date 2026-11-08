@@ -1,17 +1,23 @@
 """The legacy import (spec 08 §8.2), using made-up legacy rows shaped like the real tables."""
 
+import hashlib
+import tempfile
+import urllib.error
 from datetime import datetime
 
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import Group
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from apps.access import tags
 from apps.access.models import AccessEvent, Device, KeyFob
 from apps.equipment.models import Equipment, Induction, UsageSession
 from apps.legacy.importer import Importer
+from apps.legacy.photos import PNG_SIGNATURE, PhotoSource
 from apps.legacy.source import ListSource
-from apps.members.models import Member, MemberChange
+from apps.members.models import Member, MemberChange, MemberPhoto
+from apps.payments.credit import credit_pence
+from apps.payments.models import Payment
 
 # A real PHP password_hash() of "BBMStest2026!" (as in apps/members/tests.py).
 PHP_HASH = "$2y$10$sEjkh81ZV4pWfRu8mhnU4OJk47Ih8KK8f6NibQt4HLuUKJh/DaVWy"
@@ -20,6 +26,8 @@ SAM_TAG = tags.full_tag("55", 12345601)
 DOOR_KEY = "legacy-door-key-1234"
 LASER_KEY = "legacy-laser-key-5678"
 T = datetime(2025, 3, 1, 12, 0, 0)  # naive, as PyMySQL returns them (UTC)
+T2 = datetime(2025, 6, 1, 12, 0, 0)
+T3 = datetime(2025, 9, 1, 12, 0, 0)
 
 
 def user(id, email, status="active", **fields):
@@ -48,6 +56,23 @@ def user(id, email, status="active", **fields):
     return row
 
 
+def payment(id, user_id, reason, source, amount, *, fee=0.0, ref="", source_id="", status="paid"):
+    return dict(
+        id=id,
+        user_id=user_id,
+        reason=reason,
+        reference=ref,
+        source=source,
+        source_id=source_id,
+        amount=amount,
+        fee=fee,
+        amount_minus_fee=amount - fee,
+        status=status,
+        paid_at=T if status == "paid" else "0000-00-00 00:00:00",
+        created_at=T,
+    )
+
+
 def legacy_tables():
     return {
         "users": [
@@ -62,13 +87,34 @@ def legacy_tables():
                 mandate_id="MD-MADE-UP-1",
                 subscription_expires=datetime(2025, 4, 1),
                 inducted_by=3,
+                cash_balance=700,  # legacy's cached credit, in pence: £10 top-up − £3 laser fee
+                hash="made-up-hash-kim",
             ),
-            user(2, "sam@example.com", status="payment-warning", payment_method="paypal", monthly_subscription=20),
-            user(3, "admin@example.com", payment_method="balance", payment_day=0),
+            user(
+                2,
+                "sam@example.com",
+                status="payment-warning",
+                payment_method="paypal",
+                monthly_subscription=20,
+                cash_balance=13,
+                hash="made-up-hash-sam",
+            ),
+            user(3, "admin@example.com", payment_method="balance", payment_day=0, cash_balance=0),  # really -5p
             user(4, "kim@example.com"),  # same email as user 1, differently cased
             user(5, "gone@example.com", status="left", password=""),
             # Confirmed by someone not imported, so the door needs it confirming again.
             user(6, "odd@example.com", status="on-hold", inducted_by=99, trusted=1, key_holder=1),
+        ],
+        "user_address": [
+            # Kim: an old approved address, the current one, and a change waiting for approval
+            dict(id=1, user_id=1, line_1="1 Old Street", postcode="BN1 1AA", approved=1, created_at=T),
+            dict(id=2, user_id=1, line_1="2 Current Street", line_2="", postcode="bn2 2bb", approved=1, created_at=T2),
+            dict(id=3, user_id=1, line_1="3 New Street", postcode="BN3 3CC", approved=0, created_at=T3),
+            # Sam: a change older than the approved address (out of date)
+            dict(id=4, user_id=2, line_1="4 Stale Street", postcode="BN4 4DD", approved=0, created_at=T),
+            dict(id=5, user_id=2, line_1="5 Real Street", postcode="BN5 5EE", approved=1, created_at=T2),
+            dict(id=6, user_id=42, line_1="6 Nobody Street", postcode="BN6 6FF", approved=1, created_at=T),
+            dict(id=7, user_id=3, line_1="", postcode="", approved=1, created_at=T),
         ],
         "audit_log": [
             dict(id=1, user_id=1, admin_id=3, action="user_updated", description="trusted", created_at=T),
@@ -210,13 +256,35 @@ def legacy_tables():
             ),
         ],
         "inductions": [
-            dict(id=1, user_id=1, key="laser", paid=1, trained=T, trainer_user_id=3, is_trainer=0, created_at=T),
+            dict(
+                id=1,
+                user_id=1,
+                key="laser",
+                paid=1,
+                payment_id=106,
+                trained=T,
+                trainer_user_id=3,
+                is_trainer=0,
+                created_at=T,
+            ),
             dict(id=2, user_id=1, key="laser", paid=1, trained=None, trainer_user_id=0, is_trainer=0, created_at=T),
             dict(id=3, user_id=2, key="lathe", paid=1, trained=None, trainer_user_id=0, is_trainer=0, created_at=T),
             dict(id=4, user_id=1, key="Box", paid=1, payment_id=100, trained=None, created_at=T),
             dict(id=5, user_id=2, key="Box", paid=1, payment_id=101, trained=None, created_at=T),
         ],
-        "payments": [dict(id=100, status="paid"), dict(id=101, status="failed")],
+        "payments": [
+            payment(100, 1, "storage-box", "cash", 15.0),
+            payment(101, 2, "storage-box", "gocardless-variable", 15.0, status="failed"),
+            payment(102, 1, "subscription", "gocardless-variable", 25.0, fee=0.2, ref="1", source_id="PM-MADE-UP-1"),
+            payment(103, 1, "balance", "stripe", 10.0, fee=0.35, source_id="ch_made_up"),
+            payment(104, 1, "equipment-fee", "balance", 3.0, ref="1:laser"),
+            payment(105, 3, "printer", "balance", 0.05, ref="printer-1"),
+            payment(106, 1, "induction", "gocardless-variable", 10.0, ref="laser", status="pending_submission"),
+            payment(107, 0, "donation", "paypal", 5.0),
+            payment(108, 42, "balance", "cash", 1.0),
+            payment(109, 2, "balance", "gocardless-variable", 9.0, status="weird"),
+            payment(110, 2, "balance", "cash", 0.125),  # rounds half up to 13p
+        ],
         "equipment_log": [
             # billed hour on the laser
             dict(
@@ -387,6 +455,55 @@ class ImportTests(TestCase):
         self.assertFalse(Induction.objects.filter(category__iexact="box").exists())
         self.assertIn("inductions for categories no equipment uses: lathe 1", self.output)
 
+    def test_addresses_keep_the_current_one_and_a_waiting_change(self):
+        kim = self.member(1)
+        self.assertEqual(kim.current_address.line_1, "2 Current Street")
+        self.assertEqual(kim.current_address.postcode, "BN2 2BB")
+        self.assertEqual(kim.pending_address.line_1, "3 New Street")
+        sam = self.member(2)
+        self.assertEqual([a.line_1 for a in sam.addresses.all()], ["5 Real Street"])
+        self.assertIn("an older approved address (replaced): 1 (legacy ids 1)", self.output)
+        self.assertIn("a change older than the approved address: 1 (legacy ids 4)", self.output)
+        self.assertIn("no first line: 1 (legacy ids 7)", self.output)
+        self.assertIn("1 address change(s) waiting for approval", self.output)
+
+    def test_payments_in_pence_with_their_reasons_sources_and_statuses(self):
+        subscription = Payment.objects.get(legacy_id=102)
+        self.assertEqual(
+            (subscription.reason, subscription.source, subscription.amount_pence, subscription.fee_pence),
+            ("subscription", "gocardless-variable", 2500, 20),
+        )
+        self.assertEqual(subscription.source_id, "PM-MADE-UP-1")
+        self.assertEqual(subscription.paid_at.isoformat(), "2025-03-01T12:00:00+00:00")
+        self.assertEqual(Payment.objects.get(legacy_id=110).amount_pence, 13)  # £0.125, half up
+        induction_fee = Payment.objects.get(legacy_id=106)
+        self.assertEqual((induction_fee.status, induction_fee.paid_at), ("pending", None))
+        printer = Payment.objects.get(legacy_id=105)
+        self.assertEqual((printer.reason, printer.reference), ("consumable", "printer:printer-1"))
+        self.assertIsNone(Payment.objects.get(legacy_id=107).member)  # a donation from someone outside
+        self.assertIsNone(Payment.objects.get(legacy_id=108).member)
+        self.assertEqual(Payment.objects.get(legacy_id=109).status, "cancelled")
+        self.assertIn("payments for other services, imported as consumables: printer 1", self.output)
+        self.assertIn("payments with unknown statuses, imported as cancelled", self.output)
+        self.assertIn("1 payment(s) of members not imported kept with no member", self.output)
+
+    def test_payments_are_linked_to_charges_sessions_and_inductions(self):
+        from apps.billing.models import Charge
+
+        self.assertEqual(Payment.objects.get(legacy_id=102).charge, Charge.objects.get(legacy_id=1))
+        self.assertEqual(Payment.objects.get(legacy_id=104).usage_session, UsageSession.objects.get(legacy_id=1))
+        self.assertEqual(Induction.objects.get(legacy_id=1).payment, Payment.objects.get(legacy_id=106))
+
+    def test_credit_is_checked_against_legacy(self):
+        self.assertEqual(credit_pence(self.member(1)), 700)
+        self.assertEqual(credit_pence(self.member(2)), 13)
+        self.assertIn("credit differs from legacy's cached balance for 1 member(s), by £-0.05", self.output)
+        self.assertIn("(legacy ids, new minus legacy: 3 (-5p))", self.output)
+
+    def test_photos_are_only_copied_when_asked(self):
+        self.assertFalse(MemberPhoto.objects.exists())
+        self.assertIn("photos not copied (2 to copy): run with --photos-from", self.output)
+
     def test_box_paid_flags(self):
         self.assertEqual(self.importer.box_paid_user_ids, [1])
         self.assertIn("box paid: 1 members qualify; 1 have a paid induction but no paid payment", self.output)
@@ -409,7 +526,8 @@ class ImportTests(TestCase):
         self.assertIn("door log services with no device: old-cctv 1", self.output)
 
     def test_report_lists_tables_not_imported_and_shows_no_personal_data(self):
-        self.assertIn("payments (2 rows, payments app)", self.output)
+        self.assertIn("proposals (0 rows, governance app)", self.output)
+        self.assertNotIn("Street", self.output)
         self.assertNotIn("@example.com", self.output)
         self.assertNotIn("Given", self.output)
 
@@ -436,3 +554,65 @@ class ImportedDataWorksTests(TestCase):
         UsageSession.objects.filter(legacy_id=4).delete()  # the session left open by the legacy system
         response = self.tap(LASER_KEY, KIM_TAG, "laser")
         self.assertEqual(response.status_code, 201, response.content)
+
+
+PHOTO_FOLDER = "https://photos.example.com/bucket/production"
+
+
+def fake_s3(files):
+    """Stands in for legacy's public S3 folder: {name: bytes}."""
+
+    def opener(url):
+        name = url.removeprefix(PHOTO_FOLDER + "/user-photo/")
+        if name not in files:
+            raise urllib.error.HTTPError(url, 404, "Not Found", None, None)
+        return files[name]
+
+    return opener
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp(prefix="bbms-test-media-"))
+class ImportOptionsTests(TestCase):
+    def setUp(self):
+        kim = hashlib.md5(b"made-up-hash-kim").hexdigest()
+        sam = hashlib.md5(b"made-up-hash-sam").hexdigest()
+        self.files = {
+            f"{kim}.png": PNG_SIGNATURE + b"kim-500",
+            f"{kim}-thumb.png": PNG_SIGNATURE + b"kim-200",
+            f"{sam}-new.png": PNG_SIGNATURE + b"sam-500",
+            f"{sam}-thumb-new.png": b"<html>not a photo</html>",
+        }
+
+    def run_import(self, save=True, **options):
+        photos = PhotoSource(PHOTO_FOLDER, save=save, opener=fake_s3(self.files))
+        report = Importer(ListSource(legacy_tables()), photos=photos, **options).run()
+        return "\n".join(report.lines())
+
+    def test_photos_are_copied_to_private_storage_under_new_names(self):
+        output = self.run_import()
+        photo = MemberPhoto.objects.get()
+        self.assertEqual((photo.member.legacy_id, photo.kind), (1, "current"))
+        self.assertEqual(photo.image.read(), PNG_SIGNATURE + b"kim-500")
+        self.assertEqual(photo.thumbnail.read(), PNG_SIGNATURE + b"kim-200")
+        self.assertNotIn("made-up-hash", photo.image.name)
+        self.assertIn("photos copied: 1 approved, 0 waiting for approval", output)
+        self.assertIn("1 photo(s) couldn't be fetched (legacy user ids 2)", output)  # Sam's thumbnail isn't a PNG
+
+    def test_a_dry_run_only_checks_the_photos(self):
+        output = self.run_import(save=False)
+        self.assertFalse(MemberPhoto.objects.exists())
+        self.assertIn("photos found (dry run: not copied): 1 approved", output)
+
+    def test_photos_must_come_over_https(self):
+        with self.assertRaises(ValueError):
+            PhotoSource("http://photos.example.com/bucket/production")
+
+    def test_mark_inducted_confirms_everyone_who_has_been_a_member(self):
+        output = self.run_import(mark_inducted=True)
+        for legacy_id in (1, 2, 3, 5, 6):
+            self.assertEqual(Member.objects.get(legacy_id=legacy_id).general_induction_status, "confirmed", legacy_id)
+        self.assertEqual(Member.objects.get(legacy_id=1).inducted_by, Member.objects.get(legacy_id=3))  # kept
+        change = MemberChange.objects.get(member__legacy_id=6, field="induction confirmed by")
+        self.assertEqual(change.new_value, "the legacy import (--mark-inducted)")
+        self.assertIn("--mark-inducted: 4 member(s) given a confirmed general induction", output)
+        self.assertNotIn("key holder(s) without a confirmed general induction", output)

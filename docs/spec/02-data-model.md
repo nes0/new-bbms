@@ -75,6 +75,8 @@ AcsNode (devices)   Settings (key/value)   AuditLog
 - **`audit_log`**: `admin_id`, `user_id`, `action`, `description`. Written when audited fields (`induction_completed`, `trusted`, `key_holder`) change.
   **New** (`MemberChange`): member, field, old value, new value, changed by, changed at; also logs the photo flags,
   banned and who confirmed the general induction (03 §3.9). Members also gain `inducted_at` (05 §5.9).
+- **New: `MemberPhoto`** (06 §6.1): member, kind (`current` / `pending`, one of each), image (500 px PNG), thumbnail
+  (200 px PNG), uploaded at. Files in private storage (Spaces) under random names; deleting the row deletes them.
 
 ## 2.4 Money
 

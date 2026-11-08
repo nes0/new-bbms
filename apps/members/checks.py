@@ -36,3 +36,17 @@ def id_document_keys_are_set(app_configs, **kwargs):
             id="members.W001",
         )
     ]
+
+
+@checks.register(checks.Tags.security, deploy=True)
+def photo_storage_is_set(app_configs, **kwargs):
+    """Without Spaces, uploaded photos go on the app's own disk, which App Platform wipes on every deploy."""
+    if settings.SPACES_BUCKET:
+        return []
+    return [
+        checks.Warning(
+            "SPACES_BUCKET isn't set, so member photos are kept on the app's disk and lost when it's redeployed.",
+            hint="Set SPACES_BUCKET, SPACES_KEY and SPACES_SECRET (see bbms/settings.py and spec 01 §1.8).",
+            id="members.W002",
+        )
+    ]
