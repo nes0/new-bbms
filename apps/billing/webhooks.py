@@ -222,6 +222,9 @@ def _payment_failed(rows, charges, action, details, day) -> str:
         from apps.equipment.models import Induction
 
         Induction.objects.filter(payment__in=rows).update(paid=False)
+        from apps.storage import rules as storage
+
+        storage.box_payment_failed(rows)
     first = rows.select_related("member").first()
     if first is not None and first.member is not None:
         member = first.member

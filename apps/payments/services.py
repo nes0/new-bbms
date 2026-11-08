@@ -33,9 +33,14 @@ def record_payment(member, reason, source, amount_pence, *, status=Payment.Statu
         raise ValueError("A payment must be for more than £0.")
     if status == Payment.Status.PAID:
         fields.setdefault("paid_at", timezone.now())  # a bank line gives the day the money arrived
-    return Payment.objects.create(
+    payment = Payment.objects.create(
         member=member, reason=reason, source=source, status=status, amount_pence=amount_pence, **fields
     )
+    if reason == Payment.Reason.STORAGE_BOX and status in (Payment.Status.PAID, Payment.Status.PENDING):
+        from apps.storage import rules as storage
+
+        storage.give_box_flag(member, None, payment=payment)  # whichever way it was paid (06 §6.2)
+    return payment
 
 
 @transaction.atomic
@@ -89,7 +94,7 @@ def pay_key_deposit(member, source, *, amount_pence=None, **fields) -> Payment:
 
 
 def pay_box_fee(member, source, *, amount_pence=None, **fields) -> Payment:
-    # TODO(storage app): set the member's "box paid" flag, date and payment (06 §6.2).
+    """Pay the one-off box fee. Recording it sets the member's "box paid" flag (06 §6.2)."""
     amount = amount_pence or prices.box_fee_pence()
     return pay(member, Payment.Reason.STORAGE_BOX, source, amount, reference="box", **fields)
 

@@ -159,7 +159,7 @@ class MemberLockerLimit(models.Model):
 
 
 class LockerChange(models.Model):
-    """The audit log for lockers: prices, availability, rentals and members' limits (06 §6.2)."""
+    """The audit log for storage: lockers' prices, availability, rentals, members' limits and box flags (06 §6.2)."""
 
     class What(models.TextChoices):
         DEFAULT_RENT = "default-rent", "Default rent"
@@ -169,6 +169,7 @@ class LockerChange(models.Model):
         RENTED = "rented", "Rented"
         ENDED = "ended", "Rental ended"
         MEMBER_LIMIT = "member-limit", "Member's locker limit"
+        BOX_FLAG = "box-flag", "Box paid flag"
 
     what = models.CharField(max_length=20, choices=What.choices)
     locker = models.ForeignKey(Locker, on_delete=models.CASCADE, null=True, blank=True, related_name="changes")

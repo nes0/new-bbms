@@ -212,7 +212,6 @@ def suspend(member, now=None):
 @transaction.atomic
 def become_left(member, today: date | None = None):
     """Membership ends (03 §3.6): lockers released, charges cancelled, payment day cleared, emails sent."""
-    from apps.payments.models import Payment
     from apps.storage import rules as storage
 
     member = Member.objects.select_for_update().get(pk=member.pk)
@@ -224,7 +223,7 @@ def become_left(member, today: date | None = None):
         lockers.append(str(rental.locker))
     _cancel_open_charges(member)
     _set_status(member, Member.Status.LEFT, payment_day=None, suspended_at=None)
-    box = member.payments.filter(reason=Payment.Reason.STORAGE_BOX, status=Payment.Status.PAID).exists()
+    box = member.box_paid
     emails.send(member, "left", lockers=lockers, box=box)
     if lockers or box:
         emails.tell_storage_team("storage_member_left", member=member, lockers=lockers, box=box)

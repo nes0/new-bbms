@@ -80,6 +80,7 @@ class PayablesTests(CardTestCase):
         self.member.trusted = False
         self.member.save()
         record_payment(self.member, Payment.Reason.STORAGE_BOX, Payment.Source.CASH, 1500)
+        self.member.refresh_from_db()  # the box flag was set on another copy of the member
         self.assertEqual(checkout.payables(self.member), [])
 
     def test_only_charges_for_someone_who_isnt_a_current_member(self):

@@ -1,5 +1,5 @@
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 from django.utils import timezone
@@ -25,6 +25,19 @@ class MemberChangeForm(UserChangeForm):
         "Untick to withdraw it; tick to reinstate it. Changing the email address clears it.",
     )
 
+    box_paid = forms.BooleanField(
+        required=False,
+        label="Box paid",
+        help_text="Whether they've paid the one-off box fee (06 §6.2). Paying through BBMS ticks it. Tick it for a "
+        "fee paid outside BBMS; untick it to clear it. Either way give a reason below.",
+    )
+    box_reason = forms.CharField(
+        required=False,
+        label="Reason for the box change",
+        max_length=255,
+        help_text="Needed to tick or untick the box flag. Kept in the storage log.",
+    )
+
     class Meta:
         model = Member
         fields = "__all__"
@@ -32,9 +45,12 @@ class MemberChangeForm(UserChangeForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["email_confirmed"].initial = self.instance.email_verified
+        self.fields["box_paid"].initial = self.instance.box_paid
 
     def clean(self):
         cleaned = super().clean()
+        if "box_paid" in self.changed_data and not cleaned.get("box_reason"):
+            self.add_error("box_reason", "Say why: how the fee was paid, or why the flag is being cleared.")
         # A key holder must be trusted and have had their general induction confirmed (02 §2.2, 05 §5.9); the door
         # also needs a photo (05 §5.2). Checked when key holder is ticked, so existing key holders can still be edited.
         if cleaned.get("key_holder") and "key_holder" in self.changed_data:
@@ -159,6 +175,25 @@ class EmailFilter(admin.SimpleListFilter):
         return queryset
 
 
+class BoxFilter(admin.SimpleListFilter):
+    """Who has paid for a box, for the storage team (06 §6.2): those who've left have a labelled box to clear."""
+
+    title = "box"
+    parameter_name = "box"
+
+    def lookups(self, request, model_admin):
+        return [("paid", "Box paid"), ("left", "Box paid, but left (clear their box)"), ("none", "No box")]
+
+    def queryset(self, request, queryset):
+        if self.value() == "paid":
+            return queryset.filter(box_paid_at__isnull=False)
+        if self.value() == "left":
+            return queryset.filter(box_paid_at__isnull=False, status=Member.Status.LEFT)
+        if self.value() == "none":
+            return queryset.filter(box_paid_at__isnull=True)
+        return queryset
+
+
 @admin.register(Member)
 class MemberAdmin(UserAdmin):
     form = MemberChangeForm
@@ -175,7 +210,17 @@ class MemberAdmin(UserAdmin):
         "subscription_expires",
         "date_joined",
     )
-    list_filter = ("status", "payment_method", "trusted", "key_holder", PhotoFilter, EmailFilter, "banned", "is_staff")
+    list_filter = (
+        "status",
+        "payment_method",
+        "trusted",
+        "key_holder",
+        PhotoFilter,
+        EmailFilter,
+        BoxFilter,
+        "banned",
+        "is_staff",
+    )
     actions = ["revoke_email_confirmation", "reinstate_email_confirmation"]
     search_fields = ("email", "given_name", "family_name")
     ordering = ("given_name", "family_name")
@@ -196,6 +241,8 @@ class MemberAdmin(UserAdmin):
         "inducted_by",
         "inducted_at",
         "email_verified_at",
+        "box_paid_at",
+        "box_payment",
     )
 
     fieldsets = (
@@ -236,6 +283,7 @@ class MemberAdmin(UserAdmin):
                 "fields": ("trusted", "key_holder", "photo_approved", "photo_on_wall"),
             },
         ),
+        ("Storage", {"fields": ("box_paid", "box_paid_at", "box_payment", "box_reason")}),
         ("Banned", {"classes": ("collapse",), "fields": ("banned", "banned_at", "banned_reason")}),
         ("Admin", {"fields": ("notes", "is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         ("Record", {"classes": ("collapse",), "fields": ("legacy_id", "date_joined", "updated_at", "last_login")}),
@@ -283,8 +331,21 @@ class MemberAdmin(UserAdmin):
         super().save_model(request, obj, form, change)
         if before is not None:
             changes.record(obj, before, changed_by=request.user)
+        if change and "box_paid" in form.changed_data:  # the storage team ticked or unticked it (06 §6.2)
+            self._set_box_flag(request, obj, form.cleaned_data["box_paid"], form.cleaned_data["box_reason"])
         if new_address and not obj.email_verified:
             email_confirmation.send_confirmation(obj)  # so the member can confirm the address they now have
+
+    def _set_box_flag(self, request, member, paid, reason):
+        from apps.storage import rules as storage
+
+        try:
+            if paid:
+                storage.give_box_flag(member, request.user, reason=reason)
+            else:
+                storage.clear_box_flag(member, reason, request.user)
+        except storage.LockerError as error:
+            self.message_user(request, str(error), messages.ERROR)
 
     def save_formset(self, request, form, formset, change):
         if formset.model is not Address:

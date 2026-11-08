@@ -139,6 +139,22 @@ class Member(AbstractBaseUser, PermissionsMixin):
         "(03 §3.1). Empty: not confirmed. Changing the address clears it.",
     )
 
+    box_paid_at = models.DateTimeField(
+        "box paid on",
+        null=True,
+        blank=True,
+        help_text="When the member paid the one-off box fee (06 §6.2). Empty: no box flag. Change it with the rules in "
+        "apps/storage/rules.py, which log it.",
+    )
+    box_payment = models.ForeignKey(
+        "payments.Payment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        help_text="The payment that set the box flag; empty if the storage team ticked it for a fee paid outside BBMS.",
+    )
+
     banned = models.BooleanField(default=False)
     banned_at = models.DateTimeField(null=True, blank=True)
     banned_reason = models.TextField(blank=True)
@@ -202,6 +218,11 @@ class Member(AbstractBaseUser, PermissionsMixin):
 
     def get_short_name(self):
         return self.given_name
+
+    @property
+    def box_paid(self) -> bool:
+        """Whether the member has paid for a box (06 §6.2). There is no box inventory: only this flag."""
+        return self.box_paid_at is not None
 
     @property
     def email_verified(self) -> bool:
