@@ -61,13 +61,25 @@ FROM users WHERE payment_method IN ('gocardless', 'paypal') AND status <> 'left'
 GROUP BY payment_method, status;
 ```
 
-### Import script status (2026-11-07)
+### Import script status (2026-11-08)
 
 `manage.py import_legacy` (code in `apps/legacy/`) reads the legacy MySQL with a read-only user and imports, into an
 **empty** database: members (legacy passwords keep working, with how they pay, their payment day, mandate,
-monthly amount and paid-until date), subscription charges, roles, key fobs, devices (keeping their API keys),
-equipment, inductions, machine sessions and the door log. It prints a report with counts, skipped rows (by legacy
-id) and things to check; it never shows names or emails. `--dry-run` imports, reports and rolls back.
+monthly amount and paid-until date, and who confirmed their general induction), their addresses, the audit log,
+subscription charges, the **payments ledger**, roles, key fobs, devices (keeping their API keys), equipment,
+inductions, machine sessions, the door log and (when asked) **photos**. It prints a report with counts, skipped rows
+(by legacy id) and things to check; it never shows names or emails. `--dry-run` imports, reports and rolls back.
+
+Options:
+- `--mark-inducted`: every imported member except those still setting up gets a **confirmed general induction**
+  (confirmed "by the legacy import", at the time of the import, and logged in their audit log). The door now needs
+  one (05 §5.2) and legacy didn't check it, so without this, key holders whose induction legacy never confirmed lose
+  24-hour access; the report lists how many. ❓ Trustees to decide whether to use it at cutover.
+- `--photos-from URL`: copy members' photos (approved, and waiting for approval) from legacy's public S3 folder, e.g.
+  `https://s3-eu-west-1.amazonaws.com/<bucket>/production`. They're stored in private storage (Spaces, 01 §1.8)
+  under random names (`MemberPhoto`). Legacy names them by the md5 of `users.hash`. Needs internet access, so not on
+  the clone droplet; in a dry run they're only checked. Photos that can't be fetched are listed; the member keeps
+  their "photo approved" flag either way, so the door isn't affected.
 
 Choices made in the script (change them there if the trustees decide otherwise):
 - `payment-warning` → active (it still had access); `on-hold` → suspended. ❓
@@ -81,11 +93,26 @@ Choices made in the script (change them there if the trustees decide otherwise):
 - Members paying by old-style GoCardless or PayPal are imported with **no payment method** and listed by legacy id:
   move them to Direct Debit or a standing order before cutover. A payment day after the 28th becomes the 1st.
 - Subscription charges are imported as they are; a second charge for the same member and date is skipped and
-  listed. ⚠️ Charges still `processing` at cutover only finish when the legacy payments are imported too (their
-  GoCardless payment ids link the webhook's events to them), so the payments import must come before cutover.
+  listed. Charges still `processing` at cutover finish when GoCardless's events arrive, matched through the imported
+  payments' GoCardless ids.
+- **Payments:** pounds become pence, rounding half up. `door-key` becomes `key-deposit`. Any other unknown reason
+  (e.g. `printer`) becomes a consumable, with the legacy reason kept in the reference. Unknown sources become
+  "recorded by an admin". GoCardless's statuses are mapped (`confirmed`, `paid_out` → paid; `pending_submission`,
+  `submitted` → pending; `charged_back`, `customer_approval_denied` → failed; `refunded` → cancelled), and unknown
+  ones become cancelled, which, as in legacy, doesn't count towards credit. Each kind of fallback is counted in the
+  report. Payments of members who aren't imported, and PayPal donations from non-members, are kept with no member.
+  Subscription payments are linked to their charge (the reference is the charge id), equipment fees to their
+  session (`<session id>:<device>`) and induction fees to their induction (`inductions.payment_id`).
+- **Credit is reconciled:** each member's credit, worked out from the imported ledger, is compared with legacy's
+  cached `users.cash_balance`; differences are listed by legacy id with the amount.
+- **Addresses:** each member's latest approved address, and a later change still waiting for approval (shown in the
+  admin's Addresses queue). Older addresses, and changes older than the approved one, are skipped and listed.
+  Postcodes are upper-cased.
+- **Audit log:** each legacy row becomes a change with the field "legacy" and legacy's description.
 
-Not imported yet (waiting for their apps): payments, addresses, proposals, expenses, notifications, the
-audit log, photos and receipts. Tested on the legacy clone's data inside the Docker image (`tools/clone_test/`).
+Not imported yet (waiting for their apps): proposals, expenses, notifications, profiles' social links and
+descriptions, equipment photos and receipts. Tested on the legacy clone's data inside the Docker image
+(`tools/clone_test/`).
 
 ## 8.3 Testing before cutover, and phases
 

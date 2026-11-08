@@ -140,7 +140,7 @@ The new system runs on a
 | File storage | **DigitalOcean Spaces** (S3-compatible), private bucket | Member photos, equipment photos, expense receipts. Served through the app or short-lived signed URLs, never public-read. |
 | Email | A transactional email service (e.g. Postmark, Mailgun, SES) | Welcome, payment, expense and password emails. |
 | Domain & TLS | `bbms.buildbrighton.com` pointed at App Platform; certificate managed automatically | The current door firmware requires this exact hostname with a valid certificate. |
-| Secrets | App Platform encrypted environment variables | Never in the repo or the Docker image. Includes the Moodle web-service token, the OIDC signing key and the key that encrypts proofs of identity (03 §3.1). |
+| Secrets | App Platform encrypted environment variables | Never in the repo or the Docker image. Includes the Moodle web-service token, the OIDC signing key, the key that encrypts proofs of identity (03 §3.1) and the Spaces access key (`SPACES_KEY`, `SPACES_SECRET`). |
 | Monitoring | Error tracking (e.g. Sentry free tier), an uptime check on the device API, and a heartbeat check per scheduled job (e.g. Healthchecks.io) | A missed 01:30 billing run must alert a named person. |
 | Static files | Served by the app (WhiteNoise) | No separate web server needed. |
 

@@ -119,8 +119,31 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+# Uploaded files (member photos): a private DigitalOcean Spaces bucket in production (spec 01 §1.8), never public-read;
+# links to them are signed and expire. Without SPACES_BUCKET, files go in MEDIA_ROOT (development only: App
+# Platform's disk is wiped on every deploy).
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
+SPACES_BUCKET = env("SPACES_BUCKET", default="")
+if SPACES_BUCKET:
+    DEFAULT_STORAGE = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": SPACES_BUCKET,
+            "endpoint_url": env("SPACES_ENDPOINT", default="https://lon1.digitaloceanspaces.com"),
+            "region_name": env("SPACES_REGION", default="lon1"),
+            "access_key": env("SPACES_KEY"),
+            "secret_key": env("SPACES_SECRET"),
+            "default_acl": "private",
+            "querystring_auth": True,  # signed links
+            "querystring_expire": 300,  # seconds
+            "file_overwrite": False,
+        },
+    }
+else:
+    DEFAULT_STORAGE = {"BACKEND": "django.core.files.storage.FileSystemStorage"}
 STORAGES = {
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "default": DEFAULT_STORAGE,
     "staticfiles": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
         if DEBUG

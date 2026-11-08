@@ -1,8 +1,11 @@
+import tempfile
+
 from django.contrib.auth import authenticate
-from django.test import TestCase
+from django.core.files.base import ContentFile
+from django.test import TestCase, override_settings
 
 from .hashers import from_legacy_hash
-from .models import Member
+from .models import Member, MemberPhoto
 
 # Real hashes made by the legacy server's PHP (password_hash, cost 10) for throwaway test passwords.
 LEGACY_HASH = "$2y$10$sEjkh81ZV4pWfRu8mhnU4OJk47Ih8KK8f6NibQt4HLuUKJh/DaVWy"  # "BBMStest2026!"
@@ -79,3 +82,25 @@ class LegacyPasswordTests(TestCase):
     def test_garbage_hash_never_matches(self):
         self.migrated_member("not-a-bcrypt-hash")
         self.assertIsNone(authenticate(username="kim@example.com", password="anything"))
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp(prefix="bbms-test-media-"))
+class MemberPhotoTests(TestCase):
+    def test_deleting_a_member_deletes_their_photo_files(self):
+        member = Member.objects.create_user("photo@example.com", "a-good-password", given_name="Pat")
+        photo = MemberPhoto(member=member, kind=MemberPhoto.Kind.CURRENT)
+        photo.image.save("x.png", ContentFile(b"\x89PNG..."), save=False)
+        photo.thumbnail.save("y.png", ContentFile(b"\x89PNG..."), save=False)
+        photo.save()
+        storage, names = photo.image.storage, [photo.image.name, photo.thumbnail.name]
+        self.assertTrue(all(storage.exists(name) for name in names))
+        self.assertTrue(names[0].startswith("member-photos/"))
+        with self.captureOnCommitCallbacks(execute=True):
+            member.delete()
+        self.assertFalse(any(storage.exists(name) for name in names))
+
+    @override_settings(SPACES_BUCKET="")
+    def test_deploy_check_warns_without_photo_storage(self):
+        from .checks import photo_storage_is_set
+
+        self.assertEqual([w.id for w in photo_storage_is_set(None)], ["members.W002"])

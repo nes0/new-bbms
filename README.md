@@ -30,7 +30,9 @@ The membership system for Build Brighton: members, payments, door and machine ac
 - **payments and member credit**: the ledger, credit worked out from it, machine fees taken from credit when a session
   ends (with corrections when a session changes), cash and manual payments in the admin, and the member's credit page
   (`/credit/`) with withdrawal requests;
-- the **legacy import** (`manage.py import_legacy`), tested on the legacy clone's data inside the Docker image;
+- the **legacy import** (`manage.py import_legacy`): members, addresses, photos (`--photos-from`), payments,
+  charges, the audit log, fobs, equipment and the logs, with an option to mark everyone as inducted
+  (`--mark-inducted`); tested on the legacy clone's data inside the Docker image;
 - **lockers**: the inventory, default rents per size and location, price overrides for one member's rental and for
   an empty locker, availability, per-member limits and rentals in the admin, all logged; and the members' page
   (`/lockers/`). Self-service renting waits for its own slice;

@@ -5,8 +5,10 @@ Run through `manage.py import_legacy`, always into an **empty** database: the sc
 again against fresh copies of production before the real cutover, so it never tries to merge into existing data.
 
 What is imported so far (the apps that exist): members (with how they pay, what they've paid up to and who confirmed
-their general induction), their audit log and roles, subscription charges, key fobs, devices (keeping their API
-keys, so today's door and laser keep working), equipment, inductions, machine usage sessions and the door log.
+their general induction), their addresses, photos (with --photos-from), audit log and roles, subscription charges,
+the payments ledger (linked to charges, sessions and inductions, with credit checked against legacy), key fobs,
+devices (keeping their API keys, so today's door and laser keep working), equipment, inductions, machine usage
+sessions and the door log.
 Everything else is counted and listed as "not imported yet".
 
 The report only ever shows legacy **ids** and counts, never names or email addresses, so it's safe to share.
@@ -15,9 +17,11 @@ The report only ever shows legacy **ids** and counts, never names or email addre
 import json
 from collections import Counter, defaultdict
 from datetime import UTC, date, datetime
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import Group, Permission
+from django.core.files.base import ContentFile
 from django.utils import timezone
 from django.utils.text import slugify
 
@@ -27,7 +31,9 @@ from apps.billing.models import Charge
 from apps.equipment import rules
 from apps.equipment.models import Equipment, Induction, UsageSession
 from apps.members.hashers import from_legacy_hash
-from apps.members.models import Member, MemberChange
+from apps.members.models import Address, Member, MemberChange, MemberPhoto
+from apps.payments.credit import credit_by_member
+from apps.payments.models import Payment
 
 BATCH = 2000
 
@@ -65,14 +71,46 @@ SESSION_REASONS = {
 }
 
 NOT_IMPORTED_YET = [
-    ("payments", "payments app"),
-    ("user_address", "members: addresses"),
     ("proposals", "governance app"),
     ("proposal_votes", "governance app"),
     ("expenses", "governance app"),
     ("notifications", "notifications app"),
 ]
 NEVER_IMPORTED = ["storage_boxes", "detected_devices", "settings", "failed_jobs", "password_reminders", "migrations"]
+
+
+# Payments (02 §2.4, 04 §4.1). Any other legacy reason is a consumable service (e.g. a printer), kept in the reference.
+PAYMENT_REASONS = {
+    "subscription": Payment.Reason.SUBSCRIPTION,
+    "induction": Payment.Reason.INDUCTION,
+    "door-key": Payment.Reason.KEY_DEPOSIT,
+    "key-deposit": Payment.Reason.KEY_DEPOSIT,
+    "storage-box": Payment.Reason.STORAGE_BOX,
+    "balance": Payment.Reason.BALANCE,
+    "equipment-fee": Payment.Reason.EQUIPMENT_FEE,
+    "withdrawal": Payment.Reason.WITHDRAWAL,
+    "donation": Payment.Reason.DONATION,
+    "costs": Payment.Reason.COSTS,
+    "transfer": Payment.Reason.TRANSFER,
+}
+PAYMENT_SOURCES = {source.value: source for source in Payment.Source}
+# Legacy stored GoCardless's own statuses as they came. Credit counts paid, pending and withdrawn (04 §4.7).
+PAYMENT_STATUSES = {
+    "paid": Payment.Status.PAID,
+    "confirmed": Payment.Status.PAID,
+    "paid_out": Payment.Status.PAID,
+    "pending": Payment.Status.PENDING,
+    "pending_submission": Payment.Status.PENDING,
+    "pending_customer_approval": Payment.Status.PENDING,
+    "submitted": Payment.Status.PENDING,
+    "withdrawn": Payment.Status.WITHDRAWN,
+    "failed": Payment.Status.FAILED,
+    "charged_back": Payment.Status.FAILED,
+    "customer_approval_denied": Payment.Status.FAILED,
+    "late_failure_settled": Payment.Status.FAILED,
+    "cancelled": Payment.Status.CANCELLED,
+    "refunded": Payment.Status.CANCELLED,
+}
 
 
 # ---- Turning legacy values into Python values -------------------------------------------------------------------
@@ -106,6 +144,11 @@ def text(value, limit=None):
 
 def flag(value):
     return bool(value) and value not in ("0", 0)
+
+
+def pence(pounds):
+    """Legacy money (pounds, as a MySQL double) in pence, rounding half up (08 §8.2)."""
+    return int((Decimal(str(pounds or 0)) * 100).quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
 
 # ---- The report ---------------------------------------------------------------------------------------------------
@@ -145,8 +188,15 @@ class Report:
 
 
 class Importer:
-    def __init__(self, source, now=None):
+    """`mark_inducted`: treat every imported member who has been a member (not still setting up) as having had their
+    general induction confirmed, as the trustees may decide for cutover (05 §5.2). `photos`: a photos.PhotoSource
+    to copy members' photos from; without it, photos aren't copied.
+    """
+
+    def __init__(self, source, now=None, *, mark_inducted=False, photos=None):
         self.source = source
+        self.mark_inducted = mark_inducted
+        self.photos = photos
         self.report = Report()
         self.now = now or timezone.now()
         self.members = {}  # legacy user id -> Member
@@ -156,12 +206,16 @@ class Importer:
         self.equipment = {}  # slug -> Equipment
         self.box_paid_user_ids = []  # legacy user ids who'll get the "box paid" flag
         self.inducted_by = {}  # legacy user id -> legacy id of who confirmed their general induction
+        self.legacy_credit = {}  # legacy user id -> their cached credit in legacy (users.cash_balance, pence)
+        self.user_hashes = {}  # legacy user id -> users.hash (names their photos)
+        self.induction_payments = {}  # legacy induction id -> legacy payment id
 
     def run(self):
         # List every table in the report, even empty ones, in the order they're imported.
         for table in (
             "users",
             "audit_log",
+            "user_address",
             "subscription_charge",
             "profile_data",
             "roles",
@@ -171,11 +225,13 @@ class Importer:
             "acs_nodes",
             "inductions",
             "equipment_log",
+            "payments",
             "access_log",
         ):
             self.report.read[table] += 0
         self.import_members()
         self.import_audit_log()
+        self.import_addresses()
         self.import_charges()
         self.import_profiles()
         self.import_roles()
@@ -184,6 +240,7 @@ class Importer:
         self.import_devices()
         self.import_inductions()
         self.import_sessions()
+        self.import_payments()
         self.import_access_log()
         self.list_not_imported()
         return self.report
@@ -225,6 +282,9 @@ class Importer:
             pounds = int(row.get("monthly_subscription") or 0)
             if row.get("inducted_by"):
                 self.inducted_by[row["id"]] = row["inducted_by"]
+            self.legacy_credit[row["id"]] = int(row.get("cash_balance") or 0)
+            if text(row.get("hash")):
+                self.user_hashes[row["id"]] = text(row.get("hash"))
             batch.append(
                 Member(
                     email=email,
@@ -308,7 +368,7 @@ class Importer:
 
     def import_profiles(self):
         table, report = "profile_data", self.report
-        changed, pending_photos = [], 0
+        changed, pending_photos, pending_ids = [], 0, []
         for row in self.source.rows(table):
             report.read[table] += 1
             member = self.members.get(row.get("user_id"))
@@ -317,14 +377,44 @@ class Importer:
                 continue
             member.photo_approved = flag(row.get("profile_photo"))
             member.photo_on_wall = flag(row.get("profile_photo_on_wall"))
-            pending_photos += flag(row.get("new_profile_photo"))
+            if flag(row.get("new_profile_photo")):
+                pending_photos += 1
+                pending_ids.append(member.legacy_id)
             changed.append(member)
         Member.objects.bulk_update(changed, ["photo_approved", "photo_on_wall"], batch_size=500)
         report.imported[table] = len(changed)
-        report.note(
-            "profile photos themselves aren't copied yet (S3 → Spaces), nor social links and descriptions; "
-            f"{pending_photos} new photos were awaiting approval"
+        report.note(f"social links and descriptions aren't imported yet; {pending_photos} new photos awaited approval")
+        self.import_photos(changed, pending=set(pending_ids))
+
+    def import_photos(self, members, pending):
+        """Copy members' photos from legacy's S3 bucket to private storage (08 §8.2), if a photo source was given."""
+        wanted = [(m, MemberPhoto.Kind.CURRENT) for m in members if m.photo_approved]
+        wanted += [(m, MemberPhoto.Kind.PENDING) for m in members if m.legacy_id in pending]
+        if self.photos is None:
+            if wanted:
+                self.report.note(f"photos not copied ({len(wanted)} to copy): run with --photos-from to copy them")
+            return
+        copied, missing = Counter(), []
+        for member, kind in wanted:
+            user_hash = self.user_hashes.get(member.legacy_id)
+            found = self.photos.fetch(user_hash, kind) if user_hash else None
+            if found is None:
+                missing.append(member.legacy_id)
+                continue
+            copied[kind] += 1
+            if self.photos.save:
+                photo = MemberPhoto(member=member, kind=kind, uploaded_at=self.now)
+                photo.image.save("photo.png", ContentFile(found[0]), save=False)
+                photo.thumbnail.save("thumb.png", ContentFile(found[1]), save=False)
+                photo.save()
+        verb = "copied" if self.photos.save else "found (dry run: not copied)"
+        self.report.note(
+            f"photos {verb}: {copied[MemberPhoto.Kind.CURRENT]} approved, {copied[MemberPhoto.Kind.PENDING]} waiting "
+            "for approval"
         )
+        if missing:
+            sample = ", ".join(str(i) for i in sorted(missing)[:10])
+            self.report.note(f"{len(missing)} photo(s) couldn't be fetched (legacy user ids {sample})")
 
     def link_inductions_confirmed(self):
         """Who confirmed each member's general induction (05 §5.9). Legacy didn't record when."""
@@ -342,6 +432,8 @@ class Importer:
                 f"{len(unknown)} general induction(s) confirmed by someone not imported: "
                 "listed as waiting to be confirmed (legacy ids " + ", ".join(str(i) for i in unknown[:10]) + ")"
             )
+        if self.mark_inducted:
+            self.mark_members_inducted()
         # The door now needs a confirmed general induction (05 §5.2), which legacy didn't check.
         unconfirmed = (
             Member.objects.filter(key_holder=True, inducted_by__isnull=True, inducted_at__isnull=True)
@@ -355,6 +447,72 @@ class Importer:
                 f"⚠️ {len(unconfirmed)} key holder(s) without a confirmed general induction: the door won't open for "
                 f"them until it's confirmed (legacy ids {sample})"
             )
+
+    def mark_members_inducted(self):
+        """--mark-inducted: everyone who has been a member counts as inducted, confirmed at the import."""
+        members = Member.objects.filter(
+            legacy_id__isnull=False, inducted_by__isnull=True, inducted_at__isnull=True
+        ).exclude(status=Member.Status.SETTING_UP)
+        ids = list(members.values_list("pk", flat=True))
+        Member.objects.filter(pk__in=ids).update(induction_completed=True, inducted_at=self.now)
+        MemberChange.objects.bulk_create(
+            [
+                MemberChange(
+                    member_id=pk,
+                    field="induction confirmed by",
+                    new_value="the legacy import (--mark-inducted)",
+                    changed_at=self.now,
+                )
+                for pk in ids
+            ],
+            batch_size=BATCH,
+        )
+        self.report.note(f"--mark-inducted: {len(ids)} member(s) given a confirmed general induction")
+
+    def import_addresses(self):
+        """Members' addresses (02 §2.3): the latest approved one, and a later change still waiting for approval."""
+        table, report = "user_address", self.report
+        by_member = defaultdict(list)
+        for row in self.source.rows(table):
+            report.read[table] += 1
+            if row.get("user_id") not in self.members:
+                report.skip(table, "no such member", row["id"])
+                continue
+            if not text(row.get("line_1")):
+                report.skip(table, "no first line", row["id"])
+                continue
+            by_member[row["user_id"]].append(row)
+        batch = []
+        for user_id, rows in by_member.items():
+            rows.sort(key=lambda r: (when(r.get("created_at")) or datetime.min.replace(tzinfo=UTC), r["id"]))
+            approved = [r for r in rows if flag(r.get("approved"))]
+            current = approved[-1] if approved else None
+            for older in approved[:-1]:
+                report.skip(table, "an older approved address (replaced)", older["id"])
+            waiting = [r for r in rows if not flag(r.get("approved")) and (current is None or r["id"] > current["id"])]
+            for older in waiting[:-1]:
+                report.skip(table, "an older change waiting for approval (replaced)", older["id"])
+            for r in rows:
+                if not flag(r.get("approved")) and r not in waiting:
+                    report.skip(table, "a change older than the approved address", r["id"])
+            for row in [r for r in (current, waiting[-1] if waiting else None) if r]:
+                batch.append(
+                    Address(
+                        member=self.members[user_id],
+                        line_1=text(row.get("line_1"), 255),
+                        line_2=text(row.get("line_2"), 255),
+                        line_3=text(row.get("line_3"), 255),
+                        line_4=text(row.get("line_4"), 255),
+                        postcode=text(row.get("postcode"), 10).upper(),
+                        approved=flag(row.get("approved")),
+                        created_at=when(row.get("created_at")) or self.now,
+                    )
+                )
+        Address.objects.bulk_create(batch, batch_size=BATCH)
+        report.imported[table] = len(batch)
+        waiting_count = sum(1 for a in batch if not a.approved)
+        if waiting_count:
+            report.note(f"{waiting_count} address change(s) waiting for approval: see Addresses in the admin")
 
     def import_audit_log(self):
         """The legacy audit log (02 §2.3): one row per admin change to a member's flags, as free text."""
@@ -591,6 +749,7 @@ class Importer:
 
         known = {e.induction_key for e in self.equipment.values()}
         unknown = Counter(key for _, key in best if key not in known)
+        self.induction_payments = {row["id"]: row["payment_id"] for row in best.values() if row.get("payment_id")}
         batch = [
             Induction(
                 member=self.members[row["user_id"]],
@@ -701,6 +860,116 @@ class Importer:
                 f"{unbilled} finished sessions the legacy system hadn't billed would cost £{unbilled_pence / 100:.2f} "
                 "now; they're marked as settled so nobody is charged at cutover. Check against the legacy billing"
             )
+
+    # -- Payments ----------------------------------------------------------------------------------------------------
+
+    def import_payments(self):
+        """The ledger (02 §2.4): amounts in pence, linked to the charges, machine sessions and inductions they paid for.
+        Then each member's credit is checked against what legacy had cached (users.cash_balance).
+        """
+        table, report = "payments", self.report
+        charges = dict(Charge.objects.filter(legacy_id__isnull=False).values_list("legacy_id", "pk"))
+        sessions = dict(UsageSession.objects.filter(legacy_id__isnull=False).values_list("legacy_id", "pk"))
+        consumables, unknown_sources, unknown_statuses = Counter(), Counter(), Counter()
+        unmatched_members, negative_fees = 0, 0
+        batch = []
+        for row in self.source.rows(table):
+            report.read[table] += 1
+            legacy_reason = text(row.get("reason"))
+            reference = text(row.get("reference"))
+            reason = PAYMENT_REASONS.get(legacy_reason)
+            if reason is None:
+                consumables[legacy_reason or "(blank)"] += 1
+                reason = Payment.Reason.CONSUMABLE
+                reference = f"{legacy_reason}:{reference}" if reference else legacy_reason
+            legacy_source = text(row.get("source"))
+            source = PAYMENT_SOURCES.get(legacy_source)
+            if source is None:
+                unknown_sources[legacy_source or "(blank)"] += 1
+                source = Payment.Source.MANUAL
+            legacy_status = text(row.get("status"))
+            status = PAYMENT_STATUSES.get(legacy_status)
+            if status is None:
+                unknown_statuses[legacy_status or "(blank)"] += 1
+                status = Payment.Status.CANCELLED  # legacy didn't count it towards credit either
+            user_id = row.get("user_id")
+            member = self.members.get(user_id)
+            if member is None and user_id:
+                unmatched_members += 1
+            fee = pence(row.get("fee"))
+            if fee < 0:
+                negative_fees += 1
+                fee = 0
+            payment = Payment(
+                member=member,
+                reason=reason,
+                source=source,
+                status=status,
+                amount_pence=pence(row.get("amount")),
+                fee_pence=fee,
+                source_id=text(row.get("source_id"), 255),
+                reference=reference[:255],
+                created_at=when(row.get("created_at")) or self.now,
+                paid_at=when(row.get("paid_at")),
+                legacy_id=row["id"],
+            )
+            if reason == Payment.Reason.SUBSCRIPTION and reference.isdigit():
+                payment.charge_id = charges.get(int(reference))
+            if reason == Payment.Reason.EQUIPMENT_FEE and reference.partition(":")[0].isdigit():
+                payment.usage_session_id = sessions.get(int(reference.partition(":")[0]))
+            batch.append(payment)
+            if len(batch) >= BATCH:
+                Payment.objects.bulk_create(batch)
+                report.imported[table] += len(batch)
+                batch = []
+        Payment.objects.bulk_create(batch)
+        report.imported[table] += len(batch)
+
+        self._link_induction_payments()
+        if consumables:
+            report.note(
+                "payments for other services, imported as consumables: "
+                + ", ".join(f"{r} {n}" for r, n in consumables.most_common())
+            )
+        if unknown_sources:
+            report.note(
+                "payments from unknown sources, imported as 'recorded by an admin': "
+                + ", ".join(f"{s} {n}" for s, n in unknown_sources.most_common())
+            )
+        if unknown_statuses:
+            report.note(
+                "payments with unknown statuses, imported as cancelled (not counted towards credit): "
+                + ", ".join(f"{s} {n}" for s, n in unknown_statuses.most_common())
+            )
+        if unmatched_members:
+            report.note(f"{unmatched_members} payment(s) of members not imported kept with no member")
+        if negative_fees:
+            report.note(f"{negative_fees} payment(s) had a negative fee, imported as no fee")
+        self._check_credit()
+
+    def _link_induction_payments(self):
+        payments = dict(Payment.objects.filter(legacy_id__isnull=False).values_list("legacy_id", "pk"))
+        inductions = Induction.objects.filter(legacy_id__in=self.induction_payments)
+        for induction in inductions:
+            induction.payment_id = payments.get(self.induction_payments[induction.legacy_id])
+        Induction.objects.bulk_update(inductions, ["payment"], batch_size=BATCH)
+
+    def _check_credit(self):
+        """Reconcile each member's credit with legacy's cached balance (08 §8.2)."""
+        credit = credit_by_member()
+        differences = []
+        for legacy_id, member in self.members.items():
+            legacy = self.legacy_credit.get(legacy_id, 0)
+            if credit.get(member.pk, 0) != legacy:
+                differences.append((legacy_id, credit.get(member.pk, 0) - legacy))
+        if differences:
+            sample = ", ".join(f"{i} ({d:+d}p)" for i, d in differences[:10])
+            self.report.note(
+                f"⚠️ credit differs from legacy's cached balance for {len(differences)} member(s), by "
+                f"£{sum(d for _, d in differences) / 100:.2f} in all (legacy ids, new minus legacy: {sample})"
+            )
+        else:
+            self.report.note("credit matches legacy's cached balance for every member")
 
     # -- The door log -----------------------------------------------------------------------------------------------
 
