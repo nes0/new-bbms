@@ -9,9 +9,9 @@
   <script src="{% static 'js/htmx.min.js' %}" defer></script>
 </head>
 {# Every HTMX request sends the CSRF token, so forms and buttons using hx-post just work. #}
-<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+<body class="{% block body_class %}{% endblock %}" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
   <header class="site-header">
-    <a class="site-name" href="{% url 'home' %}">{{ SITE_NAME }}</a>
+    <a class="site-name" href="{% url 'home' %}"><img class="logo" src="{% static 'img/logo.png' %}" alt="{{ SITE_NAME }}" width="40" height="40"></a>
     <nav>
       {% if user.is_authenticated %}
         <a href="{% url 'members:account' %}">{{ user.get_short_name }}</a>
