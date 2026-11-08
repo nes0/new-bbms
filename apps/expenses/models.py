@@ -40,6 +40,15 @@ class Expense(models.Model):
     description = models.TextField(max_length=1000, help_text="What you bought, and what it's for.")
     amount_pence = models.PositiveIntegerField()
     spent_on = models.DateField("date of purchase")
+    equipment = models.ForeignKey(
+        "equipment.Equipment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="expenses",
+        verbose_name="machine",
+        help_text="The machine it was for, if any: counted against what that machine makes (04 §4.9).",
+    )
     receipt = models.FileField(upload_to=_receipt_path, blank=True)
     legacy_receipt = models.CharField(
         max_length=255, blank=True, help_text="Where legacy kept the receipt, if it wasn't copied over."

@@ -9,6 +9,10 @@
   <dt>Category</dt><dd>{{ expense.get_category_display }}</dd>
   <dt>Description</dt><dd>{{ expense.description|linebreaksbr }}</dd>
   <dt>Date of purchase</dt><dd>{{ expense.spent_on|date:"j F Y" }}</dd>
+  <dt>Machine</dt><dd>{% if can_set_machine %}<form method="post" action="{% url 'expenses:set-machine' expense.pk %}" class="inline">{% csrf_token %}
+      <select name="equipment" aria-label="Machine"><option value="">Not for a particular machine</option>{% for machine in machines %}<option value="{{ machine.pk }}"{% if machine.pk == expense.equipment_id %} selected{% endif %}>{{ machine.name }}</option>{% endfor %}</select>
+      <button type="submit">Save</button></form>
+    {% elif expense.equipment %}{{ expense.equipment.name }}{% else %}Not for a particular machine{% endif %}</dd>
   <dt>Receipt</dt><dd>{% if expense.receipt %}<a href="{% url 'expenses:receipt' expense.pk %}">{% if expense.receipt_is_pdf %}Open the PDF{% else %}Open the photo{% endif %}</a>{% elif expense.legacy_receipt %}Kept in the old system: {{ expense.legacy_receipt }}{% else %}None{% endif %}</dd>
   <dt>Status</dt><dd>
     {% if expense.status == "approved" %}<span class="ok">Approved</span>{% if expense.decided_by %} by {{ expense.decided_by.full_name }}{% endif %}{% if expense.decided_at %} on {{ expense.decided_at|date:"j F Y" }}{% endif %}: added to {% if own %}your{% else %}their{% endif %} credit.

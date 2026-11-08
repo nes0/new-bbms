@@ -233,7 +233,9 @@ while building (change them in the code if the trustees decide otherwise):
 Card payments (Stripe) are built (04 §4.3): a due or failed charge can be paid by card from `/account/payment/`.
 PayPal subscriptions are built (04 §4.4), with PayPal payers billed as above.
 
-Still to build: the standing-order statement import (04 §4.6), self-service locker renting
+Standing orders are matched by the bank statement import (04 §4.6, built 2026-11-08).
+
+Still to build: self-service locker renting
 with its first pro-rata payment (06 §6.2), shadow-site comparisons (08), and a heartbeat alert per job.
 
 ## 3.7 Changing a subscription

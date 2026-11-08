@@ -31,15 +31,10 @@ def record_payment(member, reason, source, amount_pence, *, status=Payment.Statu
     """Record money received (or a credit top-up) as one ledger row."""
     if amount_pence <= 0:
         raise ValueError("A payment must be for more than £0.")
-    now = timezone.now()
+    if status == Payment.Status.PAID:
+        fields.setdefault("paid_at", timezone.now())  # a bank line gives the day the money arrived
     return Payment.objects.create(
-        member=member,
-        reason=reason,
-        source=source,
-        status=status,
-        amount_pence=amount_pence,
-        paid_at=now if status == Payment.Status.PAID else None,
-        **fields,
+        member=member, reason=reason, source=source, status=status, amount_pence=amount_pence, **fields
     )
 
 
@@ -169,3 +164,116 @@ def pay_withdrawal(withdrawal, by) -> Payment:
 
 def reject_withdrawal(withdrawal, by, note=""):
     _close_withdrawal(withdrawal, withdrawal.Status.REJECTED, by, note)
+
+
+# --- finance putting payments right (04 §4.8) ---
+
+
+class CantCorrect(Exception):
+    """Why a payment can't be assigned, refunded or cancelled. The message is shown to finance."""
+
+
+def _note(payment, text):
+    payment.note = (payment.note + "\n" if payment.note else "") + text
+
+
+def _locked(payment) -> Payment:
+    payment = Payment.objects.select_for_update().get(pk=payment.pk)
+    if payment.corrections.exists():
+        raise CantCorrect("This payment has already been put right.")
+    if payment.status != Payment.Status.PAID:
+        raise CantCorrect("Only a paid payment can be changed.")
+    return payment
+
+
+def is_unmatched(payment) -> bool:
+    """Money nobody could match to a member (an unknown PayPal payer, 04 §4.4)."""
+    return payment.member_id is None and payment.reason == Payment.Reason.DONATION
+
+
+def can_refund_to_credit(payment) -> bool:
+    return (
+        payment.member_id is not None
+        and payment.reason in (Payment.Reason.DONATION, Payment.Reason.INDUCTION)
+        and payment.amount_pence > 0
+        and payment.status == Payment.Status.PAID
+        and payment.corrects_id is None
+    )
+
+
+def can_cancel(payment) -> bool:
+    """Only cash put into credit, or cash paid out of it, by an admin: to undo a mistake (04 §4.8)."""
+    cash_in = payment.source == Payment.Source.CASH and payment.reason == Payment.Reason.BALANCE
+    cash_out = payment.source == Payment.Source.BALANCE and payment.reason == Payment.Reason.WITHDRAWAL
+    return (cash_in or cash_out) and payment.amount_pence > 0 and payment.corrects_id is None
+
+
+@transaction.atomic
+def assign_unmatched(payment, member, by) -> Payment:
+    """Unmatched money becomes a top-up of the member's credit (04 §4.1, §4.8)."""
+    payment = Payment.objects.select_for_update().get(pk=payment.pk)
+    if not is_unmatched(payment):
+        raise CantCorrect("This payment already belongs to a member.")
+    payment.member, payment.reason = member, Payment.Reason.BALANCE
+    _note(payment, f"Assigned to {member} by {by}.")
+    payment.save(update_fields=["member", "reason", "note"])
+    return payment
+
+
+def _reverse(payment, by, note) -> Payment:
+    return Payment.objects.create(
+        member=payment.member,
+        reason=payment.reason,
+        source=payment.source,
+        amount_pence=-payment.amount_pence,
+        reference=payment.reference,
+        corrects=payment,
+        created_by=by,
+        paid_at=timezone.now(),
+        note=note,
+    )
+
+
+@transaction.atomic
+def refund_to_credit(payment, by, note="") -> Payment:
+    """Give a donation or an induction fee back as credit. The original row stays; a correcting row cancels it and
+    the money goes to the member's credit. Returns the credit row.
+
+    An induction fee can only be refunded before the member is trained; the induction is then unpaid again.
+    """
+    from apps.equipment.models import Induction
+
+    if not can_refund_to_credit(payment):
+        raise CantCorrect("Only a donation or an induction fee can be refunded to credit.")
+    payment = _locked(payment)
+    if payment.reason == Payment.Reason.INDUCTION:
+        induction = Induction.objects.select_for_update().filter(payment=payment).first()
+        if induction and induction.trained_at:
+            raise CantCorrect("They've had the induction, so the fee can't be refunded.")
+        if induction:
+            induction.paid, induction.payment = False, None
+            induction.save(update_fields=["paid", "payment"])
+    note = note or f"Refunded to credit by {by}."
+    reversal = _reverse(payment, by, note)
+    if payment.source == Payment.Source.BALANCE:
+        return reversal  # paid from credit: reversing it puts the money back
+    return Payment.objects.create(
+        member=payment.member,
+        reason=Payment.Reason.BALANCE,
+        source=payment.source,
+        amount_pence=payment.amount_pence,
+        reference=payment.reference,
+        corrects=payment,
+        created_by=by,
+        paid_at=timezone.now(),
+        note=note,
+    )
+
+
+@transaction.atomic
+def cancel_payment(payment, by, note="") -> Payment:
+    """Undo cash recorded by mistake, with a correcting row (the original stays, so the history shows both)."""
+    if not can_cancel(payment):
+        raise CantCorrect("Only cash put into or paid out of credit can be cancelled.")
+    payment = _locked(payment)
+    return _reverse(payment, by, note or f"Cancelled by {by}.")

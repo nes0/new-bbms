@@ -84,8 +84,11 @@ credit", plus top-ups by card or Direct Debit on the credit page. A one-off Dire
   subscription and rent charges follow the retry setting;
 - asked for twice on the same day, for the same thing and amount, gives the same payment.
 
-Still to build: the statement import (4.6), the finance
-overview and money summary (4.8, 4.9), and importing the legacy payments (08 §8.2). The key deposit and box fee are admin settings (02 §2.8, built 2026-11-07), read through
+Built since (2026-11-08): the bank statement import (4.6) and the finance pages (4.8), in `apps/finance`; see the
+build notes under those sections.
+
+Built since (2026-11-08): the income summary and what each machine has made (4.9). Still to build: reconciliation
+with GoCardless and Stripe payouts (4.9). The key deposit and box fee are admin settings (02 §2.8, built 2026-11-07), read through
 `apps/payments/prices.py`.
 
 ## 4.2 GoCardless (Direct Debit)
@@ -274,6 +277,31 @@ For each credit (`CR`) row, skipping GoCardless payouts, Stripe transfers and Ev
 ⚠️ Matching on family name is unreliable (common surnames, partial matches). **New:** show matches for confirmation
 before saving, require a unique match, and remember confirmed matches.
 
+**Built (2026-11-08)**, at `/finance/statements/` (rules in `apps/finance/statements.py`):
+- **Upload, check, record.** The CSV is read into a draft: each credit is listed with a suggested member and what
+  it's for (subscription, credit top-up, leave unmatched, not a member payment, or payout). Nothing is recorded
+  until finance presses "Record", which replaces legacy's test mode; a draft can be thrown away. Recording is all or
+  nothing: if a line can't be recorded (no member chosen for a payment, say), nothing is, and the page says which.
+- **Reading.** Legacy's layout (date, type, description, -, amount; credits are `CR`) is read by position. A file
+  with a header row is read by column name ("Date", "Description", "Paid in" / "Credit Amount", or a signed
+  "Amount"), so a different bank's export also works. UK dates; a date in the future is refused. Only money in is
+  kept. Cells are always shown as text.
+- **Sorting.** GoCardless payouts (`GC C1 BUILDBRIGHTO`, `GOCARDLESS`), Stripe and PayPal transfers are marked as
+  payouts and not recorded again; Eventbrite as "not a member payment". PayPal is new: legacy tried to match it to
+  a member.
+- **Matching**, used only when it points at one member: a description finance recorded for a member before; then
+  text finance has said identifies a member (legacy's `import_match_string`, imported, and editable at
+  `/finance/matches/`); then the **family name as a whole word**, narrowed by first name or initial when several
+  members share it. Members who have left aren't matched by name. Recording a line remembers its description for
+  that member.
+- **Recording.** A subscription pays the member's oldest open subscription charge (pending, due or failed), dated
+  the day the money reached the bank, so membership runs to a month after it; with no open charge it goes to their
+  credit (and the line says so). Standing-order members' monthly amount becomes what they paid, as in legacy. A
+  `-BALANCE-<ref>` top-up keeps the reference.
+- **Every credit is kept** (04 §4.9) with what it was matched to, at `/finance/bank/`. An unmatched line can be
+  matched later. A line already recorded from an earlier statement (same date, amount and description; two equal
+  payments on a day count as two) is spotted and left out, so overlapping statements are safe.
+
 ## 4.7 Member credit
 
 - **Balance = Σ(payments with reason `balance`, status paid/pending/withdrawn) − Σ(payments with source `balance`, same statuses)**.
@@ -294,6 +322,25 @@ before saving, require a unique match, and remember confirmed matches.
 - **Subscription charges list** (paginated, all members).
 - **Stats** (any member): member counts by payment method, distribution of subscription amounts, average subscription. (The legacy page on old-style
   Direct Debit migration progress is dropped with that method.)
+
+**Built (2026-11-08)** in `apps/finance`, for the `finance` role and admins, as pages on the site (the finance role
+doesn't use the admin site). Two permissions: **see finance** (the pages) and **manage finance** (import statements
+and put payments right); the import gives the `finance` role both.
+- **Overview** (`/finance/`): credit held for members and owed by members below £0, credit paid in and out, box
+  fees, locker rent collected and unpaid, key deposits, machine fees by machine, and the legacy laser-cutter
+  investment if there is any. A "to do" list: money nobody could match, unmatched bank lines, withdrawal requests.
+- **Payments** (`/finance/payments/`): filter by month or dates, member, what for, how paid, status and "not matched
+  to a member"; sort; totals with fees and net; download the list as CSV (cells that a spreadsheet would run as a
+  formula are made text). Each payment has its own page.
+- **Putting a payment right** keeps the ledger rule (rows are never edited for money; 4.1): **refund to credit**
+  (a donation, or an induction fee before the induction has happened, which makes the induction unpaid again) adds
+  a correcting row and a credit row; **cancel** cash put into credit or paid out of it by mistake adds a correcting
+  row. Legacy deleted those cash rows and changed the reason of refunded ones instead; deleting is still possible in
+  the admin site. **Assign** unmatched money to a member makes it a top-up of their credit (as in 4.4).
+- **Charges** (`/finance/charges/`): every subscription and locker rent charge, by month, kind, status and member.
+- **Stats** (`/stats/`, any member): members by payment method, the spread of monthly amounts (to the nearest £5)
+  and the average, and how many came in during the last month and three months (as legacy). The trend over time
+  is 06 §6.13, still to build.
 
 ## 4.9 Money summary and bank reconciliation (requested by a trustee, 2026-11-07)
 
@@ -336,6 +383,32 @@ For a chosen period (month by default), with a chart of each heading month by mo
 - ⚠️ Historic figures before cutover will still have gaps (missing fees, money taken outside BBMS). Reconciliation
   is reliable from cutover onwards; GoCardless and Stripe payout history can be imported back as far as their APIs
   allow.
+
+**Built (2026-11-08)** at `/finance/income/` (finance and admins; rules in `apps/finance/money.py`): the three
+headings above for a month, a year or any dates, each with its reasons, gross, provider fees and net, and the total;
+pending Direct Debits shown apart; credit added and paid out shown as money held for members; then the
+**expenditure** BBMS knows (approved expenses by category, counted when approved) and income after expenses; and a
+twelve-month table with bars. Income is dated when BBMS recorded the payment (for a standing order, the day it
+reached the bank). Key deposits count as one-off income, as listed above, though they're refundable. Approved
+expenses are under spending, not "credit added".
+
+**Choices made while building (2026-11-08)**, to revisit if the trustees prefer otherwise:
+- The `finance` role is given two permissions by the import: **see finance** (the pages) and **manage finance**
+  (import statements, put payments right). It doesn't need the admin site.
+- **PayPal transfers** on the bank statement are treated as payouts (already in BBMS), not matched to a member as
+  legacy tried to.
+- **Key deposits** count as one-off income, as listed above, though they're refundable.
+- Income is dated when BBMS **recorded** the payment; for a standing order, the day it reached the bank.
+
+### What each machine has made (requested by the trustees, 2026-11-08)
+
+"What each machine has made in induction costs + usage − expenses requested on them."
+
+**Built** at `/finance/machines/` (all time, or a year or dates): for each machine, induction fees + usage fees −
+approved expenses claimed for it (06 §6.4: claims now say which machine). Machines that share an induction category
+are one row, because one induction fee covers them all. Listed under the table: expenses not linked to a machine,
+induction fees for categories no machine uses now, and usage fees not linked to a session. Legacy expenses weren't
+linked to machines, so older figures leave them out until someone sets the machine on those claims.
 
 ### Expenditure (nice to have)
 BBMS only knows about **reimbursed member expenses** (06 §6.4), not the space's other spending (rent, utilities,

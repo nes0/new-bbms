@@ -206,6 +206,7 @@ class Importer:
         self.legacy_credit = {}  # legacy user id -> their cached credit in legacy (users.cash_balance, pence)
         self.user_hashes = {}  # legacy user id -> users.hash (names their photos)
         self.induction_payments = {}  # legacy induction id -> legacy payment id
+        self.match_strings = {}  # legacy user id -> users.import_match_string, tidied
 
     def run(self):
         # List every table in the report, even empty ones, in the order they're imported.
@@ -289,6 +290,9 @@ class Importer:
             self.legacy_credit[row["id"]] = int(row.get("cash_balance") or 0)
             if text(row.get("hash")):
                 self.user_hashes[row["id"]] = text(row.get("hash"))
+            match_text = " ".join(text(row.get("import_match_string")).upper().split())
+            if match_text:
+                self.match_strings[row["id"]] = match_text  # how its statement import knew their bank payments
             paypal_email = text(row.get("secondary_email"), 254).lower()  # legacy matched PayPal payments by it
             if paypal_email == email:
                 paypal_email = ""
@@ -325,6 +329,7 @@ class Importer:
         report.imported[table] = len(batch)
         self.members = {m.legacy_id: m for m in Member.objects.filter(legacy_id__isnull=False)}
         self.link_inductions_confirmed()
+        self.import_bank_matches()
         report.note("legacy statuses: " + ", ".join(f"{s or '(blank)'} {n}" for s, n in sorted(statuses.items())))
         for old in ("payment-warning", "on-hold"):
             if statuses[old]:
@@ -335,6 +340,24 @@ class Importer:
                 f"{len(ids)} member(s) paying by '{old}', which isn't supported any more, imported with no payment "
                 f"method: move them to Direct Debit before cutover (legacy ids {sample})"
             )
+
+    def import_bank_matches(self):
+        """Legacy's "import match string": text in a member's bank payments (04 §4.6). A string shared by two
+        members can't tell them apart, so it isn't kept; finance confirms those payments by hand."""
+        from apps.finance.models import BankMatch
+
+        owners = defaultdict(list)
+        for legacy_id, match_text in self.match_strings.items():
+            if legacy_id in self.members and len(match_text) >= 3:
+                owners[match_text].append(self.members[legacy_id])
+        shared = sorted(t for t, members in owners.items() if len(members) > 1)
+        BankMatch.objects.bulk_create(
+            [BankMatch(text=t, whole=False, member=members[0]) for t, members in owners.items() if len(members) == 1],
+            ignore_conflicts=True,
+        )
+        self.report.note(f"{len(owners) - len(shared)} bank statement match strings imported")
+        if shared:
+            self.report.note(f"{len(shared)} match string(s) used by more than one member weren't imported")
 
     def import_charges(self):
         """Subscription charges, as they are (08 §8.2). The payments they link to come with the payments import."""
@@ -656,7 +679,10 @@ class Importer:
         finance = next((g for g in self.groups.values() if g.name == "finance"), None)
         if finance is not None:
             finance.permissions.add(
-                Permission.objects.get(content_type__app_label="expenses", codename="see_all_expenses")
+                Permission.objects.get(content_type__app_label="expenses", codename="see_all_expenses"),
+                # The payments, charges and statement import pages (01 §1.3, 04 §4.6, §4.8).
+                Permission.objects.get(content_type__app_label="finance", codename="see_finance"),
+                Permission.objects.get(content_type__app_label="finance", codename="manage_finance"),
             )
         report.imported["role_user"] = len(links)
         report.note(f"{len(admins)} members of the 'admin' role can use the admin site (other roles: groups only)")

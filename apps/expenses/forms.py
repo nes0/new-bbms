@@ -10,6 +10,15 @@ from . import claims
 from .models import Expense
 
 
+def machines(also=None):
+    """Machines to choose from: those in use, and `also` (the one already chosen, even if it's been archived)."""
+    from django.db.models import Q
+
+    from apps.equipment.models import Equipment
+
+    return Equipment.objects.filter(Q(archived=False) | Q(pk=also)).order_by("name")
+
+
 class ExpenseForm(forms.Form):
     category = forms.ChoiceField(choices=[("", "Choose…"), *Expense.Category.choices])
     description = forms.CharField(
@@ -19,7 +28,18 @@ class ExpenseForm(forms.Form):
     spent_on = forms.DateField(
         label="Date of purchase", widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
     )
+    equipment = forms.ModelChoiceField(
+        queryset=None,
+        required=False,
+        label="Machine",
+        empty_label="Not for a particular machine",
+        help_text="If it was for one machine (a part, a repair, its consumables), choose it.",
+    )
     receipt = forms.FileField(help_text="A photo or scan of the receipt: JPEG, PNG or PDF, up to 10 MB.")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["equipment"].queryset = machines()
 
     def clean_amount(self):
         pence = to_pence(self.cleaned_data["amount"])

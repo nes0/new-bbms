@@ -15,7 +15,7 @@ from apps.members.models import Member
 from apps.profiles.views import is_member
 
 from . import claims
-from .forms import ExpenseForm
+from .forms import ExpenseForm, machines
 from .models import Expense
 
 PER_PAGE = 25
@@ -28,7 +28,7 @@ SORTS = {
 
 
 def _expense_for(request, expense_id) -> Expense:
-    expense = get_object_or_404(Expense.objects.select_related("member", "decided_by"), pk=expense_id)
+    expense = get_object_or_404(Expense.objects.select_related("member", "decided_by", "equipment"), pk=expense_id)
     if not claims.can_see(request.user, expense):
         raise Http404
     return expense
@@ -40,10 +40,12 @@ def index(request):
     if not see_all and not is_member(request.user) and not request.user.expenses.exists():
         raise Http404
     expenses = Expense.objects.select_related("member")
-    filters = {"status": request.GET.get("status", ""), "member": request.GET.get("member", "")}
+    filters = {name: request.GET.get(name, "") for name in ("status", "member", "machine")}
     if see_all:
         if filters["member"].isdigit():
             expenses = expenses.filter(member_id=int(filters["member"]))
+        if filters["machine"].isdigit():
+            expenses = expenses.filter(equipment_id=int(filters["machine"]))
     else:
         expenses = expenses.filter(member=request.user)
     if filters["status"] in Expense.Status.values:
@@ -64,6 +66,7 @@ def index(request):
             ("biggest", "Biggest"),
         ],
         "statuses": Expense.Status.choices,
+        "machines": machines(also=int(filters["machine"]) if filters["machine"].isdigit() else None) if see_all else [],
         "claimants": Member.objects.filter(expenses__isnull=False).distinct().order_by("given_name", "family_name")
         if see_all
         else [],
@@ -89,6 +92,7 @@ def claim(request):
             amount_pence=data["amount"],
             spent_on=data["spent_on"],
             receipt=data["receipt"],
+            equipment=data["equipment"],
         )
         messages.success(request, "Thank you. Your claim has been sent to the trustees.")
         return redirect("expenses:detail", expense.pk)
@@ -104,6 +108,8 @@ def detail(request, expense_id):
         and expense.status == Expense.Status.WAITING
         and expense.member_id != request.user.pk,
         "own": expense.member_id == request.user.pk,
+        "can_set_machine": claims.can_set_machine(request.user),
+        "machines": machines(also=expense.equipment_id) if claims.can_set_machine(request.user) else [],
     }
     return render(request, "expenses/detail.html", context)
 
@@ -156,3 +162,16 @@ def withdraw(request, expense_id):
         return redirect("expenses:detail", expense.pk)
     messages.success(request, "Your claim has been withdrawn.")
     return redirect("expenses:index")
+
+
+@login_required
+@require_POST
+def set_machine(request, expense_id):
+    expense = _expense_for(request, expense_id)
+    if not claims.can_set_machine(request.user):
+        raise Http404
+    choice = request.POST.get("equipment", "")
+    equipment = machines(also=expense.equipment_id).filter(pk=int(choice)).first() if choice.isdigit() else None
+    claims.set_machine(expense, equipment, request.user)
+    messages.success(request, f"Machine: {equipment}." if equipment else "Not for a particular machine.")
+    return redirect("expenses:detail", expense.pk)

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Bank line · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<p><a href="{% url 'finance:bank-lines' %}">← Bank lines</a></p>
+<h1>Bank line: {{ line.amount_pence|pounds }}</h1>
+<dl class="details">
+  <dt>Date</dt><dd>{{ line.date|date:"j F Y" }}</dd>
+  <dt>Description</dt><dd>{{ line.description }}</dd>
+  <dt>Kind</dt><dd>{{ line.get_kind_display }}</dd>
+  <dt>Statement</dt><dd><a href="{% url 'finance:statement' line.statement.pk %}">{{ line.statement.filename }}</a>, row {{ line.row }}</dd>
+  <dt>Outcome</dt><dd>{{ line.get_outcome_display }}{% if line.note %}: {{ line.note }}{% endif %}</dd>
+  {% if line.member %}<dt>Member</dt><dd>{{ line.member.full_name }}</dd>{% endif %}
+  {% if line.payment %}<dt>Payment</dt><dd><a href="{% url 'finance:payment' line.payment.pk %}">{{ line.payment }}</a></dd>{% endif %}
+  {% if line.handled_by %}<dt>By</dt><dd>{{ line.handled_by.full_name }}, {{ line.handled_at|date:"j M Y" }}</dd>{% endif %}
+</dl>
+{% if can_match %}
+<section class="card">
+  <h2>Match it</h2>
+  <form method="post" class="stack form">
+    {% csrf_token %}
+    <label for="action">What it is</label>
+    <select id="action" name="action">{% for value, label in actions %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
+    <label for="member">Member</label>
+    <input id="member" name="member" list="members" value="{{ member_text }}">
+    {% include "finance/_members.html" %}
+    <p><button type="submit">Record</button></p>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

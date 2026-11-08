@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Statement · {{ SITE_NAME }}{% endblock %}
+{% block body_class %}wide{% endblock %}
+{% block content %}
+<p><a href="{% url 'finance:statements' %}">← Bank statements</a></p>
+<h1>{{ statement.filename }}</h1>
+<p>{{ rows|length }} credit{{ rows|length|pluralize }}, {{ total|pounds }} in all.
+  {% if statement.skipped_lines %}<span class="hint">{{ statement.skipped_lines }} other line{{ statement.skipped_lines|pluralize }} (money going out, or not a transaction) left out.</span>{% endif %}</p>
+
+{% if statement.is_draft and can_manage %}
+<p><strong>Check each line, then press "Record" at the bottom.</strong> Nothing has been recorded yet. A member you
+  choose is remembered for that description next time.</p>
+<form method="post">
+  {% csrf_token %}
+  {% include "finance/_members.html" %}
+  <div class="scroll"><table class="table">
+    <thead><tr><th>Date</th><th>Description</th><th class="number">Amount</th><th>What it is</th><th>Member</th></tr></thead>
+    <tbody>
+    {% for row in rows %}{% with line=row.line %}
+      <tr>
+        <td class="nowrap">{{ line.date|date:"j M Y" }}</td>
+        <td>{{ line.description }}{% if line.kind != "member" %}<br><span class="hint">{{ line.get_kind_display }}</span>{% endif %}</td>
+        <td class="number">{{ line.amount_pence|pounds }}</td>
+        {% if row.duplicate %}
+          <td colspan="2"><span class="hint">Already recorded from an earlier statement: left out.</span></td>
+        {% else %}
+          <td><select name="line-{{ line.pk }}-action" aria-label="What row {{ line.row }} is">
+            {% for value, label in row.actions %}<option value="{{ value }}"{% if row.action == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select></td>
+          <td><input name="line-{{ line.pk }}-member" list="members" value="{{ row.member_text }}" aria-label="Who paid row {{ line.row }}">
+            {% if line.how_matched %}<br><span class="hint">{{ line.how_matched }}</span>{% elif line.kind == "member" %}<br><span class="error">No match</span>{% endif %}</td>
+        {% endif %}
+      </tr>
+    {% endwith %}{% endfor %}
+    </tbody>
+  </table></div>
+  <p class="hint">A subscription pays the member's oldest open subscription charge, dated the day the money arrived;
+    if none is waiting it goes to their credit. "Leave unmatched" keeps the line, to match later.</p>
+  <p><button type="submit" name="do" value="record">Record</button>
+    <button type="submit" name="do" value="discard" class="link" formnovalidate>Throw this statement away</button></p>
+</form>
+{% else %}
+{% if statement.is_draft %}<p>Not recorded yet.</p>{% else %}<p>Recorded {{ statement.recorded_at|date:"j F Y, H:i" }}{% if statement.recorded_by %} by {{ statement.recorded_by.full_name }}{% endif %}.</p>{% endif %}
+<div class="scroll"><table class="table">
+  <thead><tr><th>Date</th><th>Description</th><th class="number">Amount</th><th>Outcome</th><th>Member</th></tr></thead>
+  <tbody>
+  {% for row in rows %}{% with line=row.line %}
+    <tr>
+      <td class="nowrap"><a href="{% url 'finance:bank-line' line.pk %}">{{ line.date|date:"j M Y" }}</a></td>
+      <td>{{ line.description }}</td>
+      <td class="number">{{ line.amount_pence|pounds }}</td>
+      <td>{% if line.outcome == "unmatched" %}<span class="error">{{ line.get_outcome_display }}</span>{% else %}{{ line.get_outcome_display }}{% endif %}{% if line.note %}<br><span class="hint">{{ line.note }}</span>{% endif %}</td>
+      <td>{% if line.member %}{{ line.member.full_name }}{% endif %}{% if line.payment %} · <a href="{% url 'finance:payment' line.payment.pk %}">payment</a>{% endif %}</td>
+    </tr>
+  {% endwith %}{% endfor %}
+  </tbody>
+</table></div>
+{% endif %}
+{% endblock %}

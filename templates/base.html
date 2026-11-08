@@ -20,6 +20,7 @@
         <a href="{% url 'profiles:directory' %}">Members</a>
         <a href="{% url 'access:activity' %}">Who's in</a>
         <a href="{% url 'proposals:index' %}">Proposals</a>
+        {% if perms.finance.see_finance or perms.finance.manage_finance %}<a href="{% url 'finance:overview' %}">Finance</a>{% endif %}
         {% if perms.expenses.approve_expense or perms.expenses.see_all_expenses %}<a href="{% url 'expenses:index' %}?status=waiting">Expenses</a>{% endif %}
         <a href="{% url 'members:account' %}">{{ user.get_short_name }}</a>
         <a href="{% url 'notifications:list' %}">Notifications{% if unread_notifications %} <span class="badge" title="Unread">{{ unread_notifications }}</span>{% endif %}</a>

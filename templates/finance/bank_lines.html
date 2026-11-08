@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Bank lines · {{ SITE_NAME }}{% endblock %}
+{% block body_class %}wide{% endblock %}
+{% block content %}
+<h1>Bank lines</h1>
+{% include "finance/_nav.html" %}
+<p>Every credit from the bank statements recorded so far, and what it was matched to.</p>
+<form method="get" class="filters">
+  <label>Month <select name="month"><option value="">Any</option>{% for month in months %}{% with value=month|date:"Y-m" %}<option value="{{ value }}"{% if filters.month == value %} selected{% endif %}>{{ month|date:"F Y" }}</option>{% endwith %}{% endfor %}</select></label>
+  <label>Outcome <select name="outcome"><option value="">Any</option>{% for value, label in outcomes %}<option value="{{ value }}"{% if filters.outcome == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+  <label>Kind <select name="kind"><option value="">Any</option>{% for value, label in kinds %}<option value="{{ value }}"{% if filters.kind == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+  <button type="submit">Show</button>
+</form>
+<p><strong>{{ page.paginator.count }} line{{ page.paginator.count|pluralize }}: {{ total|pounds }}</strong></p>
+{% if page.object_list %}
+<div class="scroll"><table class="table">
+  <thead><tr><th>Date</th><th>Description</th><th class="number">Amount</th><th>Outcome</th><th>Member</th></tr></thead>
+  <tbody>
+  {% for line in page %}
+    <tr>
+      <td class="nowrap"><a href="{% url 'finance:bank-line' line.pk %}">{{ line.date|date:"j M Y" }}</a></td>
+      <td>{{ line.description }}</td>
+      <td class="number">{{ line.amount_pence|pounds }}</td>
+      <td>{% if line.outcome == "unmatched" %}<span class="error">{{ line.get_outcome_display }}</span>{% else %}{{ line.get_outcome_display }}{% endif %}</td>
+      <td>{% if line.member %}{{ line.member.full_name }}{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% include "finance/_pager.html" %}
+{% else %}<p>No bank lines match.</p>{% endif %}
+{% endblock %}

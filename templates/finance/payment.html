@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Payment · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<p><a href="{% url 'finance:payments' %}">← Payments</a></p>
+<h1>Payment: {{ payment.amount_pence|pounds }}</h1>
+<dl class="details">
+  <dt>Member</dt><dd>{% if payment.member %}{{ payment.member.full_name }} (#{{ payment.member.pk }}){% else %}<span class="error">Not matched to a member</span>{% endif %}</dd>
+  <dt>For</dt><dd>{{ payment.get_reason_display }}</dd>
+  <dt>Paid by</dt><dd>{{ payment.get_source_display }}</dd>
+  <dt>Status</dt><dd>{{ payment.get_status_display }}</dd>
+  <dt>Date</dt><dd>{{ payment.created_at|date:"j F Y, H:i" }}{% if payment.paid_at and payment.paid_at != payment.created_at %} (paid {{ payment.paid_at|date:"j F Y" }}){% endif %}</dd>
+  {% if payment.fee_pence %}<dt>Fee</dt><dd>{{ payment.fee_pence|pounds }} (net {{ payment.amount_minus_fee_pence|pounds }})</dd>{% endif %}
+  {% if payment.reference %}<dt>Reference</dt><dd>{{ payment.reference }}</dd>{% endif %}
+  {% if payment.source_id %}<dt>Provider's id</dt><dd>{{ payment.source_id }}</dd>{% endif %}
+  {% if payment.charge %}<dt>Pays</dt><dd>{{ payment.charge }}</dd>{% endif %}
+  {% if payment.usage_session %}<dt>Machine</dt><dd>{{ payment.usage_session.equipment.name }}, {{ payment.usage_session.started_at|date:"j M Y H:i" }}</dd>{% endif %}
+  {% if payment.corrects %}<dt>Corrects</dt><dd><a href="{% url 'finance:payment' payment.corrects.pk %}">{{ payment.corrects }}</a></dd>{% endif %}
+  {% if bank_line %}<dt>Bank line</dt><dd><a href="{% url 'finance:bank-line' bank_line.pk %}">{{ bank_line.date|date:"j M Y" }}: {{ bank_line.description }}</a></dd>{% endif %}
+  {% if payment.created_by %}<dt>Recorded by</dt><dd>{{ payment.created_by.full_name }}</dd>{% endif %}
+  {% if payment.note %}<dt>Note</dt><dd>{{ payment.note|linebreaksbr }}</dd>{% endif %}
+</dl>
+
+{% if corrections %}
+<h2>Put right by</h2>
+<ul>{% for row in corrections %}<li><a href="{% url 'finance:payment' row.pk %}">{{ row.created_at|date:"j M Y" }}: {{ row.get_reason_display }}, {{ row.amount_pence|pounds }}</a>{% if row.created_by %} ({{ row.created_by.full_name }}){% endif %}</li>{% endfor %}</ul>
+{% endif %}
+
+{% if can_assign %}
+<section class="card">
+  <h2>Whose money is this?</h2>
+  <form method="post" action="{% url 'finance:put-right' payment.pk %}" class="stack form">
+    {% csrf_token %}
+    <label for="member">Member</label>
+    <input id="member" name="member" list="members" required>
+    {% include "finance/_members.html" %}
+    <p><button type="submit" name="change" value="assign">Add {{ payment.amount_pence|pounds }} to their credit</button></p>
+  </form>
+</section>
+{% endif %}
+
+{% if can_refund or can_cancel %}
+<section class="card">
+  <h2>Put it right</h2>
+  <form method="post" action="{% url 'finance:put-right' payment.pk %}" class="stack form">
+    {% csrf_token %}
+    <label for="note">Why (kept with the payment)</label>
+    <input id="note" name="note" maxlength="500">
+    {% if can_refund %}<p><button type="submit" name="change" value="refund">Refund {{ payment.amount_pence|pounds }} to their credit</button>
+      <span class="hint">{% if payment.reason == "induction" %}Only before they've had the induction: it's marked unpaid again.{% endif %}</span></p>{% endif %}
+    {% if can_cancel %}<p><button type="submit" name="change" value="cancel" class="danger">Cancel this cash payment</button>
+      <span class="hint">A correcting payment is added; this one stays in the history.</span></p>{% endif %}
+  </form>
+</section>
+{% endif %}
+{% endblock %}

@@ -11,4 +11,5 @@ urlpatterns = [
     path("expenses/<int:expense_id>/receipt/", views.receipt, name="receipt"),
     path("expenses/<int:expense_id>/decide/", views.decide, name="decide"),
     path("expenses/<int:expense_id>/withdraw/", views.withdraw, name="withdraw"),
+    path("expenses/<int:expense_id>/machine/", views.set_machine, name="set-machine"),
 ]

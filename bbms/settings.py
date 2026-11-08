@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "apps.notifications",
     "apps.proposals",
     "apps.expenses",
+    "apps.finance",
     "oauth2_provider",
     "apps.moodle",
 ]
