@@ -20,3 +20,15 @@ def stripe_is_configured(app_configs, **kwargs):
             )
         )
     return warnings
+
+
+@checks.register(checks.Tags.security, deploy=True)
+def paypal_is_configured(app_configs, **kwargs):
+    if settings.PAYPAL_ACCOUNT_EMAIL:
+        return []
+    return [
+        checks.Warning(
+            "PAYPAL_ACCOUNT_EMAIL isn't set, so members can't pay by PayPal and PayPal's notifications are refused.",
+            id="payments.W003",
+        )
+    ]

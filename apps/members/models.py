@@ -48,11 +48,12 @@ class Member(AbstractBaseUser, PermissionsMixin):
         HONORARY = "honorary", "Honorary"
 
     class PaymentMethod(models.TextChoices):
-        # 02 §2.2. Old-style GoCardless subscriptions and PayPal are dropped (03 §3.7, 04 §4.4).
+        # 02 §2.2. Old-style GoCardless subscriptions are dropped (03 §3.7).
         NONE = "", "None"
         DIRECT_DEBIT = "gocardless-variable", "Direct Debit"
         CREDIT = "balance", "Member credit"
         STANDING_ORDER = "standing-order", "Standing order"
+        PAYPAL = "paypal", "PayPal"
         CASH = "cash", "Cash"
 
     # Statuses that may be in the space (05 §5.2; the exact list is a trustee decision, spec 01 §1.7).
@@ -89,6 +90,18 @@ class Member(AbstractBaseUser, PermissionsMixin):
         null=True, blank=True, help_text="Day of the month the subscription is charged (1-28)."
     )
     mandate_id = models.CharField("GoCardless mandate", max_length=50, blank=True)
+    paypal_email = models.EmailField(
+        "PayPal email",
+        blank=True,
+        help_text="The member's PayPal address, if it isn't their email address. PayPal payments are matched by it.",
+    )
+    paypal_subscription_id = models.CharField(
+        "PayPal subscription",
+        max_length=50,
+        blank=True,
+        db_index=True,
+        help_text="PayPal's id for the member's current subscription (04 §4.4).",
+    )
     subscription_expires = models.DateField(
         "paid until", null=True, blank=True, help_text="Membership is paid up to this date (03 §3.3)."
     )

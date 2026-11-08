@@ -1,7 +1,7 @@
 {% autoescape off %}{{ site_name }}: you're leaving
 Hello {{ member.given_name }},
 
-We've stopped your monthly payments. Your membership continues until {% if member.subscription_expires %}{{ member.subscription_expires|date:"j F Y" }}{% else %}the end of the period you've paid for{% endif %}, and then ends.
+{% if cancel_paypal %}We've stopped charging you. Please cancel your PayPal subscription to {{ site_name }} yourself, in your PayPal account: we can't do that for you, and PayPal keeps taking payments until you do.{% else %}We've stopped your monthly payments.{% endif %} Your membership continues until {% if member.subscription_expires %}{{ member.subscription_expires|date:"j F Y" }}{% else %}the end of the period you've paid for{% endif %}, and then ends.
 
 Changed your mind? Set up your payment again from your account page: {{ site_url }}/account/
 {% endautoescape %}

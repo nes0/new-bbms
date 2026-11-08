@@ -49,11 +49,30 @@
       <p class="ok">Your Direct Debit is set up.</p>
     {% elif can_set_up_direct_debit %}
       <p>Pay each month by Direct Debit, through GoCardless. It takes a couple of minutes: you'll need your bank
-        account number and sort code.</p>
+        account number and sort code.{% if member.payment_method == "paypal" %} Then cancel your PayPal
+        subscription in your PayPal account.{% endif %}</p>
       <form method="post" action="{% url 'billing:direct-debit-start' %}">{% csrf_token %}
         <button type="submit">Set up a Direct Debit</button></form>
     {% endif %}
   </section>
+
+  {% if can_set_up_paypal %}
+    <section>
+      {% if member.payment_method == "paypal" %}
+        <h2>PayPal</h2>
+        <p>You pay by a PayPal subscription. PayPal takes the same amount each month, so if you change your monthly
+          amount, start a new subscription here, then cancel the old one in your PayPal account.</p>
+        <form method="post" action="{% url 'billing:paypal-start' %}">{% csrf_token %}
+          <button type="submit">Start a new PayPal subscription for {{ member.monthly_subscription_pence|pounds }} a month</button></form>
+      {% else %}
+        <h2>No UK bank account?</h2>
+        <p>You can pay each month by a PayPal subscription instead. PayPal costs the space a lot more than Direct
+          Debit, so please only use it if you can't use a Direct Debit.</p>
+        <form method="post" action="{% url 'billing:paypal-start' %}">{% csrf_token %}
+          <button type="submit">Subscribe with PayPal</button></form>
+      {% endif %}
+    </section>
+  {% endif %}
 
   {% if can_set_up_credit %}
     <section>
@@ -73,6 +92,10 @@
           <input type="hidden" name="method" value="balance">
           <p>Pay from your credit instead. Your Direct Debit stays as a backup if your credit runs low.</p>
           <button type="submit">Pay from credit</button>
+        {% elif member.payment_method == "paypal" %}
+          <p>Pay from your credit instead, then cancel your PayPal subscription in your PayPal account.</p>
+          <button type="submit" name="method" value="balance">Pay from credit</button>
+          {% if member.mandate_id %}<button type="submit" name="method" value="gocardless-variable">Pay by Direct Debit</button>{% endif %}
         {% elif member.mandate_id %}
           <input type="hidden" name="method" value="gocardless-variable">
           <button type="submit">Pay by Direct Debit</button>

@@ -52,13 +52,14 @@ STATUS_MAP = {
 # The "Member Box" equipment item becomes a "box paid" flag instead (08 §8.2, decided 2026-11-07).
 BOX_INDUCTION_KEY = "box"
 
-# How members pay (02 §2.2). Old-style GoCardless subscriptions and PayPal are dropped: those members must be moved
-# to a Direct Debit or standing order before cutover (08), so they're imported with no method and listed.
+# How members pay (02 §2.2). Old-style GoCardless subscriptions are dropped: those members must be moved to a
+# Direct Debit before cutover (08), so they're imported with no method and listed.
 PAYMENT_METHOD_MAP = {
     "": Member.PaymentMethod.NONE,
     "gocardless-variable": Member.PaymentMethod.DIRECT_DEBIT,
     "balance": Member.PaymentMethod.CREDIT,
     "standing-order": Member.PaymentMethod.STANDING_ORDER,
+    "paypal": Member.PaymentMethod.PAYPAL,
     "cash": Member.PaymentMethod.CASH,
 }
 
@@ -285,6 +286,9 @@ class Importer:
             self.legacy_credit[row["id"]] = int(row.get("cash_balance") or 0)
             if text(row.get("hash")):
                 self.user_hashes[row["id"]] = text(row.get("hash"))
+            paypal_email = text(row.get("secondary_email"), 254).lower()  # legacy matched PayPal payments by it
+            if paypal_email == email:
+                paypal_email = ""
             batch.append(
                 Member(
                     email=email,
@@ -308,6 +312,7 @@ class Importer:
                     payment_day=payment_day,
                     monthly_subscription_pence=pounds * 100 if pounds > 0 else None,
                     mandate_id=text(row.get("mandate_id"), 50),
+                    paypal_email=paypal_email,
                     subscription_expires=day(row.get("subscription_expires")),
                     legacy_id=row["id"],
                     date_joined=when(row.get("created_at")) or self.now,
@@ -325,7 +330,7 @@ class Importer:
             sample = ", ".join(str(i) for i in ids[:10])
             report.note(
                 f"{len(ids)} member(s) paying by '{old}', which isn't supported any more, imported with no payment "
-                f"method: move them to Direct Debit or a standing order before cutover (legacy ids {sample})"
+                f"method: move them to Direct Debit before cutover (legacy ids {sample})"
             )
 
     def import_charges(self):

@@ -227,6 +227,7 @@ while building (change them in the code if the trustees decide otherwise):
   recorded with "Record a payment" and pays the oldest unpaid charge (or one dated today).
 
 Card payments (Stripe) are built (04 §4.3): a due or failed charge can be paid by card from `/account/payment/`.
+PayPal subscriptions are built (04 §4.4), with PayPal payers billed as above.
 
 Still to build: the standing-order statement import (04 §4.6), self-service locker renting
 with its first pro-rata payment (06 §6.2), shadow-site comparisons (08), and a heartbeat alert per job.
@@ -234,7 +235,7 @@ with its first pro-rata payment (06 §6.2), shadow-site comparisons (08), and a 
 ## 3.7 Changing a subscription
 
 - **Amount** (member): only if method is `gocardless-variable`, `balance` or `paypal` (a PayPal payer gets a new subscribe button and cancels the old subscription at PayPal; 04 §4.4). Minimum is a setting (02 §2.8: **£25**, decided 2026-11-07; legacy £20; admins may go down to £5). Applies from the next charge. Raising the minimum doesn't change what existing members pay: a member below it keeps their amount until they change it, and must then choose at least the new minimum.
-- **Method** (member): `gocardless-variable` ⇄ `balance`. Switching to balance keeps Direct Debit as the **backup** method. A PayPal payer can switch to Direct Debit (setting up a mandate) or credit, and is told to cancel the PayPal subscription; a later PayPal payment then goes to their credit.
+- **Method** (member): `gocardless-variable` ⇄ `balance`. Switching to balance keeps Direct Debit as the **backup** method. A PayPal payer can switch to Direct Debit (setting up a mandate) or credit, and is told to cancel the PayPal subscription; until they do, PayPal payments pay a waiting charge or go to their credit.
 - **Method/day** (admin): any method and payment day 1–28.
 - **Migrate old DD**: not rebuilt. Any member still on an old-style `gocardless` subscription is moved to a variable mandate before cutover (08).
 

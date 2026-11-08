@@ -1,0 +1,5 @@
+{% autoescape off %}{{ site_name }}: unmatched PayPal payment
+A PayPal payment of £{{ amount }} didn't match any member, so it's recorded as a donation (payment {{ payment.pk }}). The payer has been emailed and asked to add their PayPal address to their account.
+
+If it's from a member, move it to them: {{ site_url }}/admin/payments/payment/{{ payment.pk }}/change/
+{% endautoescape %}

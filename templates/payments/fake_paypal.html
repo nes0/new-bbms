@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Fake PayPal{% endblock %}
+{% block content %}
+<h1>Fake PayPal</h1>
+<p class="hint">Local development only: this stands in for PayPal because no PAYPAL_ACCOUNT_EMAIL is set. Nothing is
+  charged. Paying sends BBMS the notifications PayPal would.</p>
+<p>{{ item }}: <strong>£{{ amount }}</strong>{% if subscription %} a month{% endif %}</p>
+<form method="post">{% csrf_token %}<button type="submit">{% if subscription %}Subscribe{% else %}Pay{% endif %} with PayPal</button></form>
+<p><a href="{% url 'payments:paypal-cancelled' %}">Cancel</a> · <a href="{% url 'payments:fake-paypal-tools' %}">Fake PayPal tools</a></p>
+{% endblock %}

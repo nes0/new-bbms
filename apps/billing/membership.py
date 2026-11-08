@@ -165,18 +165,22 @@ def charge_failed(charge: Charge, today: date):
 
 
 @transaction.atomic
-def start_leaving(member, *, cancel_mandate=True):
-    """The member leaves, or their Direct Debit is cancelled (03 §3.8): no more charges; access continues until their
-    paid-until date, then the morning check marks them as left.
+def start_leaving(member, *, cancel_mandate=True, paypal_cancelled=False):
+    """The member leaves, or their Direct Debit or PayPal subscription is cancelled (03 §3.8): no more charges;
+    access continues until their paid-until date, then the morning check marks them as left.
+
+    BBMS can't cancel a PayPal subscription, so a PayPal payer who leaves is asked to cancel it at PayPal, unless
+    PayPal has just said it's cancelled (`paypal_cancelled`).
     """
     member = Member.objects.select_for_update().get(pk=member.pk)
     if member.status in (Member.Status.LEFT, Member.Status.LEAVING):
         return member
     if cancel_mandate and member.mandate_id:
         gocardless.client().cancel_mandate(member.mandate_id)
+    cancel_paypal = member.payment_method == Member.PaymentMethod.PAYPAL and not paypal_cancelled
     _cancel_open_charges(member)
     _set_status(member, Member.Status.LEAVING, payment_method="", mandate_id="")
-    emails.send(member, "leaving")
+    emails.send(member, "leaving", cancel_paypal=cancel_paypal)
     return member
 
 

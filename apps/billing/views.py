@@ -22,6 +22,8 @@ from .webhooks import finish_setup
 logger = logging.getLogger(__name__)
 
 SETUP_SESSION_KEY = "billing_request_id"
+# Members paying these ways can switch between them themselves (03 §3.7).
+SWITCHABLE = (Member.PaymentMethod.DIRECT_DEBIT, Member.PaymentMethod.CREDIT, Member.PaymentMethod.PAYPAL)
 # Paying from credit as the monthly method is offered to members without one (03 §3.1).
 CREDIT_SETUP_STATUSES = (Member.Status.SETTING_UP, Member.Status.LEAVING)
 
@@ -32,6 +34,16 @@ def can_set_up_credit(member):
 
 def can_set_up_direct_debit(member):
     return member.status != Member.Status.LEFT and not member.banned
+
+
+def can_set_up_paypal(member):
+    """A PayPal subscription for someone joining (or leaving and staying after all), or a new one for a PayPal payer
+    whose monthly amount has changed (04 §4.4). Not offered to members paying another way."""
+    from apps.payments import paypal
+
+    if not paypal.available() or member.banned or member.status == Member.Status.LEFT:
+        return False
+    return member.payment_method == Member.PaymentMethod.PAYPAL or member.status in CREDIT_SETUP_STATUSES
 
 
 @login_required
@@ -45,8 +57,8 @@ def payment(request):
         "unpaid": [c for c in charges if c.status in Charge.UNPAID],
         "can_set_up_credit": can_set_up_credit(member),
         "can_set_up_direct_debit": can_set_up_direct_debit(member),
-        "can_switch": member.payment_method in (Member.PaymentMethod.DIRECT_DEBIT, Member.PaymentMethod.CREDIT)
-        and member.status != Member.Status.LEFT,
+        "can_set_up_paypal": can_set_up_paypal(member),
+        "can_switch": member.payment_method in SWITCHABLE and member.status != Member.Status.LEFT,
     }
     return render(request, "billing/payment.html", context)
 
@@ -95,6 +107,25 @@ def direct_debit_done(request):
 
 @login_required
 @require_POST
+def paypal_start(request):
+    """Send the member to PayPal to subscribe for their monthly amount (04 §4.4)."""
+    from apps.payments import paypal
+    from apps.payments.views import paypal_urls
+
+    member = request.user
+    if not can_set_up_paypal(member):
+        messages.error(request, "PayPal isn't available for your account. Please ask a trustee.")
+        return redirect("billing:payment")
+    if not member.monthly_subscription_pence:
+        messages.error(request, "Choose your monthly amount first.")
+        return redirect("members:change-subscription")
+    return redirect(
+        paypal.subscribe_url(member, member.monthly_subscription_pence, **paypal_urls(request, "subscription"))
+    )
+
+
+@login_required
+@require_POST
 def credit_start(request):
     """Pay the subscription from member credit (03 §3.1)."""
     member = request.user
@@ -116,18 +147,26 @@ def credit_start(request):
 @login_required
 @require_POST
 def change_method(request):
-    """Direct Debit ⇄ credit (03 §3.7). Switching to credit keeps the Direct Debit as a backup."""
+    """Direct Debit ⇄ credit (03 §3.7). Switching to credit keeps the Direct Debit as a backup. A PayPal payer can
+    switch to either, and is asked to cancel their PayPal subscription (BBMS can't)."""
     member = request.user
     wanted = request.POST.get("method")
-    if member.payment_method not in (Member.PaymentMethod.DIRECT_DEBIT, Member.PaymentMethod.CREDIT):
+    if member.payment_method not in SWITCHABLE:
         messages.error(request, "Please ask a trustee to change how you pay.")
     elif wanted == Member.PaymentMethod.DIRECT_DEBIT and not member.mandate_id:
         messages.error(request, "Set up a Direct Debit first.")
     elif wanted in (Member.PaymentMethod.DIRECT_DEBIT, Member.PaymentMethod.CREDIT):
+        was_paypal = member.payment_method == Member.PaymentMethod.PAYPAL
         member.payment_method = wanted
         member.save(update_fields=["payment_method"])
         label = Member.PaymentMethod(wanted).label
         messages.success(request, f"You now pay by {label.lower()}.")
+        if was_paypal:
+            messages.warning(
+                request,
+                "Now cancel your PayPal subscription in your PayPal account. Until you do, PayPal keeps taking "
+                "payments (they go towards your subscription, or into your credit).",
+            )
     return redirect("billing:payment")
 
 

@@ -38,7 +38,7 @@ class Payment(models.Model):
         MANUAL = "manual", "Recorded by an admin"
         REIMBURSEMENT = "reimbursement", "Expense reimbursed"
         GOCARDLESS_OLD = "gocardless", "Direct Debit (old style, legacy)"
-        PAYPAL = "paypal", "PayPal (legacy)"
+        PAYPAL = "paypal", "PayPal"
         TRANSFER = "transfer", "Transfer (legacy)"
 
     class Status(models.TextChoices):
@@ -209,3 +209,35 @@ class StripeEvent(models.Model):
 
     def __str__(self):
         return f"{self.type} {self.object_id}"
+
+
+class PayPalNotification(models.Model):
+    """One IPN from PayPal (04 §4.4), kept so a repeat is ignored and a failure can be looked at.
+
+    Only IPNs PayPal has confirmed are stored. `key` identifies the IPN: PayPal sends the same one again when it
+    isn't sure BBMS got it, and sends a new one when a payment's status changes.
+    """
+
+    key = models.CharField(max_length=255, unique=True)
+    txn_type = models.CharField(max_length=50, blank=True)
+    txn_id = models.CharField(max_length=50, blank=True, db_index=True)
+    payment_status = models.CharField(max_length=50, blank=True)
+    subscr_id = models.CharField("subscription", max_length=50, blank=True)
+    payer_email = models.CharField(max_length=255, blank=True)
+    receiver_email = models.CharField(max_length=255, blank=True)
+    member = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    payment = models.ForeignKey(Payment, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    data = models.JSONField(help_text="Everything PayPal sent.")
+    received_at = models.DateTimeField(default=timezone.now)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    outcome = models.CharField(max_length=255, blank=True)
+    error = models.TextField(blank=True, help_text="Why it wasn't handled. Fix the cause, then try it again.")
+
+    class Meta:
+        ordering = ["-received_at", "-pk"]
+        verbose_name = "PayPal notification"
+
+    def __str__(self):
+        return f"{self.txn_type or 'IPN'} {self.txn_id or self.subscr_id} {self.payment_status}".strip()

@@ -45,7 +45,10 @@ The membership system for Build Brighton: members, payments, door and machine ac
 - **card payments** through Stripe Checkout, and **one-off Direct Debits**: the member's Pay page (`/pay/`) for
   induction fees, the key deposit, the box fee and unpaid charges (by card, Direct Debit or from credit), and
   top-ups by card or Direct Debit on the credit page. Without a Stripe key,
-  development uses a fake checkout page (`/dev/stripe/…`).
+  development uses a fake checkout page (`/dev/stripe/…`);
+- **PayPal**: a monthly PayPal subscription for members without a UK bank account, and credit top-ups by PayPal,
+  recorded from PayPal's notifications (`/paypal-ipn`, each checked with PayPal). Without `PAYPAL_ACCOUNT_EMAIL`,
+  development uses a fake PayPal page (`/dev/paypal/`), and `/dev/paypal/tools/` plays PayPal's later notifications.
 
 ## What's in this repository
 
@@ -57,7 +60,7 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `apps/access/` | Key fobs, devices (door and machine readers), door decisions, the device API |
 | `apps/equipment/` | Equipment, inductions, Moodle course completions, machine usage sessions and fees |
 | `apps/site_settings/` | Settings the trustees change in the admin (prices, limits, reader timings, the space's name), with a log of changes |
-| `apps/payments/` | The ledger, member credit, machine fees charged from credit, cash and manual payments, withdrawals |
+| `apps/payments/` | The ledger, member credit, machine fees charged from credit, cash and manual payments, withdrawals, card (Stripe) and PayPal payments |
 | `apps/storage/` | Lockers: locations, sizes, default rents, overrides, availability, rentals, limits and their log |
 | `apps/billing/` | Subscription and locker rent charges, GoCardless (Direct Debit) and its webhook, the nightly billing and membership jobs |
 | `templates/`, `static/` | Page templates; CSS and HTMX (kept locally, no build step) |
@@ -67,7 +70,7 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `apps/legacy/` | The legacy import: `manage.py import_legacy` (spec 08 §8.2) |
 | `tools/clone_test/` | How to build and run the Docker image on the legacy clone droplet, with its data imported |
 
-Still to come (one app per area of the spec): subscriptions and billing (GoCardless, Stripe), the box flag and
+Still to come (one app per area of the spec): the standing-order statement import, the box flag and
 self-service locker renting, governance (proposals, expenses), notifications, reports.
 
 ## Getting started on your own computer

@@ -107,8 +107,8 @@ Choices made in the script (change them there if the trustees decide otherwise):
 - Legacy `402` door entries become check-ins.
 - Equipment charged per gram or per page has its usage cost set to 0 (per hour only), and is listed.
 - Members paying by old-style GoCardless are imported with **no payment method** and listed by legacy id: move
-  them to Direct Debit before cutover. PayPal payers are imported the same way for now; ⚠️ once PayPal is built
-  (04 §4.4) the import must keep `paypal` and the `secondary_email` (as the PayPal email). A payment day after the 28th becomes the 1st.
+  them to Direct Debit before cutover. PayPal payers keep payment method `paypal`, and legacy's `secondary_email`
+  becomes their PayPal email (04 §4.4). A payment day after the 28th becomes the 1st.
 - Subscription charges are imported as they are; a second charge for the same member and date is skipped and
   listed. Charges still `processing` at cutover finish when GoCardless's events arrive, matched through the imported
   payments' GoCardless ids.

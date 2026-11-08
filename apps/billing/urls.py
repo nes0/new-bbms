@@ -9,6 +9,7 @@ urlpatterns = [
     path("account/payment/direct-debit/", views.direct_debit_start, name="direct-debit-start"),
     path("account/payment/direct-debit/done/", views.direct_debit_done, name="direct-debit-done"),
     path("account/payment/credit/", views.credit_start, name="credit-start"),
+    path("account/payment/paypal/", views.paypal_start, name="paypal-start"),
     path("account/payment/method/", views.change_method, name="change-method"),
     path("account/charges/<int:charge_id>/pay/", views.pay_charge, name="pay-charge"),
     path("account/rejoin/", views.rejoin, name="rejoin"),

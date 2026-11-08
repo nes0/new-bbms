@@ -95,6 +95,7 @@ def legacy_tables():
                 "sam@example.com",
                 status="payment-warning",
                 payment_method="paypal",
+                secondary_email="Sam.PayPal@example.com",
                 monthly_subscription=20,
                 cash_balance=13,
                 hash="made-up-hash-sam",
@@ -378,8 +379,9 @@ class ImportTests(TestCase):
         )
         self.assertEqual(kim.subscription_expires.isoformat(), "2025-04-01")
         self.assertEqual((self.member(3).payment_method, self.member(3).payment_day), ("balance", None))
-        self.assertEqual(self.member(2).payment_method, "")  # PayPal is dropped
-        self.assertIn("1 member(s) paying by 'paypal'", self.output)
+        sam = self.member(2)
+        self.assertEqual((sam.payment_method, sam.paypal_email), ("paypal", "sam.paypal@example.com"))
+        self.assertNotIn("paying by 'paypal'", self.output)
 
     def test_subscription_charges(self):
         from apps.billing.models import Charge

@@ -154,6 +154,8 @@ def bill_member(member, today: date) -> str:
             return "no mandate"
         _bill_by_direct_debit(member, charges)
         return "direct debit"
+    if method == Member.PaymentMethod.PAYPAL:
+        return _bill_paypal_payer(member, charges, today)
     # Standing orders are matched by the statement import (04 §4.6); cash is recorded by an admin.
     return "paid outside BBMS"
 
@@ -181,6 +183,21 @@ def _bill_from_credit(member, charges, today) -> str:
         emails.send(member, "credit_too_low", what=_what(untold), amount=_pounds(total), credit=credit)
         Charge.objects.filter(pk__in=[c.pk for c in untold]).update(member_told_at=timezone.now())
     return "credit too low"
+
+
+def _bill_paypal_payer(member, charges, today) -> str:
+    """PayPal pays by itself (04 §4.4). A payment that came before its charge went to credit, so a due charge is
+    taken from credit if there's enough; otherwise it waits for PayPal, without emailing the member.
+    """
+    waiting = 0
+    for charge in charges:
+        try:
+            services.pay_from_credit(member, charge.reason, charge.amount_pence, charge=charge, reference=_ref(charge))
+        except services.InsufficientCredit:
+            waiting += 1
+            continue
+        membership.charge_paid(charge, today)
+    return "waiting for paypal" if waiting else "paid from credit"
 
 
 def _ref(charge):
