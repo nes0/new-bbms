@@ -7,6 +7,10 @@
 <p class="muted">Credit pays for machine time and can pay for inductions, the key deposit and a box.
   Machine time can take it down to −£5.</p>
 
+<h2>Top up</h2>
+{% include "payments/_top_up.html" %}
+<p class="hint">Something to pay, like an induction fee or the key deposit? <a href="{% url 'payments:pay' %}">Pay for it here</a>.</p>
+
 <h2>History</h2>
 {% if page.object_list %}
   <table class="ledger">

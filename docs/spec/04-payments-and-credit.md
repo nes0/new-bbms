@@ -71,9 +71,11 @@ Built since (03 §3.6 build status): GoCardless (set-up, billing, webhook, retri
 charges and billing, and "subscription" in "Record a payment". The webhook stores every event, ignores duplicates,
 handles them in the order GoCardless created them, and keeps failures for review (admin: GoCardless events).
 
-Still to build: Stripe, the statement import (4.6), the finance
-overview and money summary (4.8, 4.9), member-facing top-ups and paying fees from the credit page, and importing the
-legacy payments (08 §8.2). The key deposit and box fee are admin settings (02 §2.8, built 2026-11-07), read through
+Built since: card payments through Stripe (4.3), and the member's **Pay** page (`/pay/`), which lists what they can
+pay (as in the table above) with "Pay by card" and "Pay from credit", plus card top-ups on the credit page.
+
+Still to build: one-off Direct Debit payments from the Pay page ("pay by DD"), the statement import (4.6), the finance
+overview and money summary (4.8, 4.9), and importing the legacy payments (08 §8.2). The key deposit and box fee are admin settings (02 §2.8, built 2026-11-07), read through
 `apps/payments/prices.py`.
 
 ## 4.2 GoCardless (Direct Debit)
@@ -108,6 +110,27 @@ recorded `paid` with estimated fee.
 
 **New:** use **Stripe Checkout + webhook** (`checkout.session.completed`) instead of trusting a client-side amount;
 compute the amount server-side from the reason; record the real fee from the balance transaction.
+
+### Build status (2026-11-08)
+
+Built in `apps/payments` (`checkout.py` for the rules, `cards.py` for Stripe). Choices made:
+- Members pay on **Stripe's hosted Checkout page** (cards only), so card details never reach BBMS. Each checkout is
+  a `CardCheckout` row with the amount BBMS worked out; the browser only says *what* to pay.
+- A payment is recorded when Stripe says it's paid, by the **webhook** (`POST /stripe/webhook`, signature checked
+  with `STRIPE_WEBHOOK_SECRET`; events stored and repeats ignored) or when the member **comes back** to BBMS,
+  whichever is first. Both are safe to happen twice.
+- The **real fee** comes from the payment's balance transaction. If Stripe hasn't made it yet, the fee is recorded
+  as £0 and a warning logged (the payout import in 4.9 will have the exact figure).
+- If what was paid for has been paid another way meanwhile (say a Direct Debit came through, or an admin recorded
+  cash), or Stripe took a different amount, the money goes to the member's **credit**, with a note; it's never lost.
+- **Card top-ups** are limited by two settings: £5 to £200 to start with (Stripe's fixed fee makes small top-ups
+  costly).
+- What can be paid where follows the table in 4.1: charges that are due or failed, induction fees, the key deposit
+  (trusted members), the box fee, and top-ups (card only). Paying from credit is refused below £0.
+- Without `STRIPE_SECRET_KEY`, development and tests use a fake (`/dev/stripe/…`), and a live site says card
+  payments aren't available.
+- Refunds are done in Stripe's dashboard and recorded by an admin for now; BBMS logs `charge.refunded` events but
+  doesn't act on them.
 
 ## 4.4 PayPal — dropped
 

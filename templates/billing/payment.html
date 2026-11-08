@@ -32,10 +32,13 @@
             {{ charge.charge_date|date:"j F Y" }}{% if charge.amount_pence %}: {{ charge.amount_pence|pounds }}{% endif %}
             {% if charge.status == "failed" %}<span class="error">(the Direct Debit failed)</span>{% endif %}
             <form method="post" action="{% url 'billing:pay-charge' charge.pk %}" style="display:inline">{% csrf_token %}
-              <button type="submit">Pay from credit</button></form></li>
+              <button type="submit">Pay from credit</button></form>
+            <form method="post" action="{% url 'payments:pay-card' %}" style="display:inline">{% csrf_token %}
+              <input type="hidden" name="item" value="charge:{{ charge.pk }}">
+              <button type="submit">Pay by card</button></form></li>
         {% endfor %}
       </ul>
-      <p class="hint">Not enough credit? <a href="{% url 'payments:credit' %}">Top it up</a> first.</p>
+      <p class="hint">Paying from credit? <a href="{% url 'payments:credit' %}">Top it up</a> first if it's low.</p>
     </section>
   {% endif %}
 

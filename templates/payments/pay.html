@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Pay · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<h1>Pay</h1>
+<p>You have <strong>{{ balance|pounds }}</strong> in credit. Card payments go through Stripe: your card details
+  never reach {{ SITE_NAME }}.</p>
+
+{% if items %}
+  <table class="table">
+    <thead><tr><th>What</th><th>Amount</th><th></th></tr></thead>
+    <tbody>
+      {% for item in items %}
+        <tr>
+          <td>{{ item.label }}</td>
+          <td>{{ item.amount_pence|pounds }}</td>
+          <td class="actions">
+            <form method="post" action="{% url 'payments:pay-card' %}">{% csrf_token %}
+              <input type="hidden" name="item" value="{{ item.key }}"><button type="submit">Pay by card</button></form>
+            <form method="post" action="{% url 'payments:pay-credit' %}">{% csrf_token %}
+              <input type="hidden" name="item" value="{{ item.key }}">
+              <button type="submit"{% if balance < item.amount_pence %} disabled title="Not enough credit"{% endif %}>Pay from credit</button></form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>Nothing to pay at the moment.</p>
+{% endif %}
+
+<h2>Top up your credit</h2>
+<p>Credit pays for machine time, and can pay for anything above.</p>
+{% include "payments/_top_up.html" %}
+<p><a href="{% url 'members:account' %}">Back to your account</a></p>
+{% endblock %}

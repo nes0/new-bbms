@@ -31,13 +31,19 @@ pycparser==3.12
 pymysql==1.2.3
     # via -r requirements.in
 requests==2.34.2
-    # via gocardless-pro
+    # via
+    #   gocardless-pro
+    #   stripe
 segno==1.6.6
     # via -r requirements.in
 sqlparse==0.6.1
     # via django
+stripe==16.0.1
+    # via -r requirements.in
 typing-extensions==4.16.0
-    # via psycopg
+    # via
+    #   psycopg
+    #   stripe
 urllib3==2.8.0
     # via requests
 whitenoise==6.12.0

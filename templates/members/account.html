@@ -40,7 +40,8 @@
         <a href="{% url 'billing:payment' %}">Payments and charges</a>
         {% if unpaid_charges %}<span class="error">({{ unpaid_charges }} to pay)</span>{% endif %}</dd>
       {% if member.subscription_expires %}<dt>Paid until</dt><dd>{{ member.subscription_expires|date:"j F Y" }}</dd>{% endif %}
-      <dt>Credit</dt><dd>{{ credit_pence|pounds }} <a href="{% url 'payments:credit' %}">History and withdrawals</a></dd>
+      <dt>Credit</dt><dd>{{ credit_pence|pounds }} <a href="{% url 'payments:credit' %}">Top up, history and withdrawals</a></dd>
+      <dt>Pay for something</dt><dd><a href="{% url 'payments:pay' %}">Induction fees, key deposit, box fee</a></dd>
       <dt>Lockers</dt><dd><a href="{% url 'storage:lockers' %}">Your lockers and ones to rent</a></dd>
       <dt>Member since</dt><dd>{{ member.date_joined|date:"j F Y" }}</dd>
       {% if id_status != "needed" or member.status != "setting-up" %}

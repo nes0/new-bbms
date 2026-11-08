@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Fake Stripe{% endblock %}
+{% block content %}
+<h1>Fake Stripe Checkout</h1>
+<p class="hint">Local development only: this stands in for Stripe's card page because no STRIPE_SECRET_KEY is set.
+  Nothing is charged.</p>
+<p>{{ session.description }}: <strong>{{ session.amount|pounds }}</strong></p>
+<form method="post">{% csrf_token %}<button type="submit">Pay with a test card</button></form>
+<p><a href="{{ session.cancel_url }}">Cancel</a></p>
+{% endblock %}

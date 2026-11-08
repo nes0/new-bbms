@@ -157,6 +157,12 @@ GOCARDLESS_ENVIRONMENT = env("GOCARDLESS_ENVIRONMENT", default="sandbox")  # or 
 # Webhook endpoint secret, from GoCardless's dashboard (Developers → Webhooks). Webhooks are refused without it.
 GOCARDLESS_WEBHOOK_SECRET = env("GOCARDLESS_WEBHOOK_SECRET", default="")
 
+# Stripe (card payments, spec 04 §4.3). Without a key, development and tests use a fake that sends nothing.
+# Use a test-mode key (sk_test_...) everywhere but the live site.
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
+# The webhook endpoint's signing secret (whsec_...), from Stripe's dashboard. Webhooks are refused without it.
+STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
+
 # Security settings for production (behind DigitalOcean App Platform's HTTPS proxy).
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = env("SECURE_SSL_REDIRECT")

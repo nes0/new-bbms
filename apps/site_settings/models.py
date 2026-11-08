@@ -112,6 +112,19 @@ class SiteSettings(models.Model):
         help_text="One-off, non-refundable fee for a member's storage box (06 §6.2). New payments only.",
     )
 
+    # --- card payments (04 §4.3) ---
+    card_top_up_minimum_pence = models.PositiveIntegerField(
+        "smallest credit top-up by card",
+        default=500,
+        validators=[MinValueValidator(100)],
+        help_text="Stripe takes a fixed fee on every payment, so small top-ups cost the space proportionally more.",
+    )
+    card_top_up_maximum_pence = models.PositiveIntegerField(
+        "largest credit top-up by card",
+        default=20000,
+        validators=[MinValueValidator(100), MaxValueValidator(100_000)],
+    )
+
     # --- machines (05 §5.3, §5.6) ---
     minimum_session_minutes = models.PositiveIntegerField(
         "minimum charge for a machine session (minutes)",
@@ -188,6 +201,7 @@ class SiteSettings(models.Model):
             ),
         ),
         ("Prices", ("key_deposit_pence", "box_fee_pence")),
+        ("Card payments", ("card_top_up_minimum_pence", "card_top_up_maximum_pence")),
         ("Machines", ("minimum_session_minutes", "machine_credit_limit_pence")),
         ("Key fobs", ("max_active_fobs", "fob_enrolment_seconds")),
         ("Fob readers", ("reader_check_in_seconds", "session_heartbeat_seconds")),
