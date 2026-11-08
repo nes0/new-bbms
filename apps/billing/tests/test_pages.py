@@ -134,6 +134,13 @@ class PaymentPageTests(BillingTestCase):
         self.client.post("/dev/gocardless/payments/", {"payment": payment_id, "action": "confirmed"})
         self.assertEqual(Charge.objects.get(member=new).status, "paid")
 
+    @override_settings(TESTING=False, DEBUG=False)
+    def test_a_site_without_gocardless_says_so(self):
+        self.login(method=Member.PaymentMethod.NONE, status=Member.Status.SETTING_UP, mandate_id="", day=None)
+        with self.assertLogs("apps.billing.gocardless", "ERROR"):
+            response = self.client.post("/account/payment/direct-debit/", follow=True)
+        self.assertContains(response, "couldn&#x27;t reach GoCardless")
+
     def test_the_fake_gocardless_pages_are_for_development_only(self):
         self.login()
         self.assertEqual(self.client.get("/dev/gocardless/payments/").status_code, 404)

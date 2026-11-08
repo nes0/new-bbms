@@ -20,7 +20,6 @@ import os
 from dataclasses import dataclass, field
 
 from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
 
 logger = logging.getLogger(__name__)
 
@@ -230,6 +229,19 @@ class DryRunGoCardless:
         raise GoCardlessError("Not during a dry run.")
 
 
+class NotConfigured:
+    """A site without GOCARDLESS_ACCESS_TOKEN (and not developing): every call fails politely, so members see
+    "Direct Debit isn't available" and jobs log it, rather than a server error. `check --deploy` warns about it.
+    """
+
+    def __getattr__(self, name):
+        def refuse(*args, **kwargs):
+            logger.error("GoCardless isn't configured (GOCARDLESS_ACCESS_TOKEN): can't %s", name)
+            raise GoCardlessError("Direct Debit isn't available on this site at the moment.")
+
+        return refuse
+
+
 _fake = FakeGoCardless()
 _override = contextvars.ContextVar("gocardless_override", default=None)
 
@@ -242,7 +254,7 @@ def client():
         return GoCardlessClient(settings.GOCARDLESS_ACCESS_TOKEN, settings.GOCARDLESS_ENVIRONMENT)
     if settings.DEBUG or getattr(settings, "TESTING", False):
         return fake()
-    raise ImproperlyConfigured("Set GOCARDLESS_ACCESS_TOKEN (and GOCARDLESS_ENVIRONMENT) to take Direct Debits.")
+    return NotConfigured()
 
 
 def fake() -> FakeGoCardless:
