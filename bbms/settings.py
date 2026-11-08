@@ -58,6 +58,8 @@ INSTALLED_APPS = [
     "apps.notifications",
     "apps.proposals",
     "apps.expenses",
+    "oauth2_provider",
+    "apps.moodle",
 ]
 
 MIDDLEWARE = [
@@ -228,6 +230,26 @@ DISCORD_ANNOUNCEMENT_CHANNEL_ID = env("DISCORD_ANNOUNCEMENT_CHANNEL_ID", default
 PAYPAL_ACCOUNT_EMAIL = env("PAYPAL_ACCOUNT_EMAIL", default="")
 PAYPAL_OLD_ACCOUNT_EMAILS = env.list("PAYPAL_OLD_ACCOUNT_EMAILS", default=[])
 PAYPAL_SANDBOX = env.bool("PAYPAL_SANDBOX", default=True)  # False only on the live site
+
+# Moodle (spec 06 §6.12). Its address is an admin setting. The web-service token lets BBMS ask Moodle whether a member
+# has finished a course (a dedicated Moodle account with the least rights needed). Without it, development and tests use
+# a fake, and a live site can't check courses.
+MOODLE_TOKEN = env("MOODLE_TOKEN", default="")
+# "Log in with BBMS": BBMS is an OpenID Connect provider for Moodle. Tokens are signed with this RSA private key (PEM;
+# in an environment variable write each line break as \n). Without it the provider is switched off.
+OIDC_RSA_PRIVATE_KEY = env("OIDC_RSA_PRIVATE_KEY", default="").replace("\\n", "\n")
+OAUTH2_PROVIDER = {
+    "OIDC_ENABLED": bool(OIDC_RSA_PRIVATE_KEY),
+    "OIDC_RSA_PRIVATE_KEY": OIDC_RSA_PRIVATE_KEY,
+    "OIDC_ISS_ENDPOINT": f"{SITE_URL}/o",
+    "SCOPES": {"openid": "Know who you are", "profile": "Your name", "email": "Your email address"},
+    "OAUTH2_VALIDATOR_CLASS": "apps.moodle.oidc.BBMSValidator",
+    # Moodle's generic OAuth 2 login doesn't send PKCE. Its client has a secret, which is what protects the code.
+    "PKCE_REQUIRED": False,
+    "ACCESS_TOKEN_EXPIRE_SECONDS": 600,
+    "ID_TOKEN_EXPIRE_SECONDS": 600,
+    "REFRESH_TOKEN_EXPIRE_SECONDS": 3600,
+}
 
 # Security settings for production (behind DigitalOcean App Platform's HTTPS proxy).
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

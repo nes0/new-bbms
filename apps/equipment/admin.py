@@ -120,19 +120,91 @@ class EquipmentAdmin(admin.ModelAdmin):
             )
 
 
+class InductionForm(forms.ModelForm):
+    class Meta:
+        model = Induction
+        fields = "__all__"  # noqa: DJ007 - the admin shows them all
+
+    def clean(self):
+        cleaned = super().clean()
+        trained_at, member = cleaned.get("trained_at"), cleaned.get("member")
+        if trained_at is None or member is None or "trained_at" not in self.changed_data:
+            return cleaned
+        # Signing someone off needs the online course finished, where the machine has one (05 §5.8, 06 §6.12).
+        category = cleaned.get("category") or self.instance.category
+        signing_off = Induction(member=member, category=category, trained_at=trained_at)
+        for machine in Equipment.objects.filter(moodle_course_id__isnull=False, archived=False):
+            if machine.induction_key == category and rules._course_reason(member, machine, signing_off):
+                raise forms.ValidationError(
+                    f"{member} hasn't finished the online course for {machine.name} yet, so they can't be signed off. "
+                    'Their course is checked when this list is opened with the "Waiting for training" filter.'
+                )
+        return cleaned
+
+
+class WaitingFilter(admin.SimpleListFilter):
+    """The sign-off list (05 §5.8): paid for, not yet signed off. Opening it asks Moodle about the members waiting
+    for a course (06 §6.12), so the course status below is up to date."""
+
+    title = "sign-off"
+    parameter_name = "waiting"
+
+    def lookups(self, request, model_admin):
+        return [("yes", "Waiting for training")]
+
+    def queryset(self, request, queryset):
+        if self.value() == "yes":
+            return queryset.filter(paid=True, trained_at__isnull=True)
+        return queryset
+
+
 @admin.register(Induction)
 class InductionAdmin(admin.ModelAdmin):
-    list_display = ("member", "category", "paid", "trained_at", "trainer", "is_trainer")
-    list_filter = ("category", "paid", "is_trainer")
+    form = InductionForm
+    list_display = ("member", "category", "paid", "trained_at", "trainer", "is_trainer", "course")
+    list_filter = (WaitingFilter, "category", "paid", "is_trainer")
     search_fields = ("member__email", "member__given_name", "member__family_name", "category")
     autocomplete_fields = ("member", "trainer")
+
+    @admin.display(description="Online course")
+    def course(self, induction):
+        machines = [
+            m for m in Equipment.objects.filter(moodle_course_id__isnull=False) if m.induction_key == induction.category
+        ]
+        if not machines:
+            return "-"
+        finished = TrainingCompletion.objects.filter(
+            member=induction.member, moodle_course_id=machines[0].moodle_course_id, cleared_at__isnull=True
+        ).exists()
+        return "Finished" if finished else "Not finished"
+
+    def changelist_view(self, request, extra_context=None):
+        if request.GET.get("waiting") == "yes" and request.method == "GET":
+            from apps.moodle import client, completion  # not at the top: apps.moodle uses this app's models
+
+            if client.enabled():
+                summary = completion.check_waiting(limit=25)
+                if summary.unavailable:
+                    messages.warning(request, "Moodle couldn't be reached, so the course status may be out of date.")
+        return super().changelist_view(request, extra_context)
 
 
 @admin.register(TrainingCompletion)
 class TrainingCompletionAdmin(admin.ModelAdmin):
-    list_display = ("member", "moodle_course_id", "completed_at", "last_checked_at")
+    """Online courses members have finished, as BBMS last checked Moodle (06 §6.12). A completion stays until an admin
+    clears it, for example when someone must retake the course."""
+
+    list_display = ("member", "moodle_course_id", "completed_at", "last_checked_at", "cleared_at")
+    list_filter = ("moodle_course_id",)
     search_fields = ("member__email", "member__given_name", "member__family_name")
     autocomplete_fields = ("member",)
+    readonly_fields = ("cleared_at", "cleared_by")
+    actions = ["clear"]
+
+    @admin.action(description="Clear the selected completions (they must finish the course again)")
+    def clear(self, request, queryset):
+        cleared = queryset.filter(cleared_at__isnull=True).update(cleared_at=timezone.now(), cleared_by=request.user)
+        self.message_user(request, f"Cleared {cleared} completion(s).")
 
 
 class UsageSessionForm(forms.ModelForm):

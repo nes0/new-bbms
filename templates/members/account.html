@@ -94,7 +94,8 @@
       <dt>Fobs</dt>
       <dd>{% for fob in fobs %}{{ fob.label }}{% if not forloop.last %}, {% endif %}{% empty %}None yet: collect one on your first visit{% endfor %}</dd>
       <dt>Trained on</dt>
-      <dd>{% for name in trained_on %}{{ name }}{% if not forloop.last %}, {% endif %}{% empty %}No machines yet{% endfor %}</dd>
+      <dd>{% for name in trained_on %}{{ name }}{% if not forloop.last %}, {% endif %}{% empty %}No machines yet{% endfor %}
+        <br><a href="{% url 'moodle:training' %}">Online training</a></dd>
     </dl>
   </section>
 

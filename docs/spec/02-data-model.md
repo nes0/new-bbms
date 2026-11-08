@@ -114,8 +114,9 @@ AcsNode (devices)   Settings (key/value)   AuditLog
   `idle_auto_end_minutes` (empty = off; current mode only) and `service_interval_hours` (empty = no reminders); sessions gain `ended_by`
   (`tap`, `button`, `idle`, `tidy-up`, `admin`), `original_started` / `original_finished`, `adjusted_by`, `adjusted_reason`, `motor_on_seconds`, `charged_at`, and reason `maintenance`.
 - **New** (06 §6.12): `equipment.moodle_course_id` (optional), `equipment.course_required_for_existing` (flag),
-  `members.moodle_user_id` (found via web services), and `training_completions` (member, Moodle course id,
-  completed at, last checked, cleared by/at).
+  `moodle_accounts` (member, Moodle user id, found at: **built** as its own table, not a member field), and
+  `training_completions` (member, Moodle course id, completed at, last checked, cleared by/at: **built**). The Moodle
+  address is an admin setting (02 §2.8).
 - **`inductions`**: `user_id`, `key` (= `induction_category`), `paid`, `payment_id`, `trained` (timestamp), `trainer_user_id`, `is_trainer`, `active`.
 
 ## 2.7 Other

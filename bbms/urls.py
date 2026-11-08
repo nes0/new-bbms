@@ -20,6 +20,8 @@ urlpatterns = [
     path("", include("apps.storage.urls")),
     path("", include("apps.billing.urls")),
     path("", include("apps.notifications.urls")),
+    path("", include("apps.moodle.urls")),
+    path("o/", include("apps.moodle.oidc_urls")),
     path("", include("apps.profiles.urls")),
     path("", include("apps.discord.urls")),
     path("", include("apps.proposals.urls")),

@@ -218,6 +218,7 @@ and `check --deploy` lists what is missing.
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | §6.2 |
 | `PAYPAL_ACCOUNT_EMAIL`, `PAYPAL_SANDBOX` (`False` on the live site), `PAYPAL_OLD_ACCOUNT_EMAILS` | §6.3 |
 | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, `DISCORD_MEMBER_ROLE_ID`, `DISCORD_FORMER_MEMBER_ROLE_ID`, `DISCORD_WELCOME_CHANNEL_ID` | §6.4 |
+| `MOODLE_TOKEN` (web-service token), `OIDC_RSA_PRIVATE_KEY` (signs "Log in with BBMS"; a secret). Moodle's address is an admin setting, not a variable. | §6.7 |
 
 ### 5.4 Email and other
 
@@ -234,8 +235,8 @@ and `check --deploy` lists what is missing.
 | `WEB_CONCURRENCY` | gunicorn workers (default 2). |
 | `LEGACY_DATABASE_URL` | Only for the import (§8). Don't leave it set afterwards. |
 
-🚧 **Not built yet:** variables for Moodle sign-in (spec 06 §6.12: the web-service token and the signing key), for
-error tracking (§6.6) and for the bank statement import (04 §4.6). They will be added here when those features exist.
+🚧 **Not built yet:** variables for error tracking (§6.6) and for the bank statement import (04 §4.6). They will be
+added here when those features exist.
 
 ---
 
@@ -333,11 +334,73 @@ The spec asks for three things (spec 01 §1.8). None is set up in the code yet:
 
 Until these exist, someone must check the job logs each morning.
 
-### 6.7 Moodle (🚧 not built yet)
+### 6.7 Moodle (online training)
 
-Moodle single sign-on ("Log in with BBMS") and course completion (spec 06 §6.12) aren't built. When they are, this
-section will list the Moodle web-service token, the signing key and Moodle's own settings (a rehearsal on a **copy** of
-Moodle comes first). Placeholder: `<MOODLE_URL>`, `<MOODLE_TOKEN>`.
+Two separate links to Moodle (spec 06 §6.12). **"Log in with BBMS"**: Moodle sends members to BBMS to log in, so
+passwords live only in BBMS. **Course completion**: BBMS asks Moodle whether a member has finished a course, and
+stores the answer; machines use only the stored answer, so a Moodle outage never blocks a machine.
+
+**Rehearse everything below on a copy of Moodle first.** You switch the live Moodle's login at cutover (spec 08 §8.3,
+phase 4), and a mistake can lock members out of Moodle.
+
+**A. The signing key** (for "Log in with BBMS")
+
+1. Make a key: `openssl genrsa -out bbms-oidc.pem 3072`. Store the file in the password manager, then delete it from
+   your computer.
+2. Set `OIDC_RSA_PRIVATE_KEY` to the file's contents, with each line break written as `\n` (one line). A way to
+   print it that way: `awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' bbms-oidc.pem`. Mark the variable encrypted.
+3. Without the key, `/o/authorize/` returns "not found" and `check --deploy` warns (`moodle.W001`). Changing the key
+   later only signs Moodle's members out of Moodle; they log in again.
+
+**B. A web-service account in Moodle** (for course completion)
+
+1. In Moodle: *Site administration → Server → Web services → Overview*. Enable web services and the **REST**
+   protocol.
+2. Create a dedicated user, e.g. `bbms-webservice`, with a role that has only what's needed. ⚠️ Verify the exact
+   capabilities on your Moodle version: it must be able to look up users by ID number and email, and to view course
+   completion for any user in the linked courses.
+3. Create an *external service* (e.g. "BBMS") with exactly two functions: `core_user_get_users_by_field` and
+   `core_completion_get_course_completion_status`. Authorise the user for it, and create a **token** for that user.
+4. Put the token in `MOODLE_TOKEN` (encrypted). Without it BBMS can't check courses (`moodle.W002`).
+5. Each linked course must have **course completion** turned on, with its criteria set (in the course's settings).
+   Otherwise Moodle never reports it as finished.
+
+**C. Tell BBMS where Moodle is, and register Moodle as a client**
+
+1. In the site admin: *Settings → Moodle's address*, e.g. `https://moodle.example.com` (no slash at the end).
+2. From a shell on the app (§6.8): `python manage.py setup_moodle_sso`. It prints the endpoints and a **client ID and
+   secret**. The secret is shown **once** (BBMS keeps only a hash). Copy it straight into Moodle. Run the command again
+   if Moodle's address changes; `--new-secret` makes a new secret.
+
+**D. Moodle's OAuth 2 service** (*Site administration → Server → OAuth 2 services → Custom*)
+
+1. Client ID and secret from step C. Scopes: `openid profile email`. Endpoints as printed (authorization, token,
+   userinfo), or the discovery address `https://bbms.buildbrighton.com/o/.well-known/openid-configuration`.
+2. Field mappings (external → Moodle): `email` → email, `given_name` → first name, `family_name` → surname, and
+   `sub` → **ID number**. BBMS finds a member in Moodle by that ID number, then by email.
+3. Tick "show on login page" and name it "BBMS". ⚠️ Verify the option names on your Moodle version.
+4. Turn off Moodle's own sign-up and password login once it works, keeping a **local fallback login** for Moodle's
+   admins.
+
+**What BBMS tells Moodle, and the risk.** Any BBMS login that isn't banned may log in to Moodle, including members still
+setting up (so they can train before joining). Moodle receives `sub` (the member's BBMS id), `email`, `given_name`,
+`family_name` and `name`. `email_verified` is always **false**, because BBMS doesn't confirm email addresses: anyone
+can join with any address. ❓ **Trustees to decide, and rehearse:** if Moodle links a BBMS login to an *existing*
+Moodle account by email address alone, someone could join BBMS with another person's address and take over that
+person's Moodle account. Switch on Moodle's "require email verification" on the OAuth 2 service (⚠️ verify the name),
+so the real owner is emailed first, or add email confirmation to joining BBMS before trusting the address.
+Existing Moodle accounts (made by the old database login) must be linked, not duplicated: check one in the rehearsal.
+
+**E. Linking machines to courses.** In the admin, *Equipment*: set **Moodle course id** (the number in the course's
+address: `…/course/view.php?id=7`). Machines that share an induction category normally share a course. Members already
+signed off before then keep their access unless "course required for existing" is ticked (❓ spec 06 §6.12).
+
+**F. Checking it works.** Log in to Moodle with BBMS as a test member; finish a test course; open
+`/account/training/` and press "check now". Run `python manage.py check_moodle_completions` by hand. Check
+`check --deploy` shows no `moodle.W` warnings. The 15-minute job is in §7.
+
+**At cutover** switch the live Moodle's login to "Log in with BBMS", then remove Moodle's access to the old database:
+its MySQL account and the firewall rule.
 
 ### 6.8 Reaching a shell on the app
 
@@ -365,6 +428,7 @@ after local midnight, and write the chosen times in the table. ❓ The order mat
 | 07:00 daily | `python manage.py retry_direct_debits` | Asks GoCardless to retry failed Direct Debits when the retry day comes |
 | every 15 min | `python manage.py process_gocardless_events` | Backstop for webhook events stored but not handled |
 | every 15 min | `python manage.py check_devices` | Tells the `acs` team when a monitored device has gone quiet |
+| every 15 min | `python manage.py check_moodle_completions` | Asks Moodle whether members waiting for sign-off have finished their online course (does nothing until Moodle is set up) |
 | hourly | `python manage.py tidy_equipment_sessions` | Closes stale machine sessions, charges finished ones, sends service reminders |
 | hourly | `python manage.py update_proposals` | Opens proposals (emails voters, posts on Discord), counts closed ones, posts results |
 | daily | `python manage.py shred_stale_id_documents` | Deletes proofs of identity nobody checked in time |
@@ -501,7 +565,7 @@ Copy this into an issue and tick it off. The acceptance checks in
 - [ ] The import rehearsed; the report is clean or every line explained
 - [ ] ❓ `--mark-inducted` decision recorded
 - [ ] Old system's nightly jobs ready to be turned off at cutover; old webhooks ready to be repointed
-- [ ] 🚧 Moodle sign-in (when built) rehearsed on a copy
+- [ ] §6.7: Moodle sign-in and course checks rehearsed on a copy of Moodle; the email-verification risk decided; Moodle's old database login and access removed
 
 ---
 
@@ -531,10 +595,9 @@ Everything marked 🚧 above, in one place, so the work can be planned:
 1. Error tracking, job heartbeats, uptime monitor (§6.6)
 2. `.do/app.yaml` for the app and jobs, and a way to deploy only after CI passes (§3.3)
 3. The health check and HTTPS redirect check, with an exemption for `/healthz` if needed (§3.3)
-4. Moodle sign-in and completion settings (§6.7)
-5. The hourly proposals tally (§7), equipment photo and receipt storage (§3.2), the bank statement import (§5.4)
-6. A staging app and the shadow site (§9)
-7. How the import reaches the legacy database (§8), and the legacy photo bucket's name
-8. CI's `check --deploy --fail-level WARNING` step (`.github/workflows/ci.yml`) fails while GoCardless, Stripe, PayPal,
+4. The hourly proposals tally (§7), equipment photo and receipt storage (§3.2), the bank statement import (§5.4)
+5. A staging app and the shadow site (§9)
+6. How the import reaches the legacy database (§8), and the legacy photo bucket's name
+7. CI's `check --deploy --fail-level WARNING` step (`.github/workflows/ci.yml`) fails while GoCardless, Stripe, PayPal,
    Discord and Spaces are unset, because each deploy check warns. Give CI throwaway values, or silence those checks
    there, so the step passes again.
