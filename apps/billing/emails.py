@@ -44,14 +44,26 @@ def _render(template, context):
     return subject.strip(), body.strip() + "\n"
 
 
+def _deliver(subject, body, recipients, what) -> bool:
+    """Hand an email to the mail server. A failure is logged and does not stop the caller: an email that couldn't be
+    sent must never undo or halt a payment, a status change or a nightly job (a Direct Debit may already have been
+    asked for). Only the kind of failure is logged, never the address or the message."""
+    try:
+        send_mail(subject, body, None, recipients)
+    except Exception as error:  # noqa: BLE001 - any failure to send is survivable
+        logger.error("Couldn't send an email (%s): %s", what, type(error).__name__)
+        return False
+    return True
+
+
 def send(member, template, **context):
     """Email one member. Logs the member's id and the template, never the content."""
     if _suppressed.get():
         logger.info("Dry run: would email member %s (%s)", member.pk, template)
         return
     subject, body = _render(template, {"member": member, **context})
-    send_mail(subject, body, None, [member.email])
-    logger.info("Emailed member %s (%s)", member.pk, template)
+    if _deliver(subject, body, [member.email], f"member {member.pk}, {template}"):
+        logger.info("Emailed member %s (%s)", member.pk, template)
 
 
 def send_to_address(address, template, **context):
@@ -60,8 +72,8 @@ def send_to_address(address, template, **context):
         logger.info("Dry run: would email a non-member (%s)", template)
         return
     subject, body = _render(template, context)
-    send_mail(subject, body, None, [address])
-    logger.info("Emailed a non-member (%s)", template)
+    if _deliver(subject, body, [address], f"a non-member, {template}"):
+        logger.info("Emailed a non-member (%s)", template)
 
 
 def tell_role(role, template, **context):
@@ -75,7 +87,7 @@ def tell_role(role, template, **context):
         logger.info("Dry run: would email the %s role (%s)", role, template)
         return
     subject, body = _render(template, context)
-    send_mail(subject, body, None, emails)
+    _deliver(subject, body, emails, f"the {role} role, {template}")
 
 
 def tell_storage_team(template, **context):
