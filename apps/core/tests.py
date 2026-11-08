@@ -43,6 +43,11 @@ class BrandingTests(TestCase):
         self.assertContains(self.client.get(reverse("members:register")), 'class="backdrop"')
         self.assertNotContains(self.client.get(reverse("home")), "backdrop")
 
+    def test_pages_link_the_favicon(self):
+        response = self.client.get(reverse("home"))
+        self.assertContains(response, 'rel="icon" href="/static/img/favicon.svg"')
+        self.assertContains(response, 'rel="apple-touch-icon"')
+
     def test_the_logo_and_backdrop_files_are_in_the_static_folder(self):
-        for name in ("logo.png", "login-backdrop.jpg"):
+        for name in ("logo.png", "login-backdrop.jpg", "favicon.svg", "favicon.ico", "apple-touch-icon.png"):
             self.assertIsNotNone(finders.find(f"img/{name}"), name)

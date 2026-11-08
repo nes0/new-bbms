@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#111"/>
+  <!-- the logo's circuit trace and two terminals, above a bold B -->
+  <path d="M0 14h14M32 0v14" stroke="#fff" stroke-width="4" fill="none"/>
+  <circle cx="14" cy="14" r="5" fill="#fff"/>
+  <circle cx="48" cy="12" r="6" fill="#1E8C99"/>
+  <path d="M20 22h13a8 8 0 0 1 4 15 9 9 0 0 1-4 17H20z M27 28v8h6a4 4 0 0 0 0-8z M27 42v8h7a4 4 0 0 0 0-8z" fill="#fff" fill-rule="evenodd"/>
+</svg>
