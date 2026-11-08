@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Expense · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<p><a href="{% url 'expenses:index' %}">← Expenses</a></p>
+<h1>Expense: {{ expense.amount_pence|pounds }}</h1>
+<dl class="details">
+  <dt>Claimed by</dt><dd>{{ expense.member.full_name }}{% if own %} (you){% endif %}, {{ expense.submitted_at|date:"j F Y, H:i" }}</dd>
+  <dt>Category</dt><dd>{{ expense.get_category_display }}</dd>
+  <dt>Description</dt><dd>{{ expense.description|linebreaksbr }}</dd>
+  <dt>Date of purchase</dt><dd>{{ expense.spent_on|date:"j F Y" }}</dd>
+  <dt>Receipt</dt><dd>{% if expense.receipt %}<a href="{% url 'expenses:receipt' expense.pk %}">{% if expense.receipt_is_pdf %}Open the PDF{% else %}Open the photo{% endif %}</a>{% elif expense.legacy_receipt %}Kept in the old system: {{ expense.legacy_receipt }}{% else %}None{% endif %}</dd>
+  <dt>Status</dt><dd>
+    {% if expense.status == "approved" %}<span class="ok">Approved</span>{% if expense.decided_by %} by {{ expense.decided_by.full_name }}{% endif %}{% if expense.decided_at %} on {{ expense.decided_at|date:"j F Y" }}{% endif %}: added to {% if own %}your{% else %}their{% endif %} credit.
+    {% elif expense.status == "declined" %}<span class="error">Declined</span>{% if expense.decided_by %} by {{ expense.decided_by.full_name }}{% endif %}{% if expense.decided_at %} on {{ expense.decided_at|date:"j F Y" }}{% endif %}{% if expense.decline_reason %}: {{ expense.decline_reason }}{% endif %}
+    {% else %}Waiting for approval{% endif %}</dd>
+</dl>
+
+{% if expense.receipt and not expense.receipt_is_pdf %}
+  <p><img class="receipt" src="{% url 'expenses:receipt' expense.pk %}" alt="The receipt"></p>
+{% endif %}
+
+{% if can_decide %}
+<section class="card">
+  <h2>Decide</h2>
+  <form method="post" action="{% url 'expenses:decide' expense.pk %}" class="stack form">
+    {% csrf_token %}
+    <p><button type="submit" name="decision" value="approve">Approve and add {{ expense.amount_pence|pounds }} to their credit</button></p>
+    <label for="reason">Or decline it, saying why (the member is sent this):</label>
+    <textarea name="reason" id="reason" rows="3" maxlength="1000"></textarea>
+    <p><button type="submit" name="decision" value="decline" class="danger">Decline</button></p>
+  </form>
+</section>
+{% endif %}
+
+{% if own and expense.status == "waiting" %}
+  <form method="post" action="{% url 'expenses:withdraw' expense.pk %}">
+    {% csrf_token %}
+    <p><button type="submit" class="link">Withdraw this claim</button> <span class="hint">(it's deleted, with the receipt)</span></p>
+  </form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Expenses · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<h1>{% if see_all %}Expenses{% else %}Your expenses{% endif %}</h1>
+<p>Spent your own money on something for the space? Claim it back: once a trustee approves it, it's added to your
+  credit, to spend or <a href="{% url 'payments:credit' %}">withdraw</a>.
+  {% if can_claim %}<a href="{% url 'expenses:claim' %}">Claim an expense</a>{% endif %}</p>
+
+<form method="get" class="filters">
+  {% if see_all %}
+  <label>Member <select name="member">
+    <option value="">Everyone</option>
+    {% for person in claimants %}<option value="{{ person.pk }}"{% if filters.member == person.pk|stringformat:"d" %} selected{% endif %}>{{ person.full_name }}</option>{% endfor %}
+  </select></label>
+  {% endif %}
+  <label>Status <select name="status">
+    <option value="">Any</option>
+    {% for value, label in statuses %}<option value="{{ value }}"{% if filters.status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select></label>
+  <label>Sort by <select name="sort">
+    {% for value, label in sorts %}<option value="{{ value }}"{% if sort == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select></label>
+  <button type="submit">Show</button>
+</form>
+
+{% if page.object_list %}
+<div class="scroll"><table class="table">
+  <thead><tr><th>Claimed</th>{% if see_all %}<th>Member</th>{% endif %}<th>Category</th><th>Description</th><th class="number">Amount</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for expense in page %}
+    <tr>
+      <td><a href="{% url 'expenses:detail' expense.pk %}">{{ expense.submitted_at|date:"j M Y" }}</a></td>
+      {% if see_all %}<td>{{ expense.member.full_name }}</td>{% endif %}
+      <td>{{ expense.get_category_display }}</td>
+      <td>{{ expense.description|truncatechars:60 }}</td>
+      <td class="number">{{ expense.amount_pence|pounds }}</td>
+      <td>{% if expense.status == "approved" %}<span class="ok">Approved</span>{% elif expense.status == "declined" %}<span class="error">Declined</span>{% else %}Waiting{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% if waiting_total %}<p class="hint">Waiting for approval in this list: {{ waiting_total|pounds }}.</p>{% endif %}
+{% if page.has_other_pages %}
+  <p class="pager">
+    {% if page.has_previous %}<a href="?{{ query.urlencode }}&page={{ page.previous_page_number }}">Previous</a>{% endif %}
+    <span class="hint">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a href="?{{ query.urlencode }}&page={{ page.next_page_number }}">Next</a>{% endif %}
+  </p>
+{% endif %}
+{% else %}
+<p>No expenses{% if filters.status or filters.member %} match{% else %} yet{% endif %}.</p>
+{% endif %}
+{% endblock %}

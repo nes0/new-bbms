@@ -76,3 +76,7 @@ select, textarea { font: inherit; padding: 0.5rem; border: 1px solid var(--borde
   color: #fff; font-size: 0.8em; line-height: 1.4em; text-align: center; }
 .notification { border-left-width: 4px; }
 .notification.unread { border-left-color: var(--accent); }
+/* Expenses (06 §6.4) */
+.scroll { overflow-x: auto; }
+.table .number { text-align: right; white-space: nowrap; }
+img.receipt { max-width: 100%; height: auto; border: 1px solid var(--border); }

@@ -72,9 +72,7 @@ SESSION_REASONS = {
     "testing": UsageSession.Reason.TESTING,
 }
 
-NOT_IMPORTED_YET = [
-    ("expenses", "governance app"),
-]
+NOT_IMPORTED_YET = []
 NEVER_IMPORTED = ["storage_boxes", "detected_devices", "settings", "failed_jobs", "password_reminders", "migrations"]
 
 
@@ -229,6 +227,7 @@ class Importer:
             "access_log",
             "proposals",
             "proposal_votes",
+            "expenses",
         ):
             self.report.read[table] += 0
         self.import_members()
@@ -246,6 +245,7 @@ class Importer:
         self.import_payments()
         self.import_access_log()
         self.import_proposals()
+        self.import_expenses()
         self.list_not_imported()
         return self.report
 
@@ -652,6 +652,12 @@ class Importer:
         if comms is not None:
             confirm = Permission.objects.get(content_type__app_label="members", codename="confirm_general_inductions")
             comms.permissions.add(confirm)
+        # Legacy's finance role saw everyone's expenses (06 §6.4); admins approve them.
+        finance = next((g for g in self.groups.values() if g.name == "finance"), None)
+        if finance is not None:
+            finance.permissions.add(
+                Permission.objects.get(content_type__app_label="expenses", codename="see_all_expenses")
+            )
         report.imported["role_user"] = len(links)
         report.note(f"{len(admins)} members of the 'admin' role can use the admin site (other roles: groups only)")
 
@@ -1207,7 +1213,93 @@ class Importer:
         if different:
             report.note("proposals whose recount differs from legacy's totals: " + ", ".join(different))
 
+    # -- Expenses ----------------------------------------------------------------------------------------------------
+
+    def import_expenses(self):
+        """Expense claims (06 §6.4), linked to the credit legacy paid for each approved one (a payment from
+        "reimbursement" whose source id is the expense's id). Receipts are copied from legacy's S3 bucket when a photo
+        source is given; otherwise legacy's path is kept on the expense.
+        """
+        from apps.expenses.models import Expense
+
+        table, report = "expenses", self.report
+        categories = {c.value for c in Expense.Category}
+        credits = {
+            p.source_id: p
+            for p in Payment.objects.filter(source=Payment.Source.REIMBURSEMENT, legacy_id__isnull=False)
+            .exclude(source_id="")
+            .select_related("member")
+        }
+        imported, unpaid, receipts, missing_receipts, odd_categories = 0, [], Counter(), [], Counter()
+        for row in self.source.rows(table):
+            report.read[table] += 1
+            member = self.members.get(row.get("user_id"))
+            amount = int(row.get("amount") or 0)  # legacy kept expenses in pence
+            if member is None:
+                report.skip(table, "no such member", row["id"])
+                continue
+            if amount <= 0:
+                report.skip(table, "no amount", row["id"])
+                continue
+            category = text(row.get("category")).lower()
+            if category not in categories:
+                odd_categories[category or "(blank)"] += 1
+                category = Expense.Category.OTHER
+            if flag(row.get("approved")):
+                status = Expense.Status.APPROVED
+            elif flag(row.get("declined")):
+                status = Expense.Status.DECLINED
+            else:
+                status = Expense.Status.WAITING
+            payment = credits.get(str(row["id"]))
+            if payment is not None and payment.member_id != member.pk:
+                payment = None
+            if status == Expense.Status.APPROVED and payment is None:
+                unpaid.append(row["id"])
+            decided = status != Expense.Status.WAITING
+            expense = Expense(
+                legacy_id=row["id"],
+                member=member,
+                category=category,
+                description=text(row.get("description"), 1000) or "(no description)",
+                amount_pence=amount,
+                spent_on=day(row.get("expense_date")) or day(row.get("created_at")) or self.now.date(),
+                submitted_at=when(row.get("created_at")) or self.now,
+                status=status,
+                decided_by=self.members.get(row.get("approved_by_user")) if decided else None,
+                decided_at=(when(row.get("updated_at")) or self.now) if decided else None,
+                payment=payment if status == Expense.Status.APPROVED else None,
+            )
+            path = text(row.get("file"), 255)
+            data = self.photos.fetch_receipt(path) if (self.photos is not None and path) else None
+            if data is not None:
+                receipts["found"] += 1
+                if self.photos.save:
+                    suffix = ".pdf" if data.startswith(b"%PDF-") else ".png" if data.startswith(b"\x89PNG") else ".jpg"
+                    expense.receipt.save(f"receipt{suffix}", ContentFile(data), save=False)
+            elif path:
+                expense.legacy_receipt = path
+                if self.photos is not None:
+                    missing_receipts.append(row["id"])
+            expense.save()
+            imported += 1
+        report.imported[table] = imported
+        if receipts or missing_receipts:
+            verb = "copied" if self.photos.save else "found (dry run: not copied)"
+            report.note(f"expense receipts {verb}: {receipts['found']}; couldn't fetch {len(missing_receipts)}")
+        elif self.photos is None and imported:
+            report.note("expense receipts not copied: run with --photos-from to copy them")
+        if unpaid:
+            sample = ", ".join(str(i) for i in unpaid[:10])
+            report.note(f"⚠️ {len(unpaid)} approved expense(s) with no reimbursement payment (legacy ids {sample})")
+        if odd_categories:
+            report.note(
+                "expense categories not on the list, imported as 'other': "
+                + ", ".join(f"{c} {n}" for c, n in odd_categories.items())
+            )
+
     def list_not_imported(self):
         waiting = [f"{table} ({self.source.count(table)} rows, {why})" for table, why in NOT_IMPORTED_YET]
-        self.report.note("not imported yet: " + "; ".join(waiting))
+        if waiting:
+            self.report.note("not imported yet: " + "; ".join(waiting))
         self.report.note("never imported (dropped or replaced): " + ", ".join(NEVER_IMPORTED))

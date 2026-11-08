@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "apps.discord",
     "apps.notifications",
     "apps.proposals",
+    "apps.expenses",
 ]
 
 MIDDLEWARE = [
