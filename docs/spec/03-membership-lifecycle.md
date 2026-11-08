@@ -273,8 +273,14 @@ PayPal subscriptions are built (04 §4.4), with PayPal payers billed as above.
 
 Standing orders are matched by the bank statement import (04 §4.6, built 2026-11-08).
 
+Heartbeat alerts are built for the four billing jobs (`create_charges`, `bill_members`, `check_memberships`,
+`retry_direct_debits`; built 2026-11-08). Each scheduled run pings its own URL at a monitoring service (start, then
+success or fail), so a night where the job didn't run, failed or never finished alerts a named person. Choices made:
+a run by hand with `--date` or `--dry-run` doesn't ping; a ping that can't be sent never stops billing; pings carry
+only the job's counts and the kind of error, never a member's details. Setup is in `docs/deployment.md` §6.6.
+
 Still to build: self-service locker renting
-with its first pro-rata payment (06 §6.2), shadow-site comparisons (08), and a heartbeat alert per job.
+with its first pro-rata payment (06 §6.2), shadow-site comparisons (08), and heartbeat alerts for the other jobs.
 
 ## 3.7 Changing a subscription
 

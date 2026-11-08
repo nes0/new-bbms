@@ -25,3 +25,17 @@ def gocardless_is_configured(app_configs, **kwargs):
     if settings.GOCARDLESS_ENVIRONMENT not in ("sandbox", "live"):
         warnings.append(checks.Warning("GOCARDLESS_ENVIRONMENT must be 'sandbox' or 'live'.", id="billing.W003"))
     return warnings
+
+
+@checks.register(checks.Tags.security, deploy=True)
+def job_heartbeats_are_configured(app_configs, **kwargs):
+    missing = [job for job, url in settings.JOB_HEARTBEATS.items() if not url]
+    if not missing:
+        return []
+    names = ", ".join(f"HEARTBEAT_{job.upper()}" for job in missing)
+    return [
+        checks.Warning(
+            f"Not set: {names}. Nobody is alerted if that nightly billing job fails or doesn't run.",
+            id="billing.W004",
+        )
+    ]

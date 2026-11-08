@@ -2,10 +2,12 @@
 
 from datetime import date, timedelta
 from io import StringIO
+from unittest import mock
 
 from django.contrib.auth.models import Group
 from django.core import mail
 from django.core.management import call_command
+from django.test import override_settings
 from django.utils import timezone
 
 from apps.billing import billing, membership
@@ -288,3 +290,87 @@ class CommandTests(BillingTestCase):
         self.assertEqual(Charge.objects.count(), 2)
         self.assertEqual(len(self.gc.payments), 1)
         self.assertEqual(Payment.objects.filter(reason="subscription").count(), 2)
+
+
+HEARTBEATS = {
+    "create_charges": "https://hc-ping.example/create",
+    "bill_members": "https://hc-ping.example/bill/",
+    "check_memberships": "https://hc-ping.example/check",
+    "retry_direct_debits": "",
+}
+
+
+@override_settings(JOB_HEARTBEATS=HEARTBEATS)
+class HeartbeatTests(BillingTestCase):
+    """Each nightly billing job pings its monitor, so a missed or failed night alerts someone (spec 01 §1.8)."""
+
+    def setUp(self):
+        super().setUp()
+        patcher = mock.patch("apps.billing.heartbeat.urllib.request.urlopen")
+        self.urlopen = patcher.start()
+        self.addCleanup(patcher.stop)
+        today = mock.patch("apps.billing.jobs.timezone", localdate=lambda: TODAY)  # scheduled runs use today
+        today.start()
+        self.addCleanup(today.stop)
+
+    def pings(self):
+        return [(call.args[0].full_url, call.args[0].data.decode()) for call in self.urlopen.call_args_list]
+
+    def test_a_scheduled_run_pings_start_then_success_with_the_counts(self):
+        payer()
+        call_command("create_charges", stdout=StringIO())
+        (start, _), (done, message) = self.pings()
+        self.assertEqual(start, "https://hc-ping.example/create/start")
+        self.assertEqual(done, "https://hc-ping.example/create")
+        self.assertIn("subscription 1", message)
+        self.assertEqual(self.urlopen.call_args.kwargs["timeout"], 10)
+
+    def test_every_billing_job_pings_its_own_url(self):
+        for job in ("bill_members", "check_memberships"):
+            call_command(job, stdout=StringIO())
+        self.assertEqual(
+            [url for url, _ in self.pings()],
+            [
+                "https://hc-ping.example/bill/start",
+                "https://hc-ping.example/bill",
+                "https://hc-ping.example/check/start",
+                "https://hc-ping.example/check",
+            ],
+        )
+
+    def test_a_crash_pings_fail_and_still_fails_the_job(self):
+        with mock.patch(
+            "apps.billing.management.commands.bill_members.bill_members", side_effect=RuntimeError("member 7 broke")
+        ):
+            with self.assertRaises(RuntimeError):
+                call_command("bill_members", stdout=StringIO())
+        (_, _), (url, message) = self.pings()
+        self.assertEqual(url, "https://hc-ping.example/bill/fail")
+        self.assertEqual(message, "RuntimeError; see the job's log")  # the error's text could name a member
+
+    def test_runs_by_hand_with_date_or_dry_run_dont_ping(self):
+        call_command("create_charges", "--dry-run", stdout=StringIO())
+        call_command("create_charges", "--date", TODAY.isoformat(), stdout=StringIO())
+        self.urlopen.assert_not_called()
+
+    def test_a_job_without_a_url_sends_nothing(self):
+        call_command("retry_direct_debits", stdout=StringIO())
+        self.urlopen.assert_not_called()
+
+    def test_a_monitoring_outage_never_stops_billing(self):
+        self.urlopen.side_effect = OSError("no route")
+        top_up(credit := payer(Member.PaymentMethod.CREDIT), 10_000)
+        billing.create_charges(TODAY)
+        with self.assertLogs("apps.billing.heartbeat", "WARNING") as logs:
+            call_command("bill_members", stdout=StringIO())
+        self.assertTrue(credit.charges.filter(status="paid").exists())
+        self.assertIn("Heartbeat for bill_members (start) not sent: OSError", logs.output[0])
+
+    def test_the_deploy_check_names_jobs_without_a_heartbeat(self):
+        from apps.billing.checks import job_heartbeats_are_configured
+
+        (warning,) = job_heartbeats_are_configured(None)
+        self.assertEqual(warning.id, "billing.W004")
+        self.assertIn("HEARTBEAT_RETRY_DIRECT_DEBITS", warning.msg)
+        with override_settings(JOB_HEARTBEATS={job: "https://x" for job in HEARTBEATS}):
+            self.assertEqual(job_heartbeats_are_configured(None), [])

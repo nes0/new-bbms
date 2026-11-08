@@ -141,7 +141,7 @@ The new system runs on a
 | Email | A transactional email service (e.g. Postmark, Mailgun, SES) | Welcome, payment, expense and password emails. Set with `EMAIL_HOST` and its login (built 2026-11-08); a failing mail server never undoes a payment or stops a job, the email is just logged as failed. |
 | Domain & TLS | `bbms.buildbrighton.com` pointed at App Platform; certificate managed automatically | The current door firmware requires this exact hostname with a valid certificate. |
 | Secrets | App Platform encrypted environment variables | Never in the repo or the Docker image. Includes the Moodle web-service token, the OIDC signing key, the key that encrypts proofs of identity (03 §3.1) and the Spaces access key (`SPACES_KEY`, `SPACES_SECRET`). |
-| Monitoring | Error tracking (e.g. Sentry free tier), an uptime check on the device API, and a heartbeat check per scheduled job (e.g. Healthchecks.io) | A missed 01:30 billing run must alert a named person. |
+| Monitoring | Error tracking (e.g. Sentry free tier), an uptime check on the device API, and a heartbeat check per scheduled job (e.g. Healthchecks.io) | A missed 01:30 billing run must alert a named person. The billing jobs' heartbeats are built (03 §3.6). |
 | Static files | Served by the app (WhiteNoise) | No separate web server needed. |
 
 **Estimated running cost:** about **$25–35/month** (app ~$5–12, Postgres ~$15, Spaces ~$5, plus a few dollars for jobs),
