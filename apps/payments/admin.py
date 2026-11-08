@@ -14,7 +14,7 @@ from django.urls import path, reverse
 from . import services
 from .credit import credit_pence
 from .forms import RecordPaymentForm
-from .models import CardCheckout, Payment, StripeEvent, WithdrawalRequest
+from .models import CardCheckout, Payment, PayPalNotification, StripeEvent, WithdrawalRequest
 from .templatetags.money import pounds
 
 
@@ -27,6 +27,25 @@ class PaymentAdmin(admin.ModelAdmin):
     list_select_related = ("member",)
     readonly_fields = [f.name for f in Payment._meta.fields if f.name != "note"]
     change_list_template = "admin/payments/payment/change_list.html"
+    autocomplete_fields = ("member",)
+
+    @staticmethod
+    def _unmatched(obj):
+        """Money nobody could match to a member (an unknown PayPal payer, 04 §4.4), which finance can assign."""
+        return obj is not None and obj.member_id is None and obj.reason == Payment.Reason.DONATION
+
+    def get_readonly_fields(self, request, obj=None):
+        if self._unmatched(obj):
+            return [name for name in self.readonly_fields if name != "member"]
+        return self.readonly_fields
+
+    def save_model(self, request, obj, form, change):
+        if change and "member" in form.changed_data and obj.member_id:
+            # Assigning an unmatched payment: it becomes a top-up of that member's credit (04 §4.1, §4.8).
+            obj.reason = Payment.Reason.BALANCE
+            obj.note = (obj.note + "\n" if obj.note else "") + f"Assigned to this member by {request.user}."
+            messages.info(request, f"Added to {obj.member}'s credit.")
+        super().save_model(request, obj, form, change)
 
     @admin.display(description="Amount", ordering="amount_pence")
     def amount_display(self, payment):
@@ -158,3 +177,28 @@ class StripeEventAdmin(_ReadOnly):
     @admin.display(description="Failed", boolean=True)
     def has_error(self, event):
         return bool(event.error)
+
+
+@admin.register(PayPalNotification)
+class PayPalNotificationAdmin(_ReadOnly):
+    """PayPal's notifications (IPN, 04 §4.4), and what BBMS did with each. Fix the cause of a failed one, then
+    "try again"."""
+
+    list_display = ("received_at", "txn_type", "payment_status", "member", "outcome", "error_short")
+    list_filter = ("txn_type", "payment_status", ("error", admin.EmptyFieldListFilter))
+    search_fields = ("txn_id", "subscr_id", "payer_email", "member__email")
+    list_select_related = ("member",)
+    actions = ["try_again"]
+
+    @admin.display(description="Error")
+    def error_short(self, notification):
+        return notification.error[:80]
+
+    @admin.action(description="Try again")
+    def try_again(self, request, queryset):
+        from . import paypal_ipn
+
+        failed = queryset.filter(processed_at__isnull=True).exclude(error="")
+        ids = list(failed.values_list("pk", flat=True))
+        handled = paypal_ipn.process_pending(retry_failed=True, only=ids)
+        messages.info(request, f"{handled} of {len(ids)} handled.")

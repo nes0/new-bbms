@@ -7,4 +7,5 @@
   <span class="hint">Between {{ top_up_low|pounds }} and {{ top_up_high|pounds }}.</span>
   <button type="submit">Top up by card</button>
   {% if has_direct_debit %}<button type="submit" formaction="{% url 'payments:pay-direct-debit' %}">Top up by Direct Debit</button>{% endif %}
+  {% if paypal %}<button type="submit" formaction="{% url 'payments:pay-paypal' %}">Top up by PayPal</button>{% endif %}
 </form>

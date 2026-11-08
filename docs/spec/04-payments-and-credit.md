@@ -190,7 +190,7 @@ stores the `subscr_id` on the member, so later payments don't depend on the emai
 **Subscription** (`txn_type`):
 | PayPal says | Effect |
 |---|---|
-| `subscr_signup` | Store `subscr_id`. A `setting-up` or `left` (rejoining, 03 §3.8) member gets payment method `paypal` and payment day today (the 1st after the 28th), and is *activated* (03 §3.4); the first charge is due today. |
+| `subscr_signup` | Store `subscr_id`. The member gets payment method `paypal` and, if they have none, payment day today (the 1st after the 28th). A `setting-up` or `leaving` member is *activated* (03 §3.4); the first charge is due today. A member who has left isn't set up: they rejoin first (03 §3.8), which makes them `setting-up`. |
 | `subscr_payment`, `Completed` | Recorded as source `paypal` with PayPal's fee. It pays the member's oldest `due` or `failed` subscription charge (amount: what PayPal took); if none is waiting, it goes to **credit** (PayPal sometimes pays a day or two before the charge date). If no `subscr_signup` was seen, the first payment sets the member up as above. |
 | `subscr_payment`, `Pending` | Logged; PayPal sends `Completed` later (same `txn_id`). |
 | `subscr_failed` | Logged; the member is emailed that PayPal couldn't take the payment and will try again. PayPal retries by itself; BBMS doesn't. |
@@ -215,7 +215,7 @@ linked to the original. If the original paid a subscription charge, that charge 
 was a top-up, the credit goes down (it may go below £0; finance is told). `Canceled_Reversal` undoes the reversal.
 
 **Leaving.** BBMS doesn't cancel a PayPal subscription; the "Leave" page tells PayPal payers to cancel it at PayPal,
-as legacy does. A payment from a member who has **left** is put in their credit and the trustees are told; it doesn't
+as legacy does. A payment from a member who has **left** is put in their credit and finance is told; it doesn't
 rejoin them (legacy did).
 
 **Unknown payers.** No member found: the payment is recorded with no member, reason `donation`, and listed for
@@ -231,8 +231,29 @@ finance is notified in BBMS.
 - `PAYPAL_SANDBOX`: use PayPal's sandbox (buttons and IPN checks) instead of the live site.
 When developing and testing, a fake PayPal page sends BBMS a made-up IPN (like the fakes for Stripe and GoCardless).
 
-**Build status:** not built yet. The import (08) currently imports PayPal payers with no payment method; it should
-keep `paypal` and the PayPal email once this is built.
+### Build status (2026-11-08)
+
+Built in `apps/payments` (`paypal.py` for the buttons and checking with PayPal, `paypal_ipn.py` for the rules above).
+Choices made while building:
+- **Who sees PayPal:** "Subscribe with PayPal" is on `/account/payment/` for members setting up (or leaving), below
+  Direct Debit and marked as costing the space more. A PayPal payer sees "Start a new PayPal subscription for
+  £X a month" there instead (for a changed amount) and can switch to credit, or to Direct Debit by setting one up;
+  either way they're told to cancel the PayPal subscription. Members paying another way aren't offered PayPal.
+  "Top up by PayPal" is next to the other top-up buttons on the credit and Pay pages.
+- **The PayPal email** is on the member's "Edit your details" page (optional; refused if another account uses that
+  address). The import fills it from legacy's `secondary_email` and keeps payment method `paypal`.
+- **Notifications** are stored as `PayPalNotification` rows (admin: Payments → PayPal notifications, with "try
+  again" for failed ones, e.g. after adding an old account to `PAYPAL_OLD_ACCOUNT_EMAILS`). One for another account,
+  in another currency, or refunding a payment BBMS doesn't have is kept with that error and nothing is recorded.
+- A subscription's id is stored when it signs up (replacing an older one), or with the first payment matched if the
+  member has none (imported members). So cancelling an **old** subscription after re-subscribing changes nothing.
+- **Unmatched money** is recorded as a `donation` with no member. Finance (the `finance` role) is emailed with a
+  link to the payment, where they can choose the member: it then becomes a top-up of that member's credit. The
+  payer is emailed too. Payments from members who have left, and refunds or reversals, are emailed to finance.
+- A refund's or reversal's fee isn't recorded (PayPal returns part of it); the correction is for the full amount.
+- Fees come from PayPal (`mc_fee`).
+- Without `PAYPAL_ACCOUNT_EMAIL`, development and tests use a fake: `/dev/paypal/` stands in for PayPal's page, and
+  `/dev/paypal/tools/` sends the next monthly payment, a failed payment, a cancellation or a refund.
 
 ## 4.5 Cash & manual (admin)
 

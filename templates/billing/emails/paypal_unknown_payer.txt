@@ -1,0 +1,9 @@
+{% autoescape off %}{{ site_name }}: we received a PayPal payment we can't match
+Hello,
+
+We've received a PayPal payment of £{{ amount }} from this email address, but it doesn't belong to any {{ site_name }} member, so we've recorded it as a donation.
+
+If you meant it as a donation: thank you!
+
+If you're a member, add this address as your PayPal email on your account page ({{ site_url }}/account/), then contact the trustees quoting payment {{ payment.pk }}, and we'll move the money to your account.
+{% endautoescape %}

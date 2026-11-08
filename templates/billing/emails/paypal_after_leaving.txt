@@ -1,0 +1,5 @@
+{% autoescape off %}{{ site_name }}: PayPal payment from a member who has left
+{{ member }} (member {{ member.pk }}) has left, but a PayPal payment of £{{ amount }} arrived from them (payment {{ payment.pk }}). It has been added to their credit; they haven't been rejoined.
+
+They probably still have a PayPal subscription. Ask them to cancel it at PayPal, and refund the payment if they want it back.
+{% endautoescape %}

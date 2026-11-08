@@ -1,4 +1,6 @@
-"""The member's credit page (spec 04 §4.7), and paying for things by card or from credit (04 §4.1, §4.3)."""
+"""The member's credit page (spec 04 §4.7), and paying for things by card, Direct Debit, PayPal or from credit
+(04 §4.1-4.4).
+"""
 
 import logging
 
@@ -12,7 +14,7 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods, require_POST
 
-from . import checkout
+from . import checkout, paypal, paypal_ipn
 from .cards import CardError
 from .credit import credit_movements, credit_pence
 from .forms import TopUpForm, WithdrawalRequestForm
@@ -44,6 +46,7 @@ def credit(request):
         "top_up_high": high,
         "back": "credit",
         "has_direct_debit": bool(member.mandate_id),
+        "paypal": paypal.available(),
     }
     return render(request, "payments/credit.html", context)
 
@@ -67,6 +70,7 @@ def pay(request):
         "top_up_low": low,
         "top_up_high": high,
         "has_direct_debit": bool(member.mandate_id),
+        "paypal": paypal.available(),
     }
     return render(request, "payments/pay.html", context)
 
@@ -228,3 +232,196 @@ def fake_stripe(request, session_id):
     if request.method == "POST":
         return redirect(fake.pay(session_id))
     return render(request, "payments/fake_stripe.html", {"session_id": session_id, "session": session})
+
+
+# --- PayPal (04 §4.4) ---
+
+
+def paypal_urls(request, purpose):
+    """Where PayPal sends its notifications, and the member when they've paid or given up."""
+    return {
+        "notify_url": request.build_absolute_uri(reverse("payments:paypal-ipn")),
+        "return_url": request.build_absolute_uri(reverse("payments:paypal-done")) + f"?for={purpose}",
+        "cancel_url": request.build_absolute_uri(reverse("payments:paypal-cancelled")),
+    }
+
+
+@login_required
+@require_POST
+def pay_by_paypal(request):
+    """A credit top-up by PayPal. PayPal only says what it took once the member has paid, and that's what's added."""
+    back = BACK.get(request.POST.get("back"), "payments:pay")
+    if not paypal.available():
+        messages.error(request, "PayPal payments aren't available on this site at the moment.")
+        return redirect(back)
+    form = TopUpForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, " ".join(form.errors["amount"]))
+        return redirect(back)
+    return redirect(paypal.top_up_url(request.user, form.cleaned_data["amount"], **paypal_urls(request, "top-up")))
+
+
+@login_required
+def paypal_done(request):
+    """PayPal sends the member back here. The payment counts once PayPal's notification arrives."""
+    if request.GET.get("for") == "subscription":
+        messages.success(
+            request,
+            "Thank you! Your PayPal subscription is set up. Your membership updates as soon as PayPal tells us, "
+            "usually within a few minutes.",
+        )
+        return redirect("billing:payment")
+    messages.success(
+        request, "Thank you! Your credit goes up as soon as PayPal tells us about the payment, usually within minutes."
+    )
+    return redirect("payments:credit")
+
+
+@login_required
+def paypal_cancelled(request):
+    messages.info(request, "PayPal payment cancelled: nothing was taken.")
+    return redirect("payments:pay")
+
+
+@csrf_exempt
+@require_POST
+def paypal_notification(request):
+    """PayPal's IPN (04 §4.4). Checked with PayPal before anything is stored."""
+    if not paypal.available():
+        return HttpResponse(status=403)
+    raw = request.body
+    try:
+        genuine = paypal.verify(raw)
+    except paypal.Unreachable:
+        return HttpResponse(status=503)  # PayPal sends it again later
+    if not genuine:
+        logger.warning("PayPal notification refused: PayPal didn't confirm it")
+        return HttpResponse(status=400)
+    if paypal_ipn.store(paypal.parse(raw)):
+        paypal_ipn.process_pending()
+    return HttpResponse(status=200)
+
+
+# --- the fake PayPal (local development only) ---
+
+
+def _fake_only():
+    if not settings.DEBUG or not paypal.using_fake():
+        raise Http404
+
+
+def _fake_send(data):
+    """As if PayPal had sent BBMS a notification."""
+    from django.utils import timezone
+
+    stamp = f"{timezone.now().timestamp():.6f}".replace(".", "")
+    data = {"receiver_email": paypal.FAKE_ACCOUNT, "mc_currency": "GBP", "ipn_track_id": f"fake{stamp}", **data}
+    paypal_ipn.store(data)
+    paypal_ipn.process_pending()
+
+
+def _fake_txn():
+    from django.utils import timezone
+
+    return "FAKE" + f"{timezone.now().timestamp():.6f}".replace(".", "")[-13:]
+
+
+@require_http_methods(["GET", "POST"])
+def fake_paypal(request):
+    """Stands in for PayPal's payment page when there's no PayPal account set. DEBUG only."""
+    _fake_only()
+    params = request.GET
+    member_id = paypal.member_id_from(params.get("custom", ""))
+    subscription = params.get("cmd") == "_xclick-subscriptions"
+    amount = params.get("a3") if subscription else params.get("amount")
+    if member_id is None or not amount:
+        raise Http404
+    if request.method == "POST":
+        from apps.members.models import Member
+
+        member = Member.objects.get(pk=member_id)
+        payer = {"payer_email": member.paypal_email or member.email, "custom": params["custom"]}
+        if subscription:
+            subscr_id = "I-" + _fake_txn()
+            _fake_send({"txn_type": "subscr_signup", "subscr_id": subscr_id, "amount3": amount, **payer})
+            _fake_send(
+                {
+                    "txn_type": "subscr_payment",
+                    "subscr_id": subscr_id,
+                    "txn_id": _fake_txn(),
+                    "payment_status": "Completed",
+                    "mc_gross": amount,
+                    "mc_fee": _fake_fee(amount),
+                    **payer,
+                }
+            )
+        else:
+            _fake_send(
+                {
+                    "txn_type": "web_accept",
+                    "txn_id": _fake_txn(),
+                    "payment_status": "Completed",
+                    "mc_gross": amount,
+                    "mc_fee": _fake_fee(amount),
+                    **payer,
+                }
+            )
+        return redirect(reverse("payments:paypal-done") + ("?for=subscription" if subscription else ""))
+    context = {"item": params.get("item_name", ""), "amount": amount, "subscription": subscription}
+    return render(request, "payments/fake_paypal.html", context)
+
+
+def _fake_fee(amount):
+    from decimal import Decimal
+
+    return f"{Decimal(amount) * Decimal('0.029') + Decimal('0.30'):.2f}"  # a typical PayPal fee
+
+
+@require_http_methods(["GET", "POST"])
+def fake_paypal_tools(request):
+    """Play PayPal when developing: the next monthly payment, a failed one, a cancellation or a refund."""
+    from .models import Payment, PayPalNotification
+
+    _fake_only()
+    signups = PayPalNotification.objects.filter(txn_type="subscr_signup", subscr_id__startswith="I-FAKE")
+    payments = Payment.objects.filter(source=Payment.Source.PAYPAL, corrects__isnull=True, amount_pence__gt=0)
+    if request.method == "POST":
+        action = request.POST.get("action")
+        signup = signups.filter(subscr_id=request.POST.get("subscr_id", "")).first()
+        if signup is not None and action in ("payment", "failed", "cancel"):
+            base = {
+                "subscr_id": signup.subscr_id,
+                "payer_email": signup.payer_email,
+                "custom": signup.data.get("custom", ""),
+            }
+            amount = signup.data.get("amount3", "0")
+            if action == "payment":
+                _fake_send(
+                    {
+                        "txn_type": "subscr_payment",
+                        "txn_id": _fake_txn(),
+                        "payment_status": "Completed",
+                        "mc_gross": amount,
+                        "mc_fee": _fake_fee(amount),
+                        **base,
+                    }
+                )
+            elif action == "failed":
+                _fake_send({"txn_type": "subscr_failed", **base})
+            else:
+                _fake_send({"txn_type": "subscr_cancel", **base})
+            messages.success(request, f"Sent {action} for {signup.subscr_id}.")
+        payment = payments.filter(pk=request.POST.get("payment") or 0).first()
+        if payment is not None and action == "refund":
+            _fake_send(
+                {
+                    "txn_id": _fake_txn(),
+                    "parent_txn_id": payment.source_id,
+                    "payment_status": "Refunded",
+                    "mc_gross": f"-{payment.amount_pence / 100:.2f}",
+                }
+            )
+            messages.success(request, f"Refunded payment {payment.pk}.")
+        return redirect("payments:fake-paypal-tools")
+    context = {"signups": signups.order_by("-pk"), "payments": payments.select_related("member")[:30]}
+    return render(request, "payments/fake_paypal_tools.html", context)

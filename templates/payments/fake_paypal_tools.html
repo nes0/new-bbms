@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Fake PayPal tools{% endblock %}
+{% block content %}
+<h1>Fake PayPal tools</h1>
+<p class="hint">Local development only: send BBMS the notifications PayPal would.</p>
+
+<h2>Subscriptions</h2>
+{% if signups %}
+  <table class="table">
+    <thead><tr><th>Subscription</th><th>Payer</th><th>Monthly</th><th></th></tr></thead>
+    <tbody>
+      {% for signup in signups %}
+        <tr>
+          <td>{{ signup.subscr_id }}</td><td>{{ signup.payer_email }}</td><td>£{{ signup.data.amount3 }}</td>
+          <td class="actions"><form method="post">{% csrf_token %}<input type="hidden" name="subscr_id" value="{{ signup.subscr_id }}">
+            <button type="submit" name="action" value="payment">Next monthly payment</button>
+            <button type="submit" name="action" value="failed">Payment failed</button>
+            <button type="submit" name="action" value="cancel">Cancel subscription</button></form></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>None yet: subscribe from a member's payment page.</p>
+{% endif %}
+
+<h2>PayPal payments</h2>
+{% if payments %}
+  <table class="table">
+    <thead><tr><th>Payment</th><th>Member</th><th>For</th><th>Amount</th><th></th></tr></thead>
+    <tbody>
+      {% for payment in payments %}
+        <tr>
+          <td>{{ payment.pk }} ({{ payment.source_id }})</td><td>{{ payment.member|default:"—" }}</td>
+          <td>{{ payment.get_reason_display }}</td><td>{{ payment.amount_pence|pounds }}</td>
+          <td><form method="post">{% csrf_token %}<input type="hidden" name="payment" value="{{ payment.pk }}">
+            <button type="submit" name="action" value="refund">Refund</button></form></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>None yet.</p>
+{% endif %}
+{% endblock %}

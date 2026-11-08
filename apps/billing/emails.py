@@ -49,15 +49,30 @@ def send(member, template, **context):
     logger.info("Emailed member %s (%s)", member.pk, template)
 
 
-def tell_storage_team(template, **context):
-    """Email everyone in the storage team's role, if it exists."""
-    team = Group.objects.filter(name=STORAGE_TEAM).first()
+def send_to_address(address, template, **context):
+    """Email someone who isn't a member (a PayPal payer BBMS doesn't know, say). Logs the template only."""
+    if _suppressed.get():
+        logger.info("Dry run: would email a non-member (%s)", template)
+        return
+    subject, body = _render(template, context)
+    send_mail(subject, body, None, [address])
+    logger.info("Emailed a non-member (%s)", template)
+
+
+def tell_role(role, template, **context):
+    """Email everyone in a role (e.g. "finance"), if it exists."""
+    team = Group.objects.filter(name=role).first()
     emails = list(team.user_set.filter(is_active=True).values_list("email", flat=True)) if team else []
     if not emails:
-        logger.warning("No %s team to tell (%s)", STORAGE_TEAM, template)
+        logger.warning("No %s role holders to tell (%s)", role, template)
         return
     if _suppressed.get():
-        logger.info("Dry run: would email the %s team (%s)", STORAGE_TEAM, template)
+        logger.info("Dry run: would email the %s role (%s)", role, template)
         return
     subject, body = _render(template, context)
     send_mail(subject, body, None, emails)
+
+
+def tell_storage_team(template, **context):
+    """Email everyone in the storage team's role, if it exists."""
+    tell_role(STORAGE_TEAM, template, **context)

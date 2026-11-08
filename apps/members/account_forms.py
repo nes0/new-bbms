@@ -2,26 +2,39 @@
 
 from django import forms
 from django.core.validators import MinLengthValidator
+from django.db.models import Q
 
 from .forms import normalise_postcode, subscription_field
 from .models import Address, Member
 
 
 class DetailsForm(forms.ModelForm):
-    """Name, phone and emergency contact. The email address is the login, so it isn't changed here."""
+    """Name, phone, emergency contact and PayPal email. The email address is the login, so it isn't changed here."""
 
     class Meta:
         model = Member
-        fields = ["given_name", "family_name", "phone", "emergency_contact"]
+        fields = ["given_name", "family_name", "phone", "emergency_contact", "paypal_email"]
         labels = {"phone": "Phone number"}
-        help_texts = {"emergency_contact": "Who we should contact in an emergency, and how (name and phone number)."}
+        help_texts = {
+            "emergency_contact": "Who we should contact in an emergency, and how (name and phone number).",
+            "paypal_email": "Only if you pay by PayPal from a different address, so we can match your payments.",
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Required for members, as at registration (02 §2.2); only admins may leave them empty.
-        for name in self.fields:
+        for name in ("given_name", "family_name", "phone", "emergency_contact"):
             self.fields[name].required = True
         self.fields["phone"].validators.append(MinLengthValidator(10))
+
+    def clean_paypal_email(self):
+        email = self.cleaned_data["paypal_email"].strip().lower()
+        if email == self.instance.email.lower():
+            return ""  # their own address is matched anyway
+        others = Member.objects.exclude(pk=self.instance.pk)
+        if email and others.filter(Q(email__iexact=email) | Q(paypal_email__iexact=email)).exists():
+            raise forms.ValidationError("That address belongs to another account. Please ask a trustee.")
+        return email
 
     def clean(self):
         cleaned = super().clean()

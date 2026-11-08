@@ -1,0 +1,4 @@
+{% load money %}{% autoescape off %}{{ site_name }}: PayPal payment {{ status }}
+PayPal says payment {{ original.pk }} ({{ original.amount_pence|pounds }}, {{ original.get_reason_display|lower }}{% if member %}, from {{ member }}, member {{ member.pk }}{% endif %}) was {{ status }}. BBMS has recorded a correction of £{{ amount }} (payment {{ payment.pk }}).
+{% if original.charge %}The subscription charge it paid has been updated to match.{% elif original.reason == "balance" %}The member's credit has gone down by the same amount, and may now be below £0.{% endif %}
+{% endautoescape %}

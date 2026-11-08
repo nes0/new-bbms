@@ -10,6 +10,7 @@
     {% include "members/_field.html" with field=form.family_name autocomplete="family-name" %}
     {% include "members/_field.html" with field=form.phone autocomplete="tel" %}
     {% include "members/_field.html" with field=form.emergency_contact %}
+    {% include "members/_field.html" with field=form.paypal_email autocomplete="email" %}
     <p class="hint">To change your email address, ask a trustee.</p>
     <button type="submit">Save</button>
   </form>

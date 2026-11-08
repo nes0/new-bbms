@@ -8,6 +8,10 @@
     {% if member.subscription_expires %}You can keep using the space until {{ member.subscription_expires|date:"j F Y" }},
     when your membership ends.{% else %}Your membership ends tomorrow morning.{% endif %}
     {% if has_lockers %}Any lockers you rent are given up when it ends.{% endif %}</p>
+  {% if member.payment_method == "paypal" %}
+    <p><strong>We can't cancel your PayPal subscription:</strong> please cancel it yourself in your PayPal account,
+      or PayPal keeps taking payments.</p>
+  {% endif %}
   <p>You're welcome to rejoin at any time.</p>
   <form method="post" class="stack form" novalidate>
     {% csrf_token %}

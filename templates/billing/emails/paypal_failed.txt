@@ -1,0 +1,7 @@
+{% autoescape off %}{{ site_name }}: your PayPal payment didn't go through
+Hello {{ member.given_name }},
+
+PayPal couldn't take this month's subscription payment for {{ site_name }}. PayPal will try again in a few days; please check the card or bank account your PayPal subscription uses.
+
+If it can't be paid, your membership is suspended a week after your paid-up time runs out. You can also pay from your account page: {{ site_url }}/account/payment/
+{% endautoescape %}
