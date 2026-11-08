@@ -5,7 +5,13 @@
 
 {% block content %}
   <h1>Your account</h1>
-  <p>{{ member.full_name }} · {{ member.email }}</p>
+  <p>{{ member.full_name }} · {{ member.email }}
+    {% if member.email_verified %}<span class="ok" title="Confirmed">✓ confirmed</span>
+    {% else %}<span class="error">not confirmed</span>
+      <form method="post" action="{% url 'members:resend-confirmation' %}" class="inline">
+        {% csrf_token %}<button type="submit" class="link">Email me a link to confirm it</button>
+      </form>{% endif %}
+    · <a href="{% url 'members:change-email' %}">Change</a></p>
 
   {% if proposals_to_vote_on %}
     <section class="card">
@@ -21,6 +27,11 @@
     <section class="card">
       <h2>Next steps</h2>
       <ol class="steps">
+        <li><strong>Confirm your email address</strong>.
+          {% if member.email_verified %}<span class="ok">Done.</span>
+          {% else %}We emailed you a link when you joined (check your spam folder), or
+            <form method="post" action="{% url 'members:resend-confirmation' %}" class="inline">
+              {% csrf_token %}<button type="submit" class="link">send it again</button></form>.{% endif %}</li>
         {% if discord_enabled %}
         <li><strong>Join our Discord server</strong>, where members talk and organise.
           {% if member.discord_exempt or member.discord_user_id and member.discord_on_server %}<span class="ok">Done.</span>
@@ -88,6 +99,7 @@
       <dt>Front door</dt>
       <dd>{% if not door_reason %}Your fob opens the door: 24-hour access
         {% elif door_reason == "not_member" %}None at the moment
+        {% elif door_reason == "email_not_confirmed" %}Keyholder, but your fob won't open the door until your email address is confirmed: use the link above
         {% elif door_reason == "no_induction" %}Keyholder, but your fob won't open the door until your general induction is confirmed: <a href="{% url 'members:induction' %}">general induction</a>
         {% elif door_reason == "no_photo" %}Keyholder, but your fob won't open the door until we have an approved photo of you: <a href="{% url 'profiles:edit' %}">upload one</a>
         {% else %}Tap your fob when you arrive to record your visit; a keyholder lets you in{% endif %}</dd>

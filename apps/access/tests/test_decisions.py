@@ -21,6 +21,7 @@ def keyholder(**fields):
         photo_approved=True,
         induction_completed=True,
         inducted_at=timezone.now(),
+        email_verified_at=timezone.now(),
     )
     defaults.update(fields)
     email = defaults.pop("email", "kim@example.com")

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Change your email address · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Change your email address</h1>
+  <p>This is the address you log in with and where we send everything. You're using <strong>{{ user.email }}</strong>.</p>
+  <p>We'll send a link to the new address. Your login only changes when you follow it, so a mistyped address can't
+    lock you out.</p>
+  <form method="post" class="stack form" novalidate>
+    {% csrf_token %}
+    {% include "members/_field.html" with field=form.new_email autocomplete="email" %}
+    {% include "members/_field.html" with field=form.password %}
+    <button type="submit">Send the link</button>
+  </form>
+  <p><a href="{% url 'members:account' %}">Back to your account</a></p>
+{% endblock %}

@@ -10,6 +10,7 @@ from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from jwcrypto import jwt
 from jwcrypto.jwk import JWK
 
@@ -44,7 +45,11 @@ class LogInWithBBMSTests(TestCase):
         set_moodle_address()
         self.client_id, self.secret = make_client()
         self.kim = Member.objects.create_user(
-            "kim@example.com", "a-good-password", given_name="Kim", family_name="Maker"
+            "kim@example.com",
+            "a-good-password",
+            given_name="Kim",
+            family_name="Maker",
+            email_verified_at=timezone.now(),
         )
 
     def authorize(self, **extra):
@@ -102,18 +107,28 @@ class LogInWithBBMSTests(TestCase):
             {
                 "sub": str(self.kim.pk),
                 "email": "kim@example.com",
-                "email_verified": False,
+                "email_verified": True,
                 "given_name": "Kim",
                 "family_name": "Maker",
                 "name": self.kim.get_full_name(),
             },
         )
 
-    def test_the_email_is_never_claimed_to_be_verified(self):
+    def test_an_unconfirmed_email_address_is_sent_to_confirm_it_first(self):
+        self.kim.email_verified_at = None
+        self.kim.save()
+        self.client.force_login(self.kim)
+        response = self.authorize()
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Confirm your email address first")
+        self.assertContains(response, "kim@example.com")
+        self.assertNotIn("code=", response.get("Location", ""))
+
+    def test_the_email_is_only_ever_claimed_verified_once_it_is(self):
         self.client.force_login(self.kim)
         tokens = self.exchange(self.code_from(self.authorize())).json()
         info = self.client.get("/o/userinfo/", headers={"Authorization": f"Bearer {tokens['access_token']}"}).json()
-        self.assertIs(info["email_verified"], False)
+        self.assertIs(info["email_verified"], True)
 
     def test_a_member_still_setting_up_may_log_in(self):
         self.assertEqual(self.kim.status, Member.Status.SETTING_UP)

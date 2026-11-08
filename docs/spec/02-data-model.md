@@ -29,7 +29,7 @@ AcsNode (devices)   Settings (key/value)   AuditLog
 | `given_name`, `family_name` | Required. | |
 | `email` | Required, unique. Login identifier. | |
 | `secondary_email` | Optional, unique. Used to match PayPal payments. | Keep, shown as **PayPal email** (04 §4.4). **New:** `paypal_subscription_id` (PayPal's `subscr_id`), stored the first time a PayPal payment is matched |
-| `email_verified` | Set via link `account/confirm-email/{id}/{hash}`. | Use framework's verification |
+| `email_verified` | Set via link `account/confirm-email/{id}/{hash}`. | **Built** as `email_verified_at`, set by a signed link that expires after 7 days (03 §3.1). The import keeps legacy's flag |
 | `hash` | Random 30-char string. Used for email confirmation and **photo file names**. | Replace with signed tokens; photo keys use random UUID |
 | `password` | bcrypt. Min 8 chars. | Framework default (argon2/bcrypt) |
 | `phone` | Required (min 10) for self-registration; optional for admins. | |

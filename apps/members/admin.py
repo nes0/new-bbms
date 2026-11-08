@@ -2,8 +2,9 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
+from django.utils import timezone
 
-from . import changes, notices
+from . import changes, email_confirmation, notices
 from .models import Address, IdCheck, Member, MemberChange
 
 # IdDocument is deliberately NOT registered: the uploads are only seen through the ID check pages, which log each
@@ -17,9 +18,20 @@ class MemberCreationForm(UserCreationForm):
 
 
 class MemberChangeForm(UserChangeForm):
+    email_confirmed = forms.BooleanField(
+        required=False,
+        label="Email address confirmed",
+        help_text="Without it a member can't pay, be signed off, use the door key or log in to Moodle (03 §3.1). "
+        "Untick to withdraw it; tick to reinstate it. Changing the email address clears it.",
+    )
+
     class Meta:
         model = Member
         fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["email_confirmed"].initial = self.instance.email_verified
 
     def clean(self):
         cleaned = super().clean()
@@ -130,6 +142,23 @@ class PhotoFilter(admin.SimpleListFilter):
         }.get(self.value(), queryset)
 
 
+class EmailFilter(admin.SimpleListFilter):
+    """Who still needs to confirm their email address (03 §3.1)."""
+
+    title = "email address"
+    parameter_name = "email"
+
+    def lookups(self, request, model_admin):
+        return [("confirmed", "Confirmed"), ("unconfirmed", "Not confirmed")]
+
+    def queryset(self, request, queryset):
+        if self.value() == "confirmed":
+            return queryset.filter(email_verified_at__isnull=False)
+        if self.value() == "unconfirmed":
+            return queryset.filter(email_verified_at__isnull=True)
+        return queryset
+
+
 @admin.register(Member)
 class MemberAdmin(UserAdmin):
     form = MemberChangeForm
@@ -137,8 +166,17 @@ class MemberAdmin(UserAdmin):
     inlines = [AddressInline]  # other apps add theirs (fobs, lockers, charges); the audit log goes last, below
     change_form_template = "admin/members/member/change_form.html"
 
-    list_display = ("full_name", "email", "status", "payment_method", "subscription_expires", "date_joined")
-    list_filter = ("status", "payment_method", "trusted", "key_holder", PhotoFilter, "banned", "is_staff")
+    list_display = (
+        "full_name",
+        "email",
+        "email_confirmed",
+        "status",
+        "payment_method",
+        "subscription_expires",
+        "date_joined",
+    )
+    list_filter = ("status", "payment_method", "trusted", "key_holder", PhotoFilter, EmailFilter, "banned", "is_staff")
+    actions = ["revoke_email_confirmation", "reinstate_email_confirmation"]
     search_fields = ("email", "given_name", "family_name")
     ordering = ("given_name", "family_name")
     # The mandate comes from GoCardless; a status change by hand doesn't send the emails or cancel charges, so the
@@ -157,10 +195,11 @@ class MemberAdmin(UserAdmin):
         "suspended_at",
         "inducted_by",
         "inducted_at",
+        "email_verified_at",
     )
 
     fieldsets = (
-        (None, {"fields": ("email", "password")}),
+        (None, {"fields": ("email", "email_confirmed", "email_verified_at", "password")}),
         ("Personal details", {"fields": ("given_name", "family_name", "phone", "emergency_contact")}),
         (
             "Membership",
@@ -208,11 +247,44 @@ class MemberAdmin(UserAdmin):
     def get_inlines(self, request, obj):
         return [*super().get_inlines(request, obj), *([MemberChangeInline] if obj else [])]
 
+    @admin.display(description="Email confirmed", boolean=True, ordering="email_verified_at")
+    def email_confirmed(self, member):
+        return member.email_verified
+
+    def _set_email_confirmed(self, request, queryset, confirmed):
+        count = 0
+        for member in queryset:
+            if member.email_verified == confirmed:
+                continue
+            before = changes.snapshot(member)
+            member.email_verified_at = timezone.now() if confirmed else None
+            member.save(update_fields=["email_verified_at"])
+            changes.record(member, before, changed_by=request.user)
+            count += 1
+        return count
+
+    @admin.action(description="Withdraw the selected members' email confirmation (no paying, sign-off or door)")
+    def revoke_email_confirmation(self, request, queryset):
+        count = self._set_email_confirmed(request, queryset, False)
+        self.message_user(request, f"Withdrew the email confirmation of {count} member(s).")
+
+    @admin.action(description="Reinstate the selected members' email confirmation (they've proved it another way)")
+    def reinstate_email_confirmation(self, request, queryset):
+        count = self._set_email_confirmed(request, queryset, True)
+        self.message_user(request, f"Reinstated the email confirmation of {count} member(s).")
+
     def save_model(self, request, obj, form, change):
         before = changes.snapshot(Member.objects.get(pk=obj.pk)) if change else None
+        new_address = change and "email" in form.changed_data
+        if change and "email_confirmed" in form.changed_data:  # the admin ticked or unticked it (03 §3.1)
+            obj.email_verified_at = timezone.now() if form.cleaned_data["email_confirmed"] else None
+        elif new_address:
+            obj.email_verified_at = None  # a different address hasn't been confirmed
         super().save_model(request, obj, form, change)
         if before is not None:
             changes.record(obj, before, changed_by=request.user)
+        if new_address and not obj.email_verified:
+            email_confirmation.send_confirmation(obj)  # so the member can confirm the address they now have
 
     def save_formset(self, request, form, formset, change):
         if formset.model is not Address:

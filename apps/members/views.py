@@ -12,7 +12,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.views.decorators.http import require_http_methods, require_POST
 
-from . import id_documents, induction
+from . import email_confirmation, id_documents, induction
 from .forms import IdCheckForm, IdDocumentsForm, RegistrationForm
 from .models import IdDocument, Member
 
@@ -28,6 +28,7 @@ def register(request):
     form = RegistrationForm(request.POST) if request.method == "POST" else RegistrationForm()
     if request.method == "POST" and form.is_valid():
         member = form.save()
+        email_confirmation.send_confirmation(member)
         login(request, member, backend="django.contrib.auth.backends.ModelBackend")
         messages.success(request, "Welcome! Your account is set up. Here's what to do next.")
         return redirect("members:account")

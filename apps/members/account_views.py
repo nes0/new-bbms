@@ -5,10 +5,11 @@ import logging
 from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.db import transaction
 from django.db.models import ProtectedError
 from django.shortcuts import redirect, render
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 
 from apps.access import tags
 from apps.access.decisions import door_refusal_reason
@@ -18,8 +19,16 @@ from apps.equipment.models import Equipment
 from apps.payments.credit import credit_pence
 from apps.proposals.voting import proposals_waiting_for
 
-from . import id_documents, induction
-from .account_forms import AddressForm, DetailsForm, InductionForm, LeaveForm, LeaveMembershipForm, SubscriptionForm
+from . import email_confirmation, id_documents, induction
+from .account_forms import (
+    AddressForm,
+    DetailsForm,
+    EmailChangeForm,
+    InductionForm,
+    LeaveForm,
+    LeaveMembershipForm,
+    SubscriptionForm,
+)
 from .models import Member
 
 logger = logging.getLogger(__name__)
@@ -189,3 +198,47 @@ def _leave_membership(request, member):
     return render(
         request, "members/leave_membership.html", {"form": form, "member": member, "has_lockers": has_lockers}
     )
+
+
+# --- Email address: confirming it, and changing it (03 §3.1) ---
+
+EMAIL_PAUSE_SECONDS = 60  # between emails asked for by one member: courtesy to the mail server, and to their inbox
+
+
+def confirm_email(request, token):
+    """The link in the confirmation email. Works without logging in: the link itself is the proof."""
+    outcome, member = email_confirmation.confirm(token)
+    status = 400 if outcome in (email_confirmation.INVALID, email_confirmation.TAKEN) else 200
+    return render(request, "members/confirm_email.html", {"outcome": outcome, "confirmed": member}, status=status)
+
+
+@login_required
+@require_POST
+def resend_confirmation(request):
+    member = request.user
+    if member.email_verified:
+        messages.info(request, "Your email address is already confirmed.")
+    elif not cache.add(f"email-confirmation:{member.pk}", 1, EMAIL_PAUSE_SECONDS):
+        messages.info(request, "We've only just sent one. Please wait a minute, and check your spam folder.")
+    else:
+        email_confirmation.send_confirmation(member)
+        messages.success(request, "We've emailed you a link to confirm your address.")
+    return redirect("members:account")
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def change_email(request):
+    member = request.user
+    form = EmailChangeForm(member, request.POST) if request.method == "POST" else EmailChangeForm(member)
+    if request.method == "POST" and form.is_valid():
+        if cache.add(f"email-change:{member.pk}", 1, EMAIL_PAUSE_SECONDS):
+            email_confirmation.send_change_request(member, form.cleaned_data["new_email"])
+            messages.success(
+                request,
+                "We've sent a link to your new address. Your login changes when you follow it; until then, keep "
+                "using the old one.",
+            )
+            return redirect("members:account")
+        messages.info(request, "We've only just sent one. Please wait a minute and try again.")
+    return render(request, "members/change_email.html", {"form": form})

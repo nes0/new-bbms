@@ -277,7 +277,8 @@ superusers and the `admin` role). Choices made while building:
 | Feedback (to trustees) | Member submits feedback form |
 | Withdrawal request (to trustees) | Member requests credit withdrawal — **change: don't email bank details** |
 | Password reset | Forgotten password |
-| Email confirmation | ⚠️ Verify when sent |
+| Confirm your email address | On joining, and when asked for again (03 §3.1). **Built** |
+| Confirm your new email address / a change was asked for / your address was changed | Changing the login email: the link goes to the new address, a warning to the old one, and a notice to the old one once it's done (03 §3.1). **Built** |
 | Group notification | See below |
 
 **Group email** (`/notification_email/create`): admins can email **all active members**; `laser` role holders can email
@@ -344,6 +345,7 @@ In the new system, most of these should be the framework's **admin interface** r
 
 - Login with email + password; "remember me".
 - Forgotten password → emailed reset link.
+- **New:** the email address is confirmed by a link (03 §3.1) and can be changed by the member, with their password.
 - Banned users can log in but are refused on every protected page. **New:** refuse at login with a clear message.
 - **New:** rate-limit login and password reset; optional 2FA for admins.
 
@@ -407,12 +409,12 @@ Built in `apps/moodle` (and `apps/equipment` for the sign-off). Choices made whi
   once; BBMS keeps a hash). Members aren't asked "do you allow this?", as Moodle is the space's own site.
 - Claims: `sub` (the member's BBMS id), `email`, `given_name`, `family_name`, `name` and `email_verified`. Tokens last
   10 minutes and are signed with `OIDC_RSA_PRIVATE_KEY`; without that key the provider is off.
-- **`email_verified` is always false**, because BBMS doesn't confirm email addresses (anyone can join with any
-  address). ❓ If Moodle links a BBMS login to an existing Moodle account by email, that could let someone take over
-  another person's Moodle account: use Moodle's own email-verification step on that service, or add email confirmation
-  to joining. See docs/deployment.md §6.7.
-- Who may log in: any account with a working login that **isn't banned** (including members still setting up), as
-  suggested. A banned member sees a short "you can't log in to Moodle" page.
+- **Only a confirmed email address may sign in to Moodle** (03 §3.1), so `email_verified` is always true. Without
+  that, anyone could join BBMS with another person's address and, if Moodle links logins to existing accounts by email,
+  take over that person's Moodle account. A member who hasn't confirmed is sent to a page that explains and offers a
+  new link. Imported members keep legacy's confirmed flag; the rest are asked to confirm.
+- Who may log in: any account with a working login, a **confirmed email** and that **isn't banned** (including
+  members still setting up), as suggested. A banned member sees a short "you can't log in to Moodle" page.
 - PKCE isn't required, as Moodle's generic OAuth 2 login doesn't send it; the client has a secret, which is what
   protects the code. ⚠️ Verify against the space's Moodle version.
 

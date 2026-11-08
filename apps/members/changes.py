@@ -27,7 +27,9 @@ AUDITED_FIELDS = (
     "photo_approved",
     "photo_on_wall",
     "banned",
+    "email_verified",  # a property: whether their email address is confirmed (03 §3.1)
 )
+LABELS = {"email_verified": "email address confirmed"}  # for audited names that aren't model fields
 
 
 def snapshot(member):
@@ -47,7 +49,7 @@ def record(member, before, changed_by):
     changes = [
         MemberChange(
             member=member,
-            field=Member._meta.get_field(name).verbose_name,
+            field=LABELS.get(name) or Member._meta.get_field(name).verbose_name,
             old_value=_shown(before[name])[:255],
             new_value=_shown(after[name])[:255],
             changed_by=changed_by,
@@ -63,6 +65,16 @@ def record(member, before, changed_by):
             member.pk,
             changed_by.pk if changed_by else None,
             ", ".join(c.field for c in changes),
+        )
+    if before["email_verified"] and not after["email_verified"]:
+        # Withdrawn by an admin, or their address was changed for them: until it's confirmed again they can't pay, be
+        # signed off or use the door, so say so (03 §3.1).
+        notify(
+            member,
+            "Your email address needs confirming again, until then you can't pay, be signed off or use the door "
+            "key. Use the link on your account page.",
+            kind="email_unconfirmed",
+            url="/account/",
         )
     if after["trusted"] and not before["trusted"]:
         emails.send(member, "members/emails/trusted")

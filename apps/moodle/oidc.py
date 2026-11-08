@@ -4,11 +4,12 @@
 Passwords stay in BBMS. Moodle sends the member here, the member logs in as usual, and Moodle is told who they are:
 - `sub`: their BBMS id, which never changes (Moodle keeps it as the user's ID number, so BBMS can find them later);
 - `email`, `given_name`, `family_name` and `name`;
-- `email_verified`: always false, because BBMS doesn't confirm email addresses (anyone can join with any address),
-  and Moodle must not take that as proof of who owns the address (⚠️ see docs/deployment.md, Moodle).
+- `email_verified`: always true, because a member must have confirmed their email address (03 §3.1) before they can
+  sign in to Moodle. That's what makes it safe for Moodle to match a login to an existing Moodle account by email.
 
 Anyone with a working login who isn't banned may sign in to Moodle, including members still setting up, so they can
-do online training before or soon after joining (decided 2026-11-07, 01 §1.7 #15).
+do online training before or soon after joining (decided 2026-11-07, 01 §1.7 #15) - once they've confirmed their
+email address, which the page they're sent to explains.
 """
 
 from django.http import Http404
@@ -23,7 +24,7 @@ class BBMSValidator(OAuth2Validator):
         # Request-agnostic form: each claim is worked out from the request's user when the token is made.
         return {
             "email": lambda r: r.user.email,
-            "email_verified": lambda r: False,
+            "email_verified": lambda r: r.user.email_verified,
             "given_name": lambda r: r.user.given_name,
             "family_name": lambda r: r.user.family_name,
             "name": lambda r: r.user.get_full_name(),
@@ -39,4 +40,6 @@ class BBMSAuthorizationView(AuthorizationView):
         user = request.user
         if user.is_authenticated and getattr(user, "banned", False):
             return render(request, "moodle/banned.html", status=403)
+        if user.is_authenticated and not user.email_verified:
+            return render(request, "moodle/confirm_email.html")
         return super().dispatch(request, *args, **kwargs)

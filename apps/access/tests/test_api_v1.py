@@ -26,6 +26,7 @@ class DeviceApiV1Tests(TestCase):
             photo_approved=True,
             induction_completed=True,
             inducted_at=timezone.now(),
+            email_verified_at=timezone.now(),
         )
         self.fob = KeyFob.objects.create(member=self.member, tag_id=tags.full_tag("55", CARD))
         # Like the real door: JSON body, ApiKey header, no CSRF token or session.

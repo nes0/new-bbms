@@ -1,0 +1,8 @@
+{% autoescape off %}Your email address was changed
+Hello {{ member.given_name }},
+
+The email address for your {{ site_name }} account has been changed to {{ new_email }}, so this address won't be used
+any more.
+
+If this wasn't you, please tell a trustee straight away.
+{% endautoescape %}

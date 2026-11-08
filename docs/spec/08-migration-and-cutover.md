@@ -125,6 +125,9 @@ Choices made in the script (change them there if the trustees decide otherwise):
 - **Addresses:** each member's latest approved address, and a later change still waiting for approval (shown in the
   admin's Addresses queue). Older addresses, and changes older than the approved one, are skipped and listed.
   Postcodes are upper-cased.
+- **Email confirmation:** every imported member is marked confirmed, assuming their addresses were checked by hand in
+  the past (03 §3.1): nobody is emailed at cutover. Legacy's `email_verified` flag is ignored (legacy never checked it).
+  An admin can withdraw it for any address that proves wrong.
 - **Audit log:** each legacy row becomes a change with the field "legacy" and legacy's description.
 
 - **Notifications:** each becomes a notification for the member, read or unread, keeping legacy's `hash` as its key

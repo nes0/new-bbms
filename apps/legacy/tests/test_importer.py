@@ -449,6 +449,11 @@ class ImportTests(TestCase):
         self.assertTrue(self.member(2).photo_on_wall)
         self.assertEqual(self.member(6).status, Member.Status.SUSPENDED)  # on-hold
 
+    def test_every_imported_member_is_assumed_to_have_confirmed_their_email(self):
+        """Confirmed by hand in the past (03 §3.1), whatever legacy's flag says: nobody is emailed at cutover."""
+        self.assertTrue(all(m.email_verified for m in Member.objects.all()))
+        self.assertTrue(self.member(1).email_verified and self.member(2).email_verified)
+
     def test_how_members_pay(self):
         kim = self.member(1)
         self.assertEqual(

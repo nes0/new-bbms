@@ -382,14 +382,16 @@ phase 4), and a mistake can lock members out of Moodle.
 4. Turn off Moodle's own sign-up and password login once it works, keeping a **local fallback login** for Moodle's
    admins.
 
-**What BBMS tells Moodle, and the risk.** Any BBMS login that isn't banned may log in to Moodle, including members still
-setting up (so they can train before joining). Moodle receives `sub` (the member's BBMS id), `email`, `given_name`,
-`family_name` and `name`. `email_verified` is always **false**, because BBMS doesn't confirm email addresses: anyone
-can join with any address. ❓ **Trustees to decide, and rehearse:** if Moodle links a BBMS login to an *existing*
-Moodle account by email address alone, someone could join BBMS with another person's address and take over that
-person's Moodle account. Switch on Moodle's "require email verification" on the OAuth 2 service (⚠️ verify the name),
-so the real owner is emailed first, or add email confirmation to joining BBMS before trusting the address.
-Existing Moodle accounts (made by the old database login) must be linked, not duplicated: check one in the rehearsal.
+**What BBMS tells Moodle, and who may log in.** Any BBMS login that isn't banned and has a **confirmed email
+address** may log in to Moodle, including members still setting up (so they can train before joining). Moodle receives
+`sub` (the member's BBMS id), `email`, `given_name`, `family_name`, `name`, and `email_verified` (always true, because
+unconfirmed members are stopped first and sent to confirm). That is what makes it safe for Moodle to match a login to
+an existing Moodle account by email: no one can join BBMS with someone else's address and reach their Moodle account.
+Still switch on Moodle's own "require email verification" on the OAuth 2 service if it has one (⚠️ verify the name),
+as a second check. Existing Moodle accounts (made by the old database login) must be linked, not duplicated: check
+one in the rehearsal. The import marks every member's email as confirmed (assumed checked by hand in the past), so
+nobody is emailed at cutover and existing members aren't stopped from using Moodle; an admin can withdraw it for an
+address that proves wrong (member's page, "Email address confirmed").
 
 **E. Linking machines to courses.** In the admin, *Equipment*: set **Moodle course id** (the number in the course's
 address: `…/course/view.php?id=7`). Machines that share an induction category normally share a course. Members already
@@ -565,7 +567,7 @@ Copy this into an issue and tick it off. The acceptance checks in
 - [ ] The import rehearsed; the report is clean or every line explained
 - [ ] ❓ `--mark-inducted` decision recorded
 - [ ] Old system's nightly jobs ready to be turned off at cutover; old webhooks ready to be repointed
-- [ ] §6.7: Moodle sign-in and course checks rehearsed on a copy of Moodle; the email-verification risk decided; Moodle's old database login and access removed
+- [ ] §6.7: Moodle sign-in and course checks rehearsed on a copy of Moodle; Moodle's old database login and access removed
 
 ---
 

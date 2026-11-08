@@ -131,6 +131,14 @@ class Member(AbstractBaseUser, PermissionsMixin):
     photo_approved = models.BooleanField(default=False, help_text="Has an approved photo on the system.")
     photo_on_wall = models.BooleanField(default=False, help_text="Has a physical photo on the wall instead.")
 
+    email_verified_at = models.DateTimeField(
+        "email confirmed at",
+        null=True,
+        blank=True,
+        help_text="When the member showed they can read mail sent to this address, by following the link we emailed "
+        "(03 §3.1). Empty: not confirmed. Changing the address clears it.",
+    )
+
     banned = models.BooleanField(default=False)
     banned_at = models.DateTimeField(null=True, blank=True)
     banned_reason = models.TextField(blank=True)
@@ -194,6 +202,10 @@ class Member(AbstractBaseUser, PermissionsMixin):
 
     def get_short_name(self):
         return self.given_name
+
+    @property
+    def email_verified(self) -> bool:
+        return self.email_verified_at is not None
 
     @property
     def has_space_access(self):

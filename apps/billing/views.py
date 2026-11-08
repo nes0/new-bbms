@@ -11,6 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
+from apps.members.decorators import email_confirmed_required
 from apps.members.models import Member
 from apps.payments.credit import credit_pence
 from apps.payments.services import InsufficientCredit
@@ -78,6 +79,7 @@ def payment(request):
 
 @login_required
 @require_POST
+@email_confirmed_required
 def direct_debit_start(request):
     if (response := _discord_first(request)) is not None:
         return response
@@ -122,6 +124,7 @@ def direct_debit_done(request):
 
 @login_required
 @require_POST
+@email_confirmed_required
 def paypal_start(request):
     """Send the member to PayPal to subscribe for their monthly amount (04 §4.4)."""
     if (response := _discord_first(request)) is not None:
@@ -143,6 +146,7 @@ def paypal_start(request):
 
 @login_required
 @require_POST
+@email_confirmed_required
 def credit_start(request):
     """Pay the subscription from member credit (03 §3.1)."""
     if (response := _discord_first(request)) is not None:
@@ -165,6 +169,7 @@ def credit_start(request):
 
 @login_required
 @require_POST
+@email_confirmed_required
 def change_method(request):
     """Direct Debit ⇄ credit (03 §3.7). Switching to credit keeps the Direct Debit as a backup. A PayPal payer can
     switch to either, and is asked to cancel their PayPal subscription (BBMS can't)."""
@@ -191,6 +196,7 @@ def change_method(request):
 
 @login_required
 @require_POST
+@email_confirmed_required
 def pay_charge(request, charge_id):
     charge = get_object_or_404(Charge, pk=charge_id, member=request.user)
     try:
@@ -206,6 +212,7 @@ def pay_charge(request, charge_id):
 
 @login_required
 @require_POST
+@email_confirmed_required
 def rejoin(request):
     member = membership.rejoin(request.user)
     if member.status == Member.Status.SETTING_UP:
