@@ -346,10 +346,14 @@ def statements_page(request):
                 messages.error(request, str(error))
             else:
                 return redirect("finance:statement", statement.pk)
-    history = BankStatement.objects.select_related("uploaded_by", "recorded_by").annotate(
-        credits=Count("lines"),
-        total=Sum("lines__amount_pence"),
-        unmatched=Count("lines", filter=Q(lines__outcome=BankLine.Outcome.UNMATCHED)),
+    history = (
+        BankStatement.objects.select_related("uploaded_by", "recorded_by")
+        .annotate(
+            credits=Count("lines"),
+            total=Sum("lines__amount_pence"),
+            unmatched=Count("lines", filter=Q(lines__outcome=BankLine.Outcome.UNMATCHED)),
+        )
+        .order_by("-uploaded_at", "-pk")
     )
     context = {"page": Paginator(history, 25).get_page(request.GET.get("page")), "can_manage": can_manage(request.user)}
     return render(request, "finance/statements.html", context)
