@@ -289,11 +289,12 @@ new Direct Debit before cutover (spec 08 §8.2).
    `https://bbms.buildbrighton.com/account/discord/done/`. Copy the **client ID** and **client secret**.
 2. Under *Bot*, create the bot and copy its **token** (`DISCORD_BOT_TOKEN`). Invite the bot to the server with
    the permissions **Create Invite**, **Manage Roles** and **Manage Nicknames**, plus **Send Messages** in the
-   welcome channel (the list is in `apps/discord/client.py`).
+   welcome and announcement channels (the list is in `apps/discord/client.py`).
 3. In the server's *Roles*, drag the bot's role **above** the *member* and *former member* roles it manages.
 4. Turn on Developer Mode, then right-click to copy the IDs: the server (`DISCORD_GUILD_ID`), the member role
-   (`DISCORD_MEMBER_ROLE_ID`), the former-member role (`DISCORD_FORMER_MEMBER_ROLE_ID`) and the welcome channel
-   (`DISCORD_WELCOME_CHANNEL_ID`).
+   (`DISCORD_MEMBER_ROLE_ID`), the former-member role (`DISCORD_FORMER_MEMBER_ROLE_ID`), the welcome channel
+   (`DISCORD_WELCOME_CHANNEL_ID`) and the channel where new proposals and their results are announced
+   (`DISCORD_ANNOUNCEMENT_CHANNEL_ID`).
 5. The welcome message's text is in the site admin (*Settings → Discord*).
 6. Check: no `discord.W001`. The nightly `sync_discord` job (§7) keeps roles right.
 
@@ -358,6 +359,7 @@ after local midnight, and write the chosen times in the table. ❓ The order mat
 | every 15 min | `python manage.py process_gocardless_events` | Backstop for webhook events stored but not handled |
 | every 15 min | `python manage.py check_devices` | Tells the `acs` team when a monitored device has gone quiet |
 | hourly | `python manage.py tidy_equipment_sessions` | Closes stale machine sessions, charges finished ones, sends service reminders |
+| hourly | `python manage.py update_proposals` | Opens proposals (emails voters, posts on Discord), counts closed ones, posts results |
 | daily | `python manage.py shred_stale_id_documents` | Deletes proofs of identity nobody checked in time |
 | nightly | `python manage.py sync_discord` | Puts members' Discord roles right |
 
