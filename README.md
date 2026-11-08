@@ -165,6 +165,9 @@ The app is a Docker image (`Dockerfile`) for DigitalOcean App Platform, with man
 (spec 01 §1.8). Database migrations run as a pre-deploy job (`python manage.py migrate`). Testing before the
 switch-over from the legacy system is described in spec 08 §8.3.
 
+The step-by-step guide to setting up production, with what each outside service needs, is
+[docs/deployment.md](docs/deployment.md) (a first draft, with placeholders for what isn't built yet).
+
 ## Scheduled jobs
 
 Plain management commands, run by the platform's scheduler (spec 03 §3.6), Europe/London time. Each is safe to run
