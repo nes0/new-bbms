@@ -205,6 +205,13 @@ GOCARDLESS_ENVIRONMENT = env("GOCARDLESS_ENVIRONMENT", default="sandbox")  # or 
 # Webhook endpoint secret, from GoCardless's dashboard (Developers → Webhooks). Webhooks are refused without it.
 GOCARDLESS_WEBHOOK_SECRET = env("GOCARDLESS_WEBHOOK_SECRET", default="")
 
+# Heartbeats for the nightly billing jobs (spec 01 §1.8): each job's ping URL at a monitoring service such as
+# Healthchecks.io (https://hc-ping.com/<uuid>). The job pings <url>/start, then <url> or <url>/fail. Empty: no pings.
+JOB_HEARTBEATS = {
+    job: env(f"HEARTBEAT_{job.upper()}", default="")
+    for job in ("create_charges", "bill_members", "check_memberships", "retry_direct_debits")
+}
+
 # Stripe (card payments, spec 04 §4.3). Without a key, development and tests use a fake that sends nothing.
 # Use a test-mode key (sk_test_...) everywhere but the live site.
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")

@@ -234,8 +234,9 @@ and `check --deploy` lists what is missing.
 | `LOG_LEVEL` | `INFO` (default). Logs go to the console, which App Platform collects. |
 | `WEB_CONCURRENCY` | gunicorn workers (default 2). |
 | `LEGACY_DATABASE_URL` | Only for the import (§8). Don't leave it set afterwards. |
+| `HEARTBEAT_CREATE_CHARGES`, `HEARTBEAT_BILL_MEMBERS`, `HEARTBEAT_CHECK_MEMBERSHIPS`, `HEARTBEAT_RETRY_DIRECT_DEBITS` | Each nightly billing job's ping URL (§6.6), e.g. `https://hc-ping.com/<uuid>`. Treat them as secrets: anyone with one can fake that job's ping. `check --deploy` names any that are missing (`billing.W004`). |
 
-🚧 **Not built yet:** variables for error tracking (§6.6) and for the bank statement import (04 §4.6). They will be
+🚧 **Not built yet:** variables for error tracking and for heartbeats on the other jobs (§6.6), and for the bank statement import (04 §4.6). They will be
 added here when those features exist.
 
 ---
@@ -322,17 +323,37 @@ others (spec 06 §6.6). In production you need a real sending service (Postmark,
    (A password reset asked for during an outage shows the member an error instead.)
 6. Staging should send to a test mailbox, never to real members (spec 08 §8.3).
 
-### 6.6 Monitoring (🚧 not built yet)
+### 6.6 Monitoring (🚧 partly built)
 
-The spec asks for three things (spec 01 §1.8). None is set up in the code yet:
+The spec asks for three things (spec 01 §1.8). Only the billing jobs' heartbeats are built so far:
 
 | Need | Plan | Status |
 |---|---|---|
 | **Uptime check** on the app and the device API | Any uptime service, checking `https://bbms.buildbrighton.com/healthz` every minute or so, and alerting a named person | 🚧 Choose a service and add the monitor. `/healthz` exists. |
 | **Error tracking** | e.g. Sentry's free tier | 🚧 No package or setting yet: add `sentry-sdk`, a `SENTRY_DSN` variable and the few lines to start it. |
-| **A heartbeat per scheduled job** | e.g. Healthchecks.io: each job pings a URL when it succeeds, and a missed ping alerts someone | 🚧 Jobs don't ping anyone yet (the spec lists "a heartbeat alert per job" as still to build). A missed 01:30 billing run must alert a named person. |
+| **A heartbeat per scheduled job** | e.g. Healthchecks.io: each job pings a URL when it succeeds, and a missed ping alerts someone | **Built for the four nightly billing jobs** (2026-11-08); 🚧 not yet for the others in §7. |
 
-Until these exist, someone must check the job logs each morning.
+**Setting up the billing heartbeats** (Healthchecks.io; any service with the same `/start` and `/fail` URLs works):
+
+1. Make one check per job: `create_charges`, `bill_members`, `check_memberships`, `retry_direct_debits`.
+2. Give each a **cron schedule** matching its job's schedule in §7 (same time zone), and a **grace time** of about
+   an hour: enough for a slow night, short enough that the alert arrives before members notice.
+3. Send the alerts to a **named person** (the treasurer, or whoever owns billing in §12), by email and ideally a
+   second way, such as a phone notification.
+4. Put each check's ping URL in its variable (§5.4) on **that job** (the web service doesn't need them).
+5. Run each job once on the live app and see "Started" then "Up" on its check.
+
+What a job sends: `<url>/start` as it begins, `<url>` with its summary line ("subscription 4, locker-rent 1") when it
+finishes, or `<url>/fail` with the kind of error if it crashes. Never a member's name or the error's text, which could
+include one. So an alert means one of: the job **didn't run** (no ping), it **failed** (fail ping), or it **started
+but never finished** (start, then nothing).
+
+A ping that can't be sent is logged as a warning and never stops or fails the job. Runs by hand with `--date` or
+`--dry-run` don't ping: after catching up a missed night by hand, the check stays "down" until the next scheduled run
+pings it, or until someone pauses or resumes it on Healthchecks.io.
+
+Until uptime and error alerts exist, and for the jobs without a heartbeat, someone must check the job logs each
+morning.
 
 ### 6.7 Moodle (online training)
 
@@ -440,6 +461,7 @@ Notes:
 
 - The minimum interval for a scheduled job may be **15 minutes** (⚠️ verify). That's why the device check runs every
   15 minutes, not 10 as in legacy.
+- The four billing jobs ping a heartbeat on every scheduled run (§6.6).
 - `create_charges`, `bill_members`, `check_memberships` and `retry_direct_debits` take `--date YYYY-MM-DD` (run as if
   it were that day, to catch up a missed night) and `--dry-run` (work it out, report, change nothing, send nothing).
   After a missed run, run the missed one by hand from a shell, with `--dry-run` first.
@@ -560,7 +582,8 @@ Copy this into an issue and tick it off. The acceptance checks in
 - [ ] `check --deploy` shows no warnings
 - [ ] §6.1–6.4: GoCardless, Stripe, PayPal and Discord live; one real small payment of each kind tested and refunded
 - [ ] §6.5: SMTP set up and a test email delivered; password reset works; the sender domain's SPF and DKIM are verified
-- [ ] §6.6: 🚧 uptime, error and job-heartbeat alerts set up, each pointing at a named person
+- [ ] §6.6: billing job heartbeats set up, and each one tested; 🚧 uptime, error and other job alerts set up; each
+  alert pointing at a named person
 - [ ] §7: every job scheduled and run once; times chosen and written down
 - [ ] A restore from backup tested
 - [ ] The door firmware tested against the new hostname (the `tests/door_compat/` suite passes)
@@ -594,12 +617,12 @@ Fill this in. It's the first thing needed if something breaks.
 
 Everything marked 🚧 above, in one place, so the work can be planned:
 
-1. Error tracking, job heartbeats, uptime monitor (§6.6)
+1. Error tracking, heartbeats for the jobs other than billing, uptime monitor (§6.6)
 2. `.do/app.yaml` for the app and jobs, and a way to deploy only after CI passes (§3.3)
 3. The health check and HTTPS redirect check, with an exemption for `/healthz` if needed (§3.3)
 4. The hourly proposals tally (§7), equipment photo and receipt storage (§3.2), the bank statement import (§5.4)
 5. A staging app and the shadow site (§9)
 6. How the import reaches the legacy database (§8), and the legacy photo bucket's name
 7. CI's `check --deploy --fail-level WARNING` step (`.github/workflows/ci.yml`) fails while GoCardless, Stripe, PayPal,
-   Discord and Spaces are unset, because each deploy check warns. Give CI throwaway values, or silence those checks
+   Discord, Spaces and the billing heartbeats are unset, because each deploy check warns. Give CI throwaway values, or silence those checks
    there, so the step passes again.
