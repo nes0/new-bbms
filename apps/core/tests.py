@@ -1,3 +1,4 @@
+from django.contrib.staticfiles import finders
 from django.test import TestCase
 from django.urls import reverse
 
@@ -29,3 +30,19 @@ class CorePageTests(TestCase):
     def test_admin_requires_staff(self):
         response = self.client.get(reverse("admin:index"))
         self.assertEqual(response.status_code, 302)
+
+
+class BrandingTests(TestCase):
+    def test_every_page_has_the_logo_linking_home(self):
+        response = self.client.get(reverse("home"))
+        self.assertContains(response, 'src="/static/img/logo.png"')
+        self.assertContains(response, f'href="{reverse("home")}"><img class="logo"')
+
+    def test_login_and_join_pages_have_the_backdrop_but_others_do_not(self):
+        self.assertContains(self.client.get(reverse("login")), 'class="backdrop"')
+        self.assertContains(self.client.get(reverse("members:register")), 'class="backdrop"')
+        self.assertNotContains(self.client.get(reverse("home")), "backdrop")
+
+    def test_the_logo_and_backdrop_files_are_in_the_static_folder(self):
+        for name in ("logo.png", "login-backdrop.jpg"):
+            self.assertIsNotNone(finders.find(f"img/{name}"), name)

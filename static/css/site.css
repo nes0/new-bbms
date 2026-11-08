@@ -45,3 +45,11 @@ input[aria-invalid="true"] { border-color: var(--error); }
 .details dt { color: var(--muted); }
 .details dd { margin: 0; }
 .messages { list-style: none; padding: 0; }
+.logo { display: block; height: 2.5rem; width: auto; }
+/* The logo is black on transparent, so flip it on the dark theme. */
+@media (prefers-color-scheme: dark) { .logo { filter: invert(1); } }
+/* Login and join pages: the makerspace photo behind a solid panel (the legacy site's look). */
+body.backdrop { background: var(--bg) url("../img/login-backdrop.jpg") no-repeat center center fixed; background-size: cover; }
+body.backdrop .site-header { background: var(--bg); }
+body.backdrop main { background: var(--bg); max-width: 34rem; margin: 2rem auto; border: 1px solid var(--border); border-radius: 8px; }
+@media (max-width: 40rem) { body.backdrop main { margin: 0; border-radius: 0; border-width: 1px 0; } }
