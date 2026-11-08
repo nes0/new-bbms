@@ -14,7 +14,7 @@
 | Address lines 2–4 | optional |
 | Monthly subscription | required, integer pounds, at least the **minimum monthly subscription** setting (02 §2.8; £25, was £20 in legacy) |
 | Emergency contact | required |
-| Profile photo | optional upload; goes into the **pending approval** queue |
+| Profile photo | optional upload; goes into the **pending approval** queue. **Built** as a next step after joining instead (06 §6.1) |
 | Photo private | optional |
 | Agree to rules | must be ticked (stores `rules_agreed` timestamp) |
 | "I have visited the space" | must be ticked |
@@ -25,6 +25,8 @@ On submit: user created with `status = setting-up`, `active = false`; an empty p
 (unless an admin created the account) and sent to their account page.
 
 **Next steps shown to a setting-up member:**
+0. **Join the Discord server** (added 2026-11-08, 06 §6.14): link their Discord account; BBMS adds them to the
+   server. Payment can't be set up until this is done, so nobody becomes active without it.
 1. **Set up payment** — either
    - **Direct Debit** (GoCardless redirect flow → mandate). On return: store `mandate_id`, `payment_method = gocardless-variable`, `payment_day = today's day`, then *activate* (§3.4); or
    - **PayPal subscription** (`payment_method = paypal`): for members without a UK bank account; the page says Direct Debit is preferred (PayPal costs the space more). BBMS shows PayPal's subscribe button for their monthly amount; PayPal's first IPN sets the payment day and *activates* them (04 §4.4); or
@@ -154,6 +156,7 @@ All times Europe/London. Each must be **idempotent** and must **alert on failure
 | 07:00 (new) | `retry_direct_debits` | In "BBMS retries" mode, asks GoCardless to retry failed Direct Debits whose retry day has come. **Built** |
 | every 15 min (new) | `process_gocardless_events` | Backstop for webhook events that were stored but not handled. **Built** |
 | daily (new) | `shred_stale_id_documents` | Delete proofs of identity nobody has checked within the time limit (§3.1, "Proof of identity"). |
+| nightly (new) | `sync_discord` | Put each linked member's Discord member / former-member role right, and post welcome messages that failed (06 §6.14). |
 | hourly | `fix-equipment-log` | Close stale sessions; merge sessions with gaps ≤ 60 s; mark sessions ≤ 60 s as removed. |
 | hourly | `calculate-proposal-votes` | Tally proposals whose end date has passed. |
 | every 15 min (legacy: 10) | `device:check-online` | Notify `acs` role holders when a monitored device's last heartbeat is > 1 hour old (deduplicated per heartbeat). |
@@ -266,8 +269,8 @@ trained on, what the front door does for them (from the door rules, 05 §5.2), p
 
 Since the subscriptions work: payment method and day, "paid until", the charges list (on `/account/payment/`), the
 "method" change, leaving for current members (cancel the Direct Debit → `leaving`) and rejoining. Members paying by
-standing order or cash ask a trustee to change their amount. Waiting for other apps: the profile and photo
-(06 §6.1), the general induction step (05 §5.9) and emails about address decisions.
+standing order or cash ask a trustee to change their amount. The profile and photo are built (06 §6.1). Waiting
+for other apps: the general induction step (05 §5.9) and emails about address decisions.
 
 ## 3.9 Admin member controls
 
@@ -294,5 +297,5 @@ Built, in the Django admin's member page:
   declines it;
 - shortcuts to **record a payment** for the member (the member is filled in), their payments and their audit log.
 
-Waiting for other apps: approving and declining an uploaded photo (and its email) with the profiles app (06 §6.1);
-the in-app "trusted" notification (06 §6.5); telling a member their address change was declined.
+Approving and declining an uploaded photo (and its email) are built with the profiles app (06 §6.1).
+Waiting for other apps: the in-app "trusted" notification (06 §6.5); telling a member their address change was declined.

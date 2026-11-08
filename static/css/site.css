@@ -53,3 +53,22 @@ body.backdrop { background: var(--bg) url("../img/login-backdrop.jpg") no-repeat
 body.backdrop .site-header { background: var(--bg); }
 body.backdrop main { background: var(--bg); max-width: 34rem; margin: 2rem auto; border: 1px solid var(--border); border-radius: 8px; }
 @media (max-width: 40rem) { body.backdrop main { margin: 0; border-radius: 0; border-width: 1px 0; } }
+/* Member directory and profiles (06 §6.1). */
+.member-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: 1rem; padding: 0; list-style: none; }
+.member-grid a { display: block; text-align: center; text-decoration: none; color: var(--text); }
+.avatar { display: block; width: 100%; aspect-ratio: 1; border-radius: 8px; object-fit: cover; }
+.avatar.blank { display: flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--muted);
+  border: 1px solid var(--border); background: color-mix(in srgb, var(--border) 30%, transparent); }
+.avatar.small { width: 3rem; display: inline-flex; font-size: 1rem; vertical-align: middle; margin-right: 0.5rem; }
+.badges { color: var(--muted); font-size: 0.85em; }
+.profile { display: grid; grid-template-columns: minmax(8rem, 15rem) 1fr; gap: 1.5rem; align-items: start; }
+@media (max-width: 36rem) { .profile { grid-template-columns: 1fr; } .profile .avatar { max-width: 15rem; } }
+.tagline { font-size: 1.15em; margin-top: 0; }
+.skill-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); gap: 0.75rem; padding: 0; list-style: none; text-align: center; }
+.skill-list img { width: 3.5rem; height: 3.5rem; }
+.skill-icon { display: inline-block; width: 1.5rem; height: 1.5rem; vertical-align: middle; }
+@media (prefers-color-scheme: dark) { .skill-list img, .skill-icon { filter: invert(1); } }
+.filters { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+select, textarea { font: inherit; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); }
+.skills-choice { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 0.25rem 1rem; padding: 0; list-style: none; }
+.skills-choice label { display: flex; gap: 0.5rem; align-items: center; }

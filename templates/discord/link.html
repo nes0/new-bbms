@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Discord · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<h1>Our Discord server</h1>
+<p>Discord is where {{ SITE_NAME }} talks: news, questions, and a channel for each topic and machine (#laser, #kiln,
+  #woodwork and more), which you can choose once you're on the server.</p>
+{% if not enabled %}
+  <p class="hint">Discord linking isn't available on this site at the moment.</p>
+{% elif member.discord_user_id %}
+  <p class="ok">Linked as <strong>{{ member.discord_username }}</strong>{% if member.discord_on_server %}, and you're on our server{% endif %}.</p>
+  {% if not member.discord_on_server %}
+    <p class="error">You've left our server{% if blocks_setup %}, and you need to be on it to finish joining{% endif %}. Link again to rejoin it.</p>
+    <form method="post" action="{% url 'discord:connect' %}">{% csrf_token %}<button type="submit">Rejoin our Discord</button></form>
+  {% endif %}
+  <form method="post" action="{% url 'discord:unlink' %}" class="stack">{% csrf_token %}
+    <p class="hint">Using a different Discord account? Unlink this one, then link the other.</p>
+    <button type="submit" class="link">Unlink</button></form>
+{% else %}
+  {% if blocks_setup %}<p><strong>Every member joins our Discord server: it's the first step to joining {{ SITE_NAME }}.</strong></p>{% endif %}
+  <p>Link your Discord account and we'll add you to the server. Discord asks you to log in (or create an account),
+    then whether to let {{ SITE_NAME }} see your username and add you to the server. We don't see your messages,
+    email address or password.</p>
+  <form method="post" action="{% url 'discord:connect' %}">{% csrf_token %}<button type="submit">Link Discord</button></form>
+{% endif %}
+<p><a href="{% url 'members:account' %}">Back to your account</a></p>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Members · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<h1>Members</h1>
+<form method="get" class="filters" role="search">
+  <label for="q" class="hint">Name</label> <input id="q" name="q" value="{{ q }}" type="search">
+  <label for="skill" class="hint">Skill</label>
+  <select id="skill" name="skill">
+    <option value="">Any</option>
+    {% for s in skills %}<option value="{{ s.key }}"{% if s.key == skill %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
+  </select>
+  <button type="submit">Find</button>
+  {% if q or skill %}<a href="{% url 'profiles:directory' %}">Show everyone</a>{% endif %}
+</form>
+{% if cards %}
+  <p class="hint">{{ cards|length }} member{{ cards|length|pluralize }}.{% if not is_member %} Members who keep their profile private aren't shown.{% endif %}</p>
+  <ul class="member-grid">
+    {% for card in cards %}
+      <li><a href="{% url 'profiles:member' card.member.pk %}">
+        {% include "profiles/_avatar.html" %}
+        <strong>{{ card.member.full_name }}</strong>
+        <div class="badges">{% if card.member.key_holder %}Key holder{% endif %}{% if card.member.key_holder and card.trustee %} · {% endif %}{% if card.trustee %}Trustee{% endif %}</div>
+      </a></li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>Nobody found.</p>
+{% endif %}
+{% if is_member %}<p><a href="{% url 'profiles:groups' %}">Groups and who to contact</a>{% if user.is_authenticated %} · <a href="{% url 'profiles:edit' %}">Edit your profile</a>{% endif %}</p>{% endif %}
+{% endblock %}

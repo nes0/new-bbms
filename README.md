@@ -48,7 +48,14 @@ The membership system for Build Brighton: members, payments, door and machine ac
   development uses a fake checkout page (`/dev/stripe/…`);
 - **PayPal**: a monthly PayPal subscription for members without a UK bank account, and credit top-ups by PayPal,
   recorded from PayPal's notifications (`/paypal-ipn`, each checked with PayPal). Without `PAYPAL_ACCOUNT_EMAIL`,
-  development uses a fake PayPal page (`/dev/paypal/`), and `/dev/paypal/tools/` plays PayPal's later notifications.
+  development uses a fake PayPal page (`/dev/paypal/`), and `/dev/paypal/tools/` plays PayPal's later notifications;
+- **profiles and the member directory**: members edit their profile and upload a photo (`/account/profile/`),
+  admins approve photos (Members → Member photos), members browse `/members/` and `/groups/`. Photos are only
+  served through BBMS, to people allowed to see them;
+- **Discord**: members link their Discord account (`/account/discord/`) before they can set up their payment; BBMS
+  adds them to the server, sets their nickname to their real name, posts a welcome message (text in Settings) and
+  keeps their member / former-member role right. Without the `DISCORD_*` settings, development uses a fake
+  Discord page (`/dev/discord/`).
 
 ## What's in this repository
 
@@ -62,6 +69,8 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `apps/site_settings/` | Settings the trustees change in the admin (prices, limits, reader timings, the space's name), with a log of changes |
 | `apps/payments/` | The ledger, member credit, machine fees charged from credit, cash and manual payments, withdrawals, card (Stripe) and PayPal payments |
 | `apps/storage/` | Lockers: locations, sizes, default rents, overrides, availability, rentals, limits and their log |
+| `apps/profiles/` | Member profiles and photos (upload, approval, who may see them), the member directory, the groups page |
+| `apps/discord/` | Linking members' Discord accounts, their roles on the server, the welcome message |
 | `apps/billing/` | Subscription and locker rent charges, GoCardless (Direct Debit) and its webhook, the nightly billing and membership jobs |
 | `templates/`, `static/` | Page templates; CSS and HTMX (kept locally, no build step) |
 | `docs/spec/` | The specification |
@@ -170,4 +179,5 @@ sent to GoCardless or emailed).
 | 07:00 | `manage.py retry_direct_debits` |
 | every 15 minutes | `manage.py process_gocardless_events` (a backstop: the webhook normally handles events at once) |
 | daily | `manage.py shred_stale_id_documents` |
+| nightly | `manage.py sync_discord` (Discord member / former-member roles; welcome messages that failed) |
 | hourly | `manage.py tidy_equipment_sessions` |

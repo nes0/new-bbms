@@ -20,6 +20,39 @@ Members in `active`/`payment-warning`/`honorary` status may see protected photos
 
 **Groups** (`/groups`): lists each role with its title, description, contact email and members.
 
+### Build status (2026-11-08)
+
+Built in `apps/profiles`. Choices made while building:
+- **Profile** (`/account/profile/`): tagline, "about you", skills (the legacy list and keys, 21 skills), website,
+  GitHub, X (Twitter), Facebook and IRC (a nickname only: legacy linked to freenode, which has closed; Google+ is
+  dropped). Pasted profile addresses and "@name" are trimmed to the username. "Keep my profile private" and "only
+  members see my photo" are on the same page. Every member has a profile (made with the member; the import makes
+  them from `profile_data`).
+- **Photos:** JPEG, PNG or WebP up to 15 MB, turned the right way up, cropped to a square from the middle (no
+  cropping tool), stored as 500 px and 200 px PNGs with the camera's metadata (e.g. location) removed. A new upload
+  replaces one waiting. Approving and declining are in the admin (Members → Member photos, which opens on the
+  waiting ones), for anyone with the "change member photo" permission; approving sets "photo approved" (logged in
+  the audit log) and declining emails the member. A member can delete their own photo (a key holder is warned it
+  stops their fob opening the door). Photos are served only through BBMS, after checking the viewer may see them.
+  The optional photo at registration (03 §3.1) became a "next step" on the account page instead: a file on the long
+  registration form is lost whenever another field has an error.
+- **Who sees photos marked "only members":** members who may be in the space (active, leaving, honorary), and
+  admins who approve photos. Legacy also allowed payment-warning, which no longer exists.
+- **Directory** (`/members/`): photo (or initials), name, key holder and trustee (the `trustees` role) badges, with
+  a name search and a skill filter. Listed: active and honorary members who aren't banned. **Members** (active,
+  leaving, suspended, honorary, or staff) see everyone listed; people who are still setting up or have left don't
+  see it. **Visitors** see it only if the new setting "show the member list to visitors" is on (**off** to start
+  with, pending the trustees' decision, 01 §1.7 Q7), and never private profiles. A member can always see their own
+  page.
+- **Member page** (`/members/<id>/`): photo, tagline, description (plain text with line breaks), links, groups
+  (members only), skills with icons. The icons are legacy's (The Noun Project, CC BY), credited at `/credits/`;
+  "arts and crafts" has no icon, as legacy's had no licence file.
+- **Groups** (`/groups/`, members only): each role's title, description, contact email and Discord channels
+  (linked on Discord, 06 §6.14; a group can have several, as groups are broader than the server's topics), edited in
+  the admin (Users → Groups), where a role can also be hidden from the page. The import fills them from legacy's
+  roles (its private role email isn't shown, so isn't kept; its Slack channel names are dropped with Slack).
+- Still to do: telling admins there's a photo to approve (06 §6.5, notifications).
+
 ## 6.2 Storage: boxes and lockers
 
 Boxes and lockers follow **different rules** (decided 2026-11-06).
@@ -304,3 +337,47 @@ A trustee asked for a member total and a picture of its history, to see the tren
 - ❓ Who can see membership statistics? Suggested: totals and the trend for every member (as the stats page today);
   money figures (4.9) for finance and admins only.
 - Charts are drawn in the browser with a small charting library; no extra service is needed.
+
+## 6.14 Discord (requested 2026-11-08)
+
+Discord is now the space's **main way of talking**, and every new member must join the server. Topic channels there
+(3D printing, audio, laser, kiln, metalwork, woodwork, …, mostly private) mirror the old BBMS groups; members choose
+them on Discord itself (Channels & Roles). The server has a public welcome channel and a channel only former
+members can see.
+
+Decided with the requester (2026-11-08):
+- **Linked accounts.** A member links their Discord account from BBMS (Discord's OAuth2, scopes `identify` and
+  `guilds.join`); BBMS adds them to the server if they aren't on it. One BBMS account per Discord account.
+- **It blocks activation.** A member who is setting up can't set up their payment, so can't become active, until
+  they've linked Discord and are on the server. Trustees can tick "Discord not needed" for someone, sparingly.
+  Members who joined before this aren't held up.
+- **Roles follow membership.** BBMS gives the **member** role while someone is a member (active, leaving,
+  suspended, honorary) and takes it away when they leave, giving the **former member** role instead (it opens the
+  left-members channel). Topic roles are left to Discord.
+- **Nickname.** Set to the member's real name when they link, so members know who's who. After that it's theirs to
+  change (some members are known by another name at the space).
+- **Welcome message.** When BBMS adds someone to the server, its bot posts a welcome for them in the welcome
+  channel. The text is a setting (Settings → Discord) with `{mention}`, `{name}`, `{first_name}` and `{space}`; only
+  the new member is notified (no @everyone or role pings from the text).
+
+### Build status (2026-11-08)
+
+Built in `apps/discord`:
+- `/account/discord/`: link, rejoin the server (if they've left it) or unlink. The account page shows "Join our
+  Discord server" as the first next step, and the payment page waits for it.
+- The roles are updated when a member's status changes (after it's saved), and the nightly `sync_discord` job puts
+  right anything else: an admin's edit, a role changed by hand, a call that failed, a welcome that couldn't be
+  posted. It also notices members who have left the server. Admins can run it for chosen members from the members
+  list ("Update their Discord roles now").
+- The groups page links each group to its topic channels: a group can have several (e.g. a woodwork group with
+  #woodwork, #wood-lathe and #tablesaw), each with its name and, to make it a link, its channel id (Users → Groups).
+- Members see each other's Discord username on member pages.
+- BBMS keeps the member's Discord id and username, never their Discord token (used once, to add them).
+- Configuration (environment): `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` (the application's OAuth2 page; add
+  `https://<site>/account/discord/done/` as a redirect), `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`,
+  `DISCORD_MEMBER_ROLE_ID`, `DISCORD_FORMER_MEMBER_ROLE_ID`, `DISCORD_WELCOME_CHANNEL_ID`. The bot needs "Create
+  Invite", "Manage Roles", "Manage Nicknames" and "Send Messages" in the welcome channel, with its role above the
+  member and former-member roles. Without the settings, development and tests use a fake (`/dev/discord/`), and a
+  live site doesn't ask members to link Discord (a deploy check warns).
+- ⚠️ At cutover: existing members aren't linked. They can link from their account page; the trustees may want to ask
+  them to, so the member / former-member roles become BBMS's job.

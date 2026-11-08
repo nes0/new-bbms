@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ member.full_name }} · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<h1>{{ member.full_name }}</h1>
+{% if is_own %}
+  <p class="actions"><a href="{% url 'profiles:edit' %}">Edit your profile</a>
+    {% if pending %}<span class="hint">Your new photo is waiting for a trustee to check it.</span>{% endif %}
+    {% if member.status != "active" and member.status != "honorary" %}<span class="hint">Only you can see this page: it's listed once you're an active member.</span>{% endif %}</p>
+{% endif %}
+<div class="profile">
+  <div>
+    {% if full_photo_url %}<img class="avatar" src="{{ full_photo_url }}" alt="Photo of {{ member.full_name }}" width="500" height="500">{% else %}{% include "profiles/_avatar.html" with card=card %}{% endif %}
+  </div>
+  <div>
+    {% if profile.tagline %}<p class="tagline">{{ profile.tagline }}</p>{% endif %}
+    {% if profile.description %}{{ profile.description|linebreaks }}{% endif %}
+    <p class="badges">{% if member.key_holder %}Key holder · {% endif %}{% if trustee %}Trustee · {% endif %}Member since {{ member.date_joined|date:"F Y" }}</p>
+    {% if member.discord_username and show_discord %}<p>Discord: <strong>{{ member.discord_username }}</strong></p>{% endif %}
+    {% if profile.links or profile.irc %}
+      <ul>
+        {% for label, url in profile.links %}<li>{{ label }}: <a href="{{ url }}" rel="nofollow noopener ugc">{{ url }}</a></li>{% endfor %}
+        {% if profile.irc %}<li>IRC: {{ profile.irc }}</li>{% endif %}
+      </ul>
+    {% endif %}
+    {% if groups %}
+      <p>Groups: {% for group in groups %}<a href="{% url 'profiles:group' group.name %}">{{ group.info.title|default:group.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+    {% endif %}
+  </div>
+</div>
+{% if skills %}
+  <h2>Skills</h2>
+  <ul class="skill-list">
+    {% load static %}
+    {% for skill in skills %}
+      <li>{% if skill.icon %}<img src="{% static 'img/skills/'|add:skill.icon %}" alt="" width="56" height="56"><br>{% endif %}{{ skill.name }}</li>
+    {% endfor %}
+  </ul>
+  <p class="hint"><a href="{% url 'profiles:credits' %}">Icon credits</a></p>
+{% endif %}
+<p><a href="{% url 'profiles:directory' %}">All members</a></p>
+{% endblock %}

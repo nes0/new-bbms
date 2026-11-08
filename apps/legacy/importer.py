@@ -372,8 +372,26 @@ class Importer:
         report.imported[table] = len(batch)
 
     def import_profiles(self):
+        """Photo flags onto the member; links, tagline, description and skills into their profile (06 §6.1).
+
+        Every member gets a profile, with or without a legacy row. Google+ links aren't kept (it closed in 2019).
+        """
+        from apps.profiles import skills
+        from apps.profiles.forms import PREFIXES, USERNAME
+        from apps.profiles.models import Profile
+
         table, report = "profile_data", self.report
-        changed, pending_photos, pending_ids = [], 0, []
+        changed, pending_photos, pending_ids, profiles = [], 0, [], {}
+        dropped_links, unknown_skills = 0, Counter()
+
+        def username(value):
+            nonlocal dropped_links
+            value = PREFIXES.sub("", text(value)).strip("/")
+            if value and not USERNAME.match(value):
+                dropped_links += 1
+                return ""
+            return value[:50]
+
         for row in self.source.rows(table):
             report.read[table] += 1
             member = self.members.get(row.get("user_id"))
@@ -386,9 +404,41 @@ class Importer:
                 pending_photos += 1
                 pending_ids.append(member.legacy_id)
             changed.append(member)
+            try:
+                keys = json.loads(text(row.get("skills_array")) or "[]")
+            except ValueError:
+                keys = []
+            keys = [
+                str(k) for k in (keys.values() if isinstance(keys, dict) else keys if isinstance(keys, list) else [])
+            ]
+            unknown_skills.update(k for k in keys if k not in skills.BY_KEY)
+            website = text(row.get("website"), 200)
+            if website and not website.lower().startswith(("http://", "https://")):
+                website = f"https://{website}"
+            profiles[member.pk] = Profile(
+                member=member,
+                tagline=text(row.get("tagline"), 250),
+                description=text(row.get("description"), 5000),
+                skills=[k for k in keys if k in skills.BY_KEY],
+                website=website,
+                github=username(row.get("github")),
+                twitter=username(row.get("twitter")),
+                facebook=username(row.get("facebook")),
+                irc=text(row.get("irc"), 50),
+                photo_private=flag(row.get("profile_photo_private")),
+            )
         Member.objects.bulk_update(changed, ["photo_approved", "photo_on_wall"], batch_size=500)
+        for member in self.members.values():
+            profiles.setdefault(member.pk, Profile(member=member))
+        Profile.objects.bulk_create(profiles.values(), batch_size=500)
         report.imported[table] = len(changed)
-        report.note(f"social links and descriptions aren't imported yet; {pending_photos} new photos awaited approval")
+        report.note(f"{len(profiles)} profiles made; {pending_photos} new photos awaited approval")
+        if dropped_links:
+            report.note(f"{dropped_links} social link(s) that weren't usernames were left out")
+        if unknown_skills:
+            report.note(
+                "skills not on the list, left out: " + ", ".join(f"{k} ({n})" for k, n in unknown_skills.items())
+            )
         self.import_photos(changed, pending=set(pending_ids))
 
     def import_photos(self, members, pending):
@@ -547,7 +597,9 @@ class Importer:
         report = self.report
         for row in self.source.rows("roles"):
             report.read["roles"] += 1
-            self.groups[row["id"]] = Group.objects.get_or_create(name=text(row.get("name"), 150))[0]
+            group = Group.objects.get_or_create(name=text(row.get("name"), 150))[0]
+            self.groups[row["id"]] = group
+            self._import_role_info(group, row)
             report.imported["roles"] += 1
 
         admins, links = set(), set()
@@ -570,6 +622,24 @@ class Importer:
             comms.permissions.add(confirm)
         report.imported["role_user"] = len(links)
         report.note(f"{len(admins)} members of the 'admin' role can use the admin site (other roles: groups only)")
+
+    def _import_role_info(self, group, row):
+        """What the groups page says about a role (06 §6.1). Legacy's private role email isn't shown, so isn't kept,
+        and its Slack channel names are dropped with Slack (Discord channels are added in the admin, 06 §6.14).
+        """
+        from apps.profiles.models import RoleInfo
+
+        email = text(row.get("email_public"), 254)
+        if email.lower().startswith("mailto:"):
+            email = email[7:]
+        RoleInfo.objects.update_or_create(
+            group=group,
+            defaults={
+                "title": text(row.get("title"), 100),
+                "description": text(row.get("description")),
+                "email": email if "@" in email else "",
+            },
+        )
 
     # -- Fobs and devices --------------------------------------------------------------------------------------------
 

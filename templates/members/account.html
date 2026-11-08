@@ -11,6 +11,11 @@
     <section class="card">
       <h2>Next steps</h2>
       <ol class="steps">
+        {% if discord_enabled %}
+        <li><strong>Join our Discord server</strong>, where members talk and organise.
+          {% if member.discord_exempt or member.discord_user_id and member.discord_on_server %}<span class="ok">Done.</span>
+          {% else %}<a href="{% url 'discord:page' %}">Link your Discord account</a> (you need to do this before setting up your payment).{% endif %}</li>
+        {% endif %}
         <li><strong>Set up your monthly payment</strong>
           {% if member.monthly_subscription_pence %}({{ member.monthly_subscription_pence|pounds }} a month){% endif %}.
           <a href="{% url 'billing:payment' %}">Set it up</a> by Direct Debit, or pay from your credit.</li>
@@ -24,6 +29,8 @@
           {% if member.general_induction_status == "confirmed" %}<span class="ok">Done.</span>
           {% elif member.general_induction_status == "waiting" %}<span class="hint">Done; we'll confirm it when you visit.</span>
           {% else %}<a href="{% url 'members:induction' %}">Do it now</a>{% endif %}</li>
+        <li><strong>Add a photo</strong> (optional, but key holders need one for the door): from
+          <a href="{% url 'profiles:edit' %}">your profile</a>.</li>
         <li><strong>Collect your fob</strong> on your first visit. It records your visits and works the machines
           you're trained on.</li>
       </ol>
@@ -45,6 +52,11 @@
       <dt>Credit</dt><dd>{{ credit_pence|pounds }} <a href="{% url 'payments:credit' %}">Top up, history and withdrawals</a></dd>
       <dt>Pay for something</dt><dd><a href="{% url 'payments:pay' %}">Induction fees, key deposit, box fee</a></dd>
       <dt>Lockers</dt><dd><a href="{% url 'storage:lockers' %}">Your lockers and ones to rent</a></dd>
+      {% if discord_enabled %}
+        <dt>Discord</dt>
+        <dd>{% if member.discord_user_id %}{{ member.discord_username }}{% if not member.discord_on_server %} <span class="error">(not on our server)</span>{% endif %}{% else %}Not linked{% endif %}
+          <a href="{% url 'discord:page' %}">{% if member.discord_user_id %}Manage{% else %}Link your Discord account{% endif %}</a></dd>
+      {% endif %}
       <dt>Member since</dt><dd>{{ member.date_joined|date:"j F Y" }}</dd>
       {% if member.status != "setting-up" %}
         <dt>General induction</dt>
@@ -66,7 +78,7 @@
       <dd>{% if not door_reason %}Your fob opens the door: 24-hour access
         {% elif door_reason == "not_member" %}None at the moment
         {% elif door_reason == "no_induction" %}Keyholder, but your fob won't open the door until your general induction is confirmed: <a href="{% url 'members:induction' %}">general induction</a>
-        {% elif door_reason == "no_photo" %}Keyholder, but your fob won't open the door until we have an approved photo of you
+        {% elif door_reason == "no_photo" %}Keyholder, but your fob won't open the door until we have an approved photo of you: <a href="{% url 'profiles:edit' %}">upload one</a>
         {% else %}Tap your fob when you arrive to record your visit; a keyholder lets you in{% endif %}</dd>
       <dt>Fobs</dt>
       <dd>{% for fob in fobs %}{{ fob.label }}{% if not forloop.last %}, {% endif %}{% empty %}None yet: collect one on your first visit{% endfor %}</dd>
@@ -91,6 +103,7 @@
     </dl>
     <p class="actions">
       <a href="{% url 'members:edit-details' %}">Edit your details</a>
+      <a href="{% url 'profiles:edit' %}">Your profile and photo</a>
       <a href="{% url 'members:change-address' %}">Change your address</a>
       <a href="{% url 'password_change' %}">Change your password</a>
     </p>

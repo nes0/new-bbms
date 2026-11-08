@@ -27,7 +27,13 @@ class PaymentPageTests(BillingTestCase):
         self.assertContains(self.client.get("/account/payment/"), "Your Direct Debit is set up")
 
     def test_setting_up_a_direct_debit_through_gocardless(self):
-        new = self.login(method=Member.PaymentMethod.NONE, status=Member.Status.SETTING_UP, mandate_id="", day=None)
+        new = self.login(
+            method=Member.PaymentMethod.NONE,
+            status=Member.Status.SETTING_UP,
+            mandate_id="",
+            day=None,
+            discord_exempt=True,
+        )
         response = self.client.post("/account/payment/direct-debit/")
         request_id = MandateSetup.objects.get(member=new).billing_request_id
         self.assertRedirects(response, f"/dev/gocardless/{request_id}/", fetch_redirect_response=False)
@@ -42,7 +48,13 @@ class PaymentPageTests(BillingTestCase):
         self.assertEqual(Charge.objects.get(member=new).status, "processing")
 
     def test_coming_back_before_gocardless_has_finished(self):
-        self.login(method=Member.PaymentMethod.NONE, status=Member.Status.SETTING_UP, mandate_id="", day=None)
+        self.login(
+            method=Member.PaymentMethod.NONE,
+            status=Member.Status.SETTING_UP,
+            mandate_id="",
+            day=None,
+            discord_exempt=True,
+        )
         self.client.post("/account/payment/direct-debit/")
         response = self.client.get("/account/payment/direct-debit/done/", follow=True)
         self.assertContains(response, "hasn&#x27;t confirmed your Direct Debit yet")
@@ -50,13 +62,25 @@ class PaymentPageTests(BillingTestCase):
         self.assertEqual(self.member.status, "setting-up")
 
     def test_gocardless_down(self):
-        self.login(method=Member.PaymentMethod.NONE, status=Member.Status.SETTING_UP, mandate_id="", day=None)
+        self.login(
+            method=Member.PaymentMethod.NONE,
+            status=Member.Status.SETTING_UP,
+            mandate_id="",
+            day=None,
+            discord_exempt=True,
+        )
         self.gc.fail_next = "down"
         response = self.client.post("/account/payment/direct-debit/", follow=True)
         self.assertContains(response, "couldn&#x27;t reach GoCardless")
 
     def test_paying_from_credit_instead(self):
-        new = self.login(method=Member.PaymentMethod.NONE, status=Member.Status.SETTING_UP, mandate_id="", day=None)
+        new = self.login(
+            method=Member.PaymentMethod.NONE,
+            status=Member.Status.SETTING_UP,
+            mandate_id="",
+            day=None,
+            discord_exempt=True,
+        )
         self.assertContains(self.client.get("/account/payment/"), "Pay from my credit")
         self.client.post("/account/payment/credit/")
         new.refresh_from_db()
@@ -122,7 +146,13 @@ class PaymentPageTests(BillingTestCase):
 
     @override_settings(DEBUG=True)
     def test_the_fake_gocardless_pages_when_developing(self):
-        new = self.login(method=Member.PaymentMethod.NONE, status=Member.Status.SETTING_UP, mandate_id="", day=None)
+        new = self.login(
+            method=Member.PaymentMethod.NONE,
+            status=Member.Status.SETTING_UP,
+            mandate_id="",
+            day=None,
+            discord_exempt=True,
+        )
         page = self.client.post("/account/payment/direct-debit/", follow=True)
         self.assertContains(page, "Authorise the Direct Debit")
         request_id = MandateSetup.objects.get(member=new).billing_request_id
@@ -136,7 +166,13 @@ class PaymentPageTests(BillingTestCase):
 
     @override_settings(TESTING=False, DEBUG=False)
     def test_a_site_without_gocardless_says_so(self):
-        self.login(method=Member.PaymentMethod.NONE, status=Member.Status.SETTING_UP, mandate_id="", day=None)
+        self.login(
+            method=Member.PaymentMethod.NONE,
+            status=Member.Status.SETTING_UP,
+            mandate_id="",
+            day=None,
+            discord_exempt=True,
+        )
         with self.assertLogs("apps.billing.gocardless", "ERROR"):
             response = self.client.post("/account/payment/direct-debit/", follow=True)
         self.assertContains(response, "couldn&#x27;t reach GoCardless")

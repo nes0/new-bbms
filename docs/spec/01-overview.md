@@ -68,7 +68,7 @@ These legacy features will **not** be rebuilt:
 | Detected devices (MAC address log) | |
 | Pusher real-time activity page | The activity page stays (members can see who was in the space when). |
 | Swagger API docs page | Replaced by generated OpenAPI docs for the device API. |
-| Slack notifications | All calls were already disabled. A chat webhook can be added later if wanted. |
+| Slack notifications | All calls were already disabled. Discord replaces Slack (06 §6.14). |
 | Balance transfers between members | Already disabled in legacy. |
 | Emergency key-safe PIN | Defunct. The setting, "reveal door key" button and PIN admin form are removed. |
 | Hand-built log viewer | Replaced by hosted logging/monitoring (§1.8). |
@@ -112,7 +112,7 @@ same, so MySQL saves nothing. Django is also built and tested primarily against 
    keep the £5 minimum for amounts set by an admin?
 5. Who may mark members as **trained**: admins only, or trainers too (05 §5.8)?
 6. Should the door's public Discord announcement use the full name, the first name only, or respect private profiles (05)?
-7. Public (logged-out) member directory: keep (06 §6.1)?
+7. Public (logged-out) member directory: keep (06 §6.1)? Built as a setting, off to start with.
 8. Storage (06 §6.2): default locker limit (suggested 1); first-month rent (suggested pro rata); rent changes for existing renters (suggested 30 days' notice); unpaid rent (suggested: locker may be cleared after 30 days); refunds when a locker is given up (suggested none); whether the box flag survives leaving and rejoining (suggested yes); whether the storage team manages the locker inventory.
 9. Group email for every equipment team, not just laser (06 §6.6).
 10. Policies as Markdown in the repo, or editable by admins (06 §6.8)?

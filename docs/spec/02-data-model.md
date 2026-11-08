@@ -59,6 +59,7 @@ AcsNode (devices)   Settings (key/value)   AuditLog
 | `profile_private` | Hide from public member list. | |
 | `banned`, `banned_date`, `banned_reason` | Banned users are refused every role-protected page. | |
 | `slack_username` | Unused (Slack disabled). | Drop |
+| (new) `discord_user_id`, `discord_username`, `discord_linked_at`, `discord_on_server`, `discord_welcome_due`, `discord_exempt` | The member's linked Discord account (06 §6.14). The id is unique. | |
 | `import_match_string` | Text to match this member in bank-statement imports. | Keep if statement import kept |
 
 ## 2.3 Related member data
@@ -176,6 +177,7 @@ row a new field whose default is the starting value.
 | How often v2 readers check in | new; 5 minutes (05 §5.4: also how quickly a revoked fob reaches readers), 1–60 minutes. **Built** |
 | How often machine readers send a session heartbeat | new; 60 seconds (09 §9.5), 15 seconds–10 minutes. **Built** |
 | Trustees' contact email | `trustees@buildbrighton.com` (arrives with the first email to the trustees) |
+| Discord welcome message | new; posted when BBMS adds a member to the server (06 §6.14). **Built** |
 | Space name (used in emails and pages) | "Build Brighton". **Built**; replaces the `SITE_NAME` environment variable |
 
 ## 2.9 Files

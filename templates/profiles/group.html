@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ info.title|default:group.name }} · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<h1>{{ info.title|default:group.name }}</h1>
+{% if info.description %}{{ info.description|linebreaks }}{% endif %}
+{% if info.email %}<p>Email: <a href="mailto:{{ info.email }}">{{ info.email }}</a></p>{% endif %}
+{% with channels=group.discord_channels.all %}{% if channels %}<p>Discord: {% for channel in channels %}{% if channel.url %}<a href="{{ channel.url }}">{{ channel.name }}</a>{% else %}{{ channel.name }}{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}{% endwith %}
+<h2>Members</h2>
+{% if cards %}
+  <ul class="plain">
+    {% for card in cards %}<li><a href="{% url 'profiles:member' card.member.pk %}">{% include "profiles/_avatar.html" with small=True %}{{ card.member.full_name }}</a></li>{% endfor %}
+  </ul>
+{% else %}
+  <p>Nobody at the moment.</p>
+{% endif %}
+<p><a href="{% url 'profiles:groups' %}">All groups</a></p>
+{% endblock %}
