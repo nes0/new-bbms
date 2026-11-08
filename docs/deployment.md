@@ -29,7 +29,7 @@ switch.
 | **Scheduled jobs** | Billing, membership checks, device checks and so on: plain management commands | App Platform *scheduled jobs* |
 | **Database** | PostgreSQL | DigitalOcean *Managed Database* |
 | **Files** | Member photos (private) | DigitalOcean *Spaces* bucket |
-| **Email** | Welcome, payment and password emails | A transactional email service (🚧 see §6.5) |
+| **Email** | Welcome, payment and password emails | A transactional email service (§6.5) |
 | **Payments** | Direct Debit, cards, PayPal | GoCardless, Stripe, PayPal |
 | **Discord** | New members join the server from BBMS | Discord application and bot |
 
@@ -224,7 +224,11 @@ and `check --deploy` lists what is missing.
 | Variable | Value |
 |---|---|
 | `DEFAULT_FROM_EMAIL` | e.g. `BBMS <noreply@bbms.buildbrighton.com>` (the default) |
-| `EMAIL_BACKEND` | 🚧 see §6.5: the settings that make a real provider work aren't in the code yet. |
+| `EMAIL_HOST` | Your provider's SMTP server, e.g. `smtp.example.com`. **Setting this turns email on**; without it emails are only printed to the log (§6.5). |
+| `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` | The SMTP login (the password is a secret: mark it encrypted). |
+| `EMAIL_PORT`, `EMAIL_USE_TLS`, `EMAIL_USE_SSL` | Defaults: port `587` with STARTTLS. For a provider that wants port 465, set `EMAIL_PORT=465` and `EMAIL_USE_SSL=True` (the two can't both be on). |
+| `EMAIL_TIMEOUT` | Seconds to wait for the mail server (default 10). |
+| `EMAIL_BACKEND` | Normally left out: SMTP is used when `EMAIL_HOST` is set. Set it only to use a provider's own Django package. |
 | `DB_CONN_MAX_AGE` | Seconds to keep database connections open (default 60). |
 | `LOG_LEVEL` | `INFO` (default). Logs go to the console, which App Platform collects. |
 | `WEB_CONCURRENCY` | gunicorn workers (default 2). |
@@ -305,13 +309,16 @@ others (spec 06 §6.6). In production you need a real sending service (Postmark,
 1. Create the account and **verify the sending domain** (add the SPF and DKIM records the service gives you to the
    domain's DNS). Without this, mail goes to spam.
 2. Create an SMTP username and password (or an API key).
-3. 🚧 **Not built yet:** `bbms/settings.py` reads only `EMAIL_BACKEND` and `DEFAULT_FROM_EMAIL`. It does **not** yet
-   read `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` or `EMAIL_USE_TLS`, so SMTP can't be set
-   up from the environment. Either add those lines (a few lines, with the password as a secret) or add the provider's
-   Django package (e.g. `django-anymail`). **This must be done before launch**, or nobody gets any email, including
-   password resets. Until it is, the default backend only prints emails to the log.
-4. Send a test: from a shell on the app (see §6.7), `python manage.py sendtestemail you@example.com`.
-5. Staging should send to a test mailbox, never to real members (spec 08 §8.3).
+3. Set `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` and `DEFAULT_FROM_EMAIL` (§5.4). The sender address
+   must be on the domain you verified in step 1, or the provider will refuse it. Without `EMAIL_HOST`, BBMS only
+   prints emails to its log, and `check --deploy` warns (`core.W001`).
+4. Send a test from a shell on the app (§6.8): `python manage.py sendtestemail you@example.com`. Also try a password
+   reset from the login page, and check the message isn't in the spam folder.
+5. **If the mail server is down,** BBMS carries on: a payment, a status change or a nightly job is never undone because
+   an email couldn't be sent. The failure is logged (the kind of error and which email, never the address or text), and
+   that email is **not** retried. Watch the logs after a provider outage, and use the admin to find who missed out.
+   (A password reset asked for during an outage shows the member an error instead.)
+6. Staging should send to a test mailbox, never to real members (spec 08 §8.3).
 
 ### 6.6 Monitoring (🚧 not built yet)
 
@@ -484,7 +491,7 @@ Copy this into an issue and tick it off. The acceptance checks in
 - [ ] §5: every variable set, secrets stored in the password manager
 - [ ] `check --deploy` shows no warnings
 - [ ] §6.1–6.4: GoCardless, Stripe, PayPal and Discord live; one real small payment of each kind tested and refunded
-- [ ] §6.5: 🚧 SMTP set up and a test email delivered; password reset works
+- [ ] §6.5: SMTP set up and a test email delivered; password reset works; the sender domain's SPF and DKIM are verified
 - [ ] §6.6: 🚧 uptime, error and job-heartbeat alerts set up, each pointing at a named person
 - [ ] §7: every job scheduled and run once; times chosen and written down
 - [ ] A restore from backup tested
@@ -519,11 +526,13 @@ Fill this in. It's the first thing needed if something breaks.
 
 Everything marked 🚧 above, in one place, so the work can be planned:
 
-1. SMTP (or provider) email settings (§6.5), **needed before launch**
-2. Error tracking, job heartbeats, uptime monitor (§6.6)
-3. `.do/app.yaml` for the app and jobs, and a way to deploy only after CI passes (§3.3)
-4. The health check and HTTPS redirect check, with an exemption for `/healthz` if needed (§3.3)
-5. Moodle sign-in and completion settings (§6.7)
-6. The hourly proposals tally (§7), equipment photo and receipt storage (§3.2), the bank statement import (§5.4)
-7. A staging app and the shadow site (§9)
-8. How the import reaches the legacy database (§8), and the legacy photo bucket's name
+1. Error tracking, job heartbeats, uptime monitor (§6.6)
+2. `.do/app.yaml` for the app and jobs, and a way to deploy only after CI passes (§3.3)
+3. The health check and HTTPS redirect check, with an exemption for `/healthz` if needed (§3.3)
+4. Moodle sign-in and completion settings (§6.7)
+5. The hourly proposals tally (§7), equipment photo and receipt storage (§3.2), the bank statement import (§5.4)
+6. A staging app and the shadow site (§9)
+7. How the import reaches the legacy database (§8), and the legacy photo bucket's name
+8. CI's `check --deploy --fail-level WARNING` step (`.github/workflows/ci.yml`) fails while GoCardless, Stripe, PayPal,
+   Discord and Spaces are unset, because each deploy check warns. Give CI throwaway values, or silence those checks
+   there, so the step passes again.

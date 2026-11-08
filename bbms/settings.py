@@ -159,8 +159,24 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Email: printed to the console when developing; a real provider in production (spec 01 §1.8).
-EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+# Email: printed to the console when developing; a real provider's SMTP server in production (spec 01 §1.8).
+# Set EMAIL_HOST (and usually the user and password) and mail goes by SMTP; leave it unset and emails are only printed
+# to the log, which `check --deploy` warns about. Port 587 with STARTTLS is the usual; for a provider that wants
+# port 465, set EMAIL_PORT=465 and EMAIL_USE_SSL=True (the two encryptions can't be used together).
+EMAIL_HOST = env("EMAIL_HOST", default="")
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.smtp.EmailBackend"
+    if EMAIL_HOST
+    else "django.core.mail.backends.console.EmailBackend",
+)
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")  # a secret: set it as an encrypted variable
+EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=not EMAIL_USE_SSL)
+# A slow mail server must not hold up a web request or a nightly job for long.
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=10)
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="BBMS <noreply@bbms.buildbrighton.com>")
 
 # The space's name is an admin setting (apps/site_settings, 02 §2.8), not an environment variable.
