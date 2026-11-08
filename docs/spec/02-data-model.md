@@ -124,8 +124,8 @@ AcsNode (devices)   Settings (key/value)   AuditLog
 - **`storage_boxes`**: `size` (volume units), `user_id` (0 = free), `active`. Boxes have no name or location, only an id.
   Boxes are now all 19 L; the volume field is obsolete.
   **Not migrated:** boxes are no longer tracked individually (06 §6.2).
-  **New** (06 §6.2; lockers built 2026-11-07 in `apps/storage`): on members, a **box paid** flag + date + payment
-  (to build); `StorageLocation` (name, description, order); `LockerSize` (name, description, order); `LockerRent`
+  **New** (06 §6.2; lockers built 2026-11-07 in `apps/storage`): on members, a **box paid** flag as a date + the payment
+  (`box_paid_at`, `box_payment`; built 2026-11-08); `StorageLocation` (name, description, order); `LockerSize` (name, description, order); `LockerRent`
   (location, size, default monthly rent in pence; one per location and size); `Locker` (location, number, size,
   availability: available / reserved for trustees / out of use + note, advertised rent override in pence + reason,
   retired; "rented" is worked out from an open rental); `LockerRental` (locker, member, started, started by, rent

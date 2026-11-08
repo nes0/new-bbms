@@ -1,6 +1,7 @@
 """
-Locker rules (spec 06 §6.2). Every change to a price, a locker's availability, a rental or a member's limit goes
-through a function here, so the rules live in one place and every change is logged in LockerChange.
+Locker rules (spec 06 §6.2). Every change to a price, a locker's availability, a rental, a member's limit or a
+member's box flag goes through a function here, so the rules live in one place and every change is logged in
+LockerChange.
 """
 
 from django.db import transaction
@@ -252,6 +253,49 @@ def end_rental(rental, by, reason: str = "") -> LockerRental:
         member=rental.member,
     )
     return rental
+
+
+# --- the "box paid" flag (06 §6.2): boxes have no inventory, only whether the member has paid for one ---
+
+
+@transaction.atomic
+def give_box_flag(member, by, *, payment=None, reason: str = "") -> bool:
+    """Record that a member has paid for a box: from a payment, or ticked by the storage team for a fee paid outside
+    BBMS (then a reason is needed). Returns whether anything changed; a member who has it already keeps their date.
+    """
+    member = type(member).objects.select_for_update().get(pk=member.pk)
+    if member.box_paid:
+        return False
+    if payment is None and not reason:
+        raise LockerError("Say how the box fee was paid, e.g. cash or before BBMS recorded box fees.")
+    member.box_paid_at = (payment.paid_at if payment is not None else None) or timezone.now()
+    member.box_payment = payment
+    member.save(update_fields=["box_paid_at", "box_payment"])
+    _log(LockerChange.What.BOX_FLAG, str(member), "no", "yes", reason or "Box fee paid", by, member=member)
+    return True
+
+
+@transaction.atomic
+def clear_box_flag(member, reason: str, by) -> bool:
+    """Take the flag away (e.g. set in error). The reason is logged."""
+    member = type(member).objects.select_for_update().get(pk=member.pk)
+    if not member.box_paid:
+        return False
+    if not reason:
+        raise LockerError("Give a reason for clearing the box flag.")
+    member.box_paid_at = None
+    member.box_payment = None
+    member.save(update_fields=["box_paid_at", "box_payment"])
+    _log(LockerChange.What.BOX_FLAG, str(member), "yes", "no", reason, by, member=member)
+    return True
+
+
+def box_payment_failed(payments):
+    """A Direct Debit box fee that wasn't paid after all (a pending payment already counts): the flag it set goes."""
+    from apps.members.models import Member
+
+    for member in Member.objects.filter(box_payment__in=payments):
+        clear_box_flag(member, "The box fee payment failed", None)
 
 
 def log_default_rent_change(rent: LockerRent, old_pence: int | None, by, reason: str = ""):

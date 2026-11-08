@@ -202,6 +202,7 @@ class Importer:
         self.devices = {}  # device id (e.g. "main-door") -> Device
         self.equipment = {}  # slug -> Equipment
         self.box_paid_user_ids = []  # legacy user ids who'll get the "box paid" flag
+        self.box_payments = {}  # legacy user id -> legacy id of the payment that paid their box
         self.inducted_by = {}  # legacy user id -> legacy id of who confirmed their general induction
         self.legacy_credit = {}  # legacy user id -> their cached credit in legacy (users.cash_balance, pence)
         self.user_hashes = {}  # legacy user id -> users.hash (names their photos)
@@ -932,12 +933,12 @@ class Importer:
         for row in paid_rows:
             if payment_status.get(row.get("payment_id")) == "paid":
                 self.box_paid_user_ids.append(row["user_id"])
+                self.box_payments[row["user_id"]] = row.get("payment_id")
             else:
                 to_check.append(row["user_id"])
-        # TODO(storage app): set the members' "box paid" flag (with the payment's date) instead of only reporting it.
         self.report.note(
-            f"box paid: {len(self.box_paid_user_ids)} members qualify; {len(to_check)} have a paid induction but no "
-            f"paid payment and need checking (legacy user ids {to_check[:20]}). Not stored until the storage app exists"
+            f"box paid: {len(self.box_paid_user_ids)} members get the flag; {len(to_check)} have a paid induction but "
+            f"no paid payment and need checking (legacy user ids {to_check[:20]}), so the storage team ticks them"
         )
 
     def import_sessions(self):
@@ -1093,6 +1094,19 @@ class Importer:
         for induction in inductions:
             induction.payment_id = payments.get(self.induction_payments[induction.legacy_id])
         Induction.objects.bulk_update(inductions, ["payment"], batch_size=BATCH)
+        self._set_box_flags(payments)
+
+    def _set_box_flags(self, payments):
+        """The "box paid" flag, dated and linked as the paid Member Box payment (06 §6.2, 08 §8.2)."""
+        paid_at = dict(Payment.objects.filter(pk__in=payments.values()).values_list("pk", "paid_at"))
+        flagged = []
+        for user_id in self.box_paid_user_ids:
+            member = self.members[user_id]
+            payment_id = payments.get(self.box_payments.get(user_id))
+            member.box_payment_id = payment_id
+            member.box_paid_at = paid_at.get(payment_id) or self.now
+            flagged.append(member)
+        Member.objects.bulk_update(flagged, ["box_paid_at", "box_payment"], batch_size=BATCH)
 
     def _check_credit(self):
         """Reconcile each member's credit with legacy's cached balance (08 §8.2)."""

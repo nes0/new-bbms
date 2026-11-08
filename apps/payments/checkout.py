@@ -60,7 +60,7 @@ def payables(member) -> list[Payable]:
     # The deposit is for a key, which needs a confirmed general induction as well as trusted status (05 §5.9).
     if member.trusted and member.induction_confirmed and not services.has_paid(member, Payment.Reason.KEY_DEPOSIT):
         items.append(Payable(Purpose.KEY_DEPOSIT, "Key deposit", prices.key_deposit_pence(), "key-deposit"))
-    if not services.has_paid(member, Payment.Reason.STORAGE_BOX):
+    if not member.box_paid:
         items.append(Payable(Purpose.STORAGE_BOX, "Box fee", prices.box_fee_pence(), "storage-box"))
     paid_categories = set(member.inductions.filter(paid=True).values_list("category", flat=True))
     seen = set()
@@ -197,7 +197,7 @@ def _still_needed(checkout) -> bool:
     if checkout.purpose == Purpose.KEY_DEPOSIT:
         return not services.has_paid(member, Payment.Reason.KEY_DEPOSIT)
     if checkout.purpose == Purpose.STORAGE_BOX:
-        return not services.has_paid(member, Payment.Reason.STORAGE_BOX)
+        return not type(member).objects.filter(pk=member.pk, box_paid_at__isnull=False).exists()
     if checkout.purpose == Purpose.INDUCTION:
         return not member.inductions.filter(category=checkout.equipment.induction_key, paid=True).exists()
     return True

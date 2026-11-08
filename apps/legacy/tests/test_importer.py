@@ -614,7 +614,10 @@ class ImportTests(TestCase):
 
     def test_box_paid_flags(self):
         self.assertEqual(self.importer.box_paid_user_ids, [1])
-        self.assertIn("box paid: 1 members qualify; 1 have a paid induction but no paid payment", self.output)
+        self.assertIn("box paid: 1 members get the flag; 1 have a paid induction but no paid payment", self.output)
+        flagged = Member.objects.filter(box_paid_at__isnull=False)
+        self.assertEqual([m.legacy_id for m in flagged], [1])
+        self.assertEqual(flagged.get().box_payment.legacy_id, 100)  # dated and linked as the legacy payment
 
     def test_sessions(self):
         billed = UsageSession.objects.get(legacy_id=1)

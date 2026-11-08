@@ -73,6 +73,8 @@
       <dt>Credit</dt><dd>{{ credit_pence|pounds }} <a href="{% url 'payments:credit' %}">Top up, history and withdrawals</a></dd>
       <dt>Expenses</dt><dd><a href="{% url 'expenses:claim' %}">Claim back money you spent for the space</a> · <a href="{% url 'expenses:index' %}">Your claims</a></dd>
       <dt>Pay for something</dt><dd><a href="{% url 'payments:pay' %}">Induction fees, key deposit, box fee</a></dd>
+      <dt>Box</dt>
+      <dd>{% if member.box_paid %}Paid on {{ member.box_paid_at|date:"j F Y" }}. Label your box with your name.{% else %}Not paid <a href="{% url 'payments:pay' %}">Pay the box fee</a>{% endif %}</dd>
       <dt>Lockers</dt><dd><a href="{% url 'storage:lockers' %}">Your lockers and ones to rent</a></dd>
       {% if discord_enabled %}
         <dt>Discord</dt>

@@ -167,8 +167,15 @@ Built (`apps/storage`):
 Built with billing (03 §3.6): **monthly rent charges** with the subscription (one Direct Debit for both), unpaid
 rent (the storage team is emailed when a rent payment finally fails), rent charges not yet billed are cancelled when
 a rental ends, and rentals end when a member leaves. Still waiting: **self-service renting** with a Direct Debit or
-credit to pay from and the first (pro-rata) payment, and rent notice periods. Members ask the storage team to rent or give up a locker until then. The box
-flag (above) is still to build.
+credit to pay from and the first (pro-rata) payment, and rent notice periods. Members ask the storage team to rent or give up a locker until then.
+
+**Box flag (built 2026-11-08):** members have a "box paid" date and the payment it came from. Recording a box fee
+payment in any way (card, Direct Debit, credit, cash or manual, in the admin or through the member's own pages)
+sets it. A pending Direct Debit counts; if it finally fails the flag goes. The storage team can tick it for a fee paid
+outside BBMS, or clear it, on the member's admin page (Storage), giving a reason each time; both are logged in "locker
+changes". The member list can be filtered by box (paid, paid but left, none). A member with the flag isn't offered the
+fee again, and sees their box status on their account page. When a member leaves, the storage team is told if they paid for a box.
+The legacy import sets it from a paid "Member Box" induction.
 
 Related policies: *member storage*, *3-week bins*.
 
