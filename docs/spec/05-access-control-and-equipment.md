@@ -401,7 +401,9 @@ as `training` or `testing` once. If it was already billed, the matching fee paym
 2. They appear in that equipment's "waiting for training" list.
 3. An **admin** marks them trained and chooses which trainer did it (`trained` = now, `trainer_user_id`).
    For equipment with a Moodle course, sign-off is **only possible once BBMS has recorded the course as completed**
-   (decided 2026-11-07, 06 §6.12); the waiting list shows each member's course status.
+   (decided 2026-11-07, 06 §6.12); the waiting list shows each member's course status. **Built (2026-11-09):** the
+   admin won't save a sign-off until the course is recorded, and Inductions → "Waiting for training" checks Moodle for
+   the members listed and shows "Online course: Finished / Not finished".
    ❓ Trustees: legacy restricts this to admins. Should **trainers** be able to mark their own trainees?
 4. An admin can promote a trained member to **trainer** for that category.
 5. An unpaid-for or untrained induction can be **cancelled**, which refunds the fee to credit.

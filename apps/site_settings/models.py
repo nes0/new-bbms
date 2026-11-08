@@ -243,6 +243,14 @@ class SiteSettings(models.Model):
         "locker limits). Lowering it doesn't take lockers away from anyone.",
     )
 
+    # --- Moodle (06 §6.12) ---
+    moodle_url = models.URLField(
+        "Moodle's address",
+        blank=True,
+        help_text="The online training site, e.g. https://moodle.example.com (no slash at the end). Empty: the course "
+        'links, "check now" and "Log in with BBMS" are switched off.',
+    )
+
     # How the admin groups them.
     GROUPS = (
         ("The site", ("space_name",)),
@@ -270,6 +278,7 @@ class SiteSettings(models.Model):
         ("Who's in", ("occupancy_timeout_hours", "occupancy_reset_hour", "public_occupancy_count")),
         ("Privacy", ("id_document_max_age_days", "public_member_directory")),
         ("Discord", ("discord_welcome_message",)),
+        ("Moodle", ("moodle_url",)),
     )
 
     class Meta:

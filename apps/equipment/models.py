@@ -177,12 +177,23 @@ class TrainingCompletion(models.Model):
     moodle_course_id = models.PositiveIntegerField()
     completed_at = models.DateTimeField()
     last_checked_at = models.DateTimeField(default=timezone.now)
+    # An admin can clear a completion (they must retake the course). It then counts for nothing until Moodle reports
+    # a completion later than this (06 §6.12).
+    cleared_at = models.DateTimeField(null=True, blank=True)
+    cleared_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["member", "moodle_course_id"], name="one_completion_per_course")]
 
     def __str__(self):
         return f"{self.member} · course {self.moodle_course_id}"
+
+    @property
+    def counts(self):
+        """Whether it still counts: not cleared."""
+        return self.cleared_at is None
 
 
 class UsageSession(models.Model):

@@ -191,6 +191,7 @@ sent to GoCardless or emailed).
 | 06:00 | `manage.py check_memberships` |
 | 07:00 | `manage.py retry_direct_debits` |
 | every 15 minutes | `manage.py process_gocardless_events` (a backstop: the webhook normally handles events at once) |
+| every 15 minutes | `manage.py check_moodle_completions` (members waiting for sign-off who have finished their online course) |
 | daily | `manage.py shred_stale_id_documents` |
 | nightly | `manage.py sync_discord` (Discord member / former-member roles; welcome messages that failed) |
 | hourly | `manage.py tidy_equipment_sessions` |

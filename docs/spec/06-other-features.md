@@ -391,6 +391,46 @@ database, different password format, no open database port), so Moodle's login m
 - ❓ Members already signed off on a machine before its course was added: suggested, they **keep access** without the
   course, unless an admin ticks "require the course for existing users" on that equipment.
 
+### Build status (2026-11-09)
+
+Built in `apps/moodle` (and `apps/equipment` for the sign-off). Choices made while building:
+
+**"Log in with BBMS"**
+- BBMS is an OpenID Connect provider (`django-oauth-toolkit`), with **only** the endpoints Moodle needs: `/o/authorize/`,
+  `/o/token/`, `/o/userinfo/`, the discovery document and the key list. The toolkit's own pages for registering
+  applications and tokens are **not** switched on, so no member can register an application of their own.
+- Moodle is registered once, with `manage.py setup_moodle_sso`, which prints the endpoints and the client secret (shown
+  once; BBMS keeps a hash). Members aren't asked "do you allow this?", as Moodle is the space's own site.
+- Claims: `sub` (the member's BBMS id), `email`, `given_name`, `family_name`, `name` and `email_verified`. Tokens last
+  10 minutes and are signed with `OIDC_RSA_PRIVATE_KEY`; without that key the provider is off.
+- **`email_verified` is always false**, because BBMS doesn't confirm email addresses (anyone can join with any
+  address). ❓ If Moodle links a BBMS login to an existing Moodle account by email, that could let someone take over
+  another person's Moodle account: use Moodle's own email-verification step on that service, or add email confirmation
+  to joining. See docs/deployment.md §6.7.
+- Who may log in: any account with a working login that **isn't banned** (including members still setting up), as
+  suggested. A banned member sees a short "you can't log in to Moodle" page.
+- PKCE isn't required, as Moodle's generic OAuth 2 login doesn't send it; the client has a secret, which is what
+  protects the code. ⚠️ Verify against the space's Moodle version.
+
+**Course completion**
+- BBMS asks Moodle for two things only (`core_user_get_users_by_field`, `core_completion_get_course_completion_status`)
+  with a dedicated account's token (`MOODLE_TOKEN`). Moodle's address is an admin setting (Settings → Moodle).
+- It finds the Moodle user by **ID number** (the BBMS id), then by email, and remembers who they are
+  (`MoodleAccount`; spec 02 puts this on the member, but a separate table keeps the members app untouched).
+- A finished course is stored as a `TrainingCompletion`, and the member is told in their notifications. Machine access
+  uses **only the stored record** (05 §5.3). An admin can **clear** a completion (Equipment → Training completions →
+  action); it then only comes back if Moodle reports the course finished again *after* it was cleared.
+- **When BBMS checks:** the member presses "I've finished the course, check now" on `/account/training/` (not more than
+  once every 30 seconds per course); a trainer opens the sign-off list (Inductions → "Waiting for training", up to 25
+  members at a time); and every 15 minutes (`manage.py check_moodle_completions`) for members who have paid and are
+  waiting. A check that finds Moodle unreachable stops there, so an outage costs one timeout, not one per member.
+- **Sign-off needs the course** (05 §5.8): the admin refuses to mark someone trained until their course is recorded,
+  where the machine has one. The sign-off list shows each member's course status. A member signed off before the course
+  was required keeps access (the equipment's "course required for existing" flag changes that).
+- `/account/training/` (linked from the account page) lists each course, the machines it unlocks, a link to it on
+  Moodle, and whether the member has finished it. There's no separate equipment page yet.
+- Not built: the optional Moodle plugin that would tell BBMS the moment a course is finished.
+
 ## 6.13 Membership statistics (requested by a trustee, 2026-11-07)
 
 A trustee asked for a member total and a picture of its history, to see the trend.

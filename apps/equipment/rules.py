@@ -64,7 +64,10 @@ def is_on_team(member, equipment: Equipment) -> bool:
 def _course_reason(member, equipment: Equipment, induction: Induction) -> str:
     if not equipment.moodle_course_id:
         return ""
-    if TrainingCompletion.objects.filter(member=member, moodle_course_id=equipment.moodle_course_id).exists():
+    completed = TrainingCompletion.objects.filter(
+        member=member, moodle_course_id=equipment.moodle_course_id, cleared_at__isnull=True
+    )
+    if completed.exists():
         return ""
     trained_before_course = (
         equipment.moodle_course_since is not None
