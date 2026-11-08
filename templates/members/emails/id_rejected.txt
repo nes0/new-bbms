@@ -1,0 +1,10 @@
+{% autoescape off %}Please send your proof of identity again
+Hello {{ member.given_name }},
+
+A trustee couldn't accept the proof of identity you sent to {{ site_name }}, and we've deleted what you sent.
+{% if note %}
+Their note: {{ note }}
+{% endif %}
+Please send it again from your account, following the guidance there:
+{{ site_url }}/account/id-documents/
+{% endautoescape %}

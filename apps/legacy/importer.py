@@ -32,6 +32,7 @@ from apps.equipment import rules
 from apps.equipment.models import Equipment, Induction, UsageSession
 from apps.members.hashers import from_legacy_hash
 from apps.members.models import Address, Member, MemberChange, MemberPhoto
+from apps.notifications.models import Notification
 from apps.payments.credit import credit_by_member
 from apps.payments.models import Payment
 
@@ -75,7 +76,6 @@ NOT_IMPORTED_YET = [
     ("proposals", "governance app"),
     ("proposal_votes", "governance app"),
     ("expenses", "governance app"),
-    ("notifications", "notifications app"),
 ]
 NEVER_IMPORTED = ["storage_boxes", "detected_devices", "settings", "failed_jobs", "password_reminders", "migrations"]
 
@@ -216,6 +216,7 @@ class Importer:
         for table in (
             "users",
             "audit_log",
+            "notifications",
             "user_address",
             "subscription_charge",
             "profile_data",
@@ -232,6 +233,7 @@ class Importer:
             self.report.read[table] += 0
         self.import_members()
         self.import_audit_log()
+        self.import_notifications()
         self.import_addresses()
         self.import_charges()
         self.import_profiles()
@@ -591,6 +593,35 @@ class Importer:
                 )
             )
         MemberChange.objects.bulk_create(batch, batch_size=500)
+        report.imported[table] = len(batch)
+
+    def import_notifications(self):
+        """Members' in-app notifications (06 §6.5). Legacy's `hash` is the key that stops one being sent twice."""
+        table, report = "notifications", self.report
+        batch, seen = [], set()
+        for row in self.source.rows(table):
+            report.read[table] += 1
+            member = self.members.get(row.get("user_id"))
+            if member is None:
+                report.skip(table, "no such member", row["id"])
+                continue
+            key = text(row.get("hash"), 150)
+            if key and (member.pk, key) in seen:
+                report.skip(table, "the same notification twice for a member", row["id"])
+                continue
+            seen.add((member.pk, key))
+            batch.append(
+                Notification(
+                    member=member,
+                    kind=text(row.get("type"), 100),
+                    message=text(row.get("message")),
+                    key=key,
+                    unread=flag(row.get("unread")),
+                    created_at=when(row.get("notified_at")) or when(row.get("created_at")) or self.now,
+                    legacy_id=row["id"],
+                )
+            )
+        Notification.objects.bulk_create(batch, batch_size=500)
         report.imported[table] = len(batch)
 
     def import_roles(self):

@@ -159,7 +159,7 @@ All times Europe/London. Each must be **idempotent** and must **alert on failure
 | nightly (new) | `sync_discord` | Put each linked member's Discord member / former-member role right, and post welcome messages that failed (06 §6.14). |
 | hourly | `fix-equipment-log` | Close stale sessions; merge sessions with gaps ≤ 60 s; mark sessions ≤ 60 s as removed. |
 | hourly | `calculate-proposal-votes` | Tally proposals whose end date has passed. |
-| every 15 min (legacy: 10) | `device:check-online` | Notify `acs` role holders when a monitored device's last heartbeat is > 1 hour old (deduplicated per heartbeat). |
+| every 15 min (legacy: 10) | `device:check-online` | Notify `acs` role holders when a monitored device's last heartbeat is > 1 hour old (deduplicated per heartbeat). **Built** as `check_devices` (05 §5.5). |
 
 The legacy 03:00 `update-balances` job is not needed: credit is calculated from the ledger on demand (04 §4.7).
 
@@ -270,7 +270,7 @@ trained on, what the front door does for them (from the door rules, 05 §5.2), p
 Since the subscriptions work: payment method and day, "paid until", the charges list (on `/account/payment/`), the
 "method" change, leaving for current members (cancel the Direct Debit → `leaving`) and rejoining. Members paying by
 standing order or cash ask a trustee to change their amount. The profile and photo are built (06 §6.1). Waiting
-for other apps: the general induction step (05 §5.9) and emails about address decisions.
+for other apps: the general induction step (05 §5.9). Members are told in their notifications when an address change is approved or declined (06 §6.5).
 
 ## 3.9 Admin member controls
 
@@ -298,4 +298,4 @@ Built, in the Django admin's member page:
 - shortcuts to **record a payment** for the member (the member is filled in), their payments and their audit log.
 
 Approving and declining an uploaded photo (and its email) are built with the profiles app (06 §6.1).
-Waiting for other apps: the in-app "trusted" notification (06 §6.5); telling a member their address change was declined.
+The in-app "trusted" notification, and telling a member their address change was approved or declined, are built (06 §6.5).

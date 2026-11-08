@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "apps.billing",
     "apps.profiles",
     "apps.discord",
+    "apps.notifications",
 ]
 
 MIDDLEWARE = [
@@ -81,6 +82,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "apps.core.context_processors.site",
+                "apps.notifications.context_processors.unread",
             ],
         },
     },

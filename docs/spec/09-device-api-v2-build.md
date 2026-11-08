@@ -55,8 +55,8 @@ Build in this order; each phase is usable on its own and should end with green t
 
 **Out of scope** (later slices; leave a `TODO(<app>)` where they plug in):
 - charging fees to credit and the real balance: the payments app (`member_credit_pence` stays a stub);
-- notifications to the machine's team: no notifications app yet. Call one function, `notify_team(equipment, message)`,
-  that only logs for now;
+- notifications to the machine's team: call one function, `notify_team(equipment, message)`, which now sends in-app
+  notifications (06 §6.5);
 - member-facing web pages for equipment (status note, service history); the Django admin is enough for now;
 - the exit-reader occupancy display. (Fob enrolment windows, `reason: "enrolled"`, were built with the fobs slice.)
 
