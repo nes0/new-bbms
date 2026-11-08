@@ -66,6 +66,16 @@ class SiteSettings(models.Model):
         "formatting works, e.g. <#channel id> links a channel. Up to 2,000 characters; empty for no message.",
     )
 
+    # --- proposals (06 §6.3) ---
+    proposal_quorum_percent = models.PositiveSmallIntegerField(
+        "quorum for proposals (% of members who can vote)",
+        default=0,
+        validators=[MaxValueValidator(100)],
+        help_text="A proposal passes only if at least this share of the members who could vote when it opened "
+        "voted (abstaining counts as voting), and more voted for than against. 0 for no quorum. Set it from the "
+        "constitution. A change applies to proposals that open after it.",
+    )
+
     # --- billing (03 §3.5-3.6) ---
     grace_direct_debit_days = models.PositiveIntegerField(
         "grace period for Direct Debit payers (days)",
@@ -226,6 +236,7 @@ class SiteSettings(models.Model):
         ("Key fobs", ("max_active_fobs", "fob_enrolment_seconds")),
         ("Fob readers", ("reader_check_in_seconds", "session_heartbeat_seconds")),
         ("Storage", ("lockers_per_member",)),
+        ("Proposals", ("proposal_quorum_percent",)),
         ("Privacy", ("id_document_max_age_days", "public_member_directory")),
         ("Discord", ("discord_welcome_message",)),
     )

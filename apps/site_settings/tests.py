@@ -40,6 +40,7 @@ DEFAULTS = {
     "dd_retry_after_days": "5",
     "max_active_fobs": "2",
     "fob_enrolment_seconds": "60",
+    "proposal_quorum_percent": "0",
 }
 
 

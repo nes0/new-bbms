@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ proposal.title }} · Proposals · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<p><a href="{% url 'proposals:index' %}">← Proposals</a></p>
+<h1>{{ proposal.title }}</h1>
+<p class="hint">Voting {% if proposal.status == "upcoming" %}opens{% elif proposal.status == "open" %}opened{% else %}ran from{% endif %}
+  {{ proposal.start_date|date:"l j F Y" }}{% if proposal.status == "closed" %} to the end of {{ proposal.end_date|date:"l j F Y" }}{% else %}
+  and closes at the end of {{ proposal.end_date|date:"l j F Y" }}{% endif %}.
+  {% if can_change %}<a href="{% url 'admin:proposals_proposal_change' proposal.pk %}">{% if proposal.status == "upcoming" %}Edit{% else %}See in the admin{% endif %}</a>{% endif %}</p>
+
+<div class="proposal-text">{{ description }}</div>
+
+{% include "proposals/_vote.html" %}
+{% endblock %}

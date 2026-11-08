@@ -158,7 +158,7 @@ All times Europe/London. Each must be **idempotent** and must **alert on failure
 | daily (new) | `shred_stale_id_documents` | Delete proofs of identity nobody has checked within the time limit (§3.1, "Proof of identity"). |
 | nightly (new) | `sync_discord` | Put each linked member's Discord member / former-member role right, and post welcome messages that failed (06 §6.14). |
 | hourly | `fix-equipment-log` | Close stale sessions; merge sessions with gaps ≤ 60 s; mark sessions ≤ 60 s as removed. |
-| hourly | `calculate-proposal-votes` | Tally proposals whose end date has passed. |
+| hourly | `calculate-proposal-votes` | Tally proposals whose end date has passed. New: `update_proposals` also opens proposals whose voting has started (emails voters, posts on Discord) and posts results (06 §6.3). |
 | every 15 min (legacy: 10) | `device:check-online` | Notify `acs` role holders when a monitored device's last heartbeat is > 1 hour old (deduplicated per heartbeat). |
 
 The legacy 03:00 `update-balances` job is not needed: credit is calculated from the ledger on demand (04 §4.7).

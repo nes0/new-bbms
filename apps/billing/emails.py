@@ -31,6 +31,11 @@ class suppressed:
         _suppressed.reset(self._token)
 
 
+def is_suppressed() -> bool:
+    """Whether this is a dry run (nothing may be sent anywhere)."""
+    return _suppressed.get()
+
+
 def _render(template, context):
     context = {"site_name": SiteSettings.load().space_name, "site_url": settings.SITE_URL, **context}
     path = template if "/" in template else f"billing/emails/{template}"

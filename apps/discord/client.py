@@ -6,7 +6,8 @@ Two kinds of call:
   `identify` and `guilds.join`): who they are. The token is used once, to add them to the server, and not kept;
 - **as the bot** (`DISCORD_BOT_TOKEN`): adding a member to the server, giving or taking away roles, setting their
   server nickname to their real name when they link, and posting the welcome message. The bot must be on the
-  server with "Create Invite", "Manage Roles", "Manage Nicknames", and "Send Messages" in the welcome channel, and
+  server with "Create Invite", "Manage Roles", "Manage Nicknames", and "Send Messages" in the welcome and
+announcement channels, and
   its own role must be above the roles it manages. (Discord never lets a bot change the server owner's nickname.)
 
 `client()` returns one of:
@@ -82,6 +83,13 @@ def welcome_channel() -> str:
     if configured():
         return settings.DISCORD_WELCOME_CHANNEL_ID
     return FakeDiscord.WELCOME_CHANNEL
+
+
+def announcement_channel() -> str:
+    """Where BBMS announces proposals (06 §6.3); "" for nowhere."""
+    if configured():
+        return settings.DISCORD_ANNOUNCEMENT_CHANNEL_ID
+    return FakeDiscord.ANNOUNCEMENT_CHANNEL
 
 
 def former_member_role() -> str:
@@ -176,12 +184,13 @@ class DiscordApi:
     def set_nick(self, user_id, nick):
         self._call("PATCH", f"/guilds/{settings.DISCORD_GUILD_ID}/members/{user_id}", body={"nick": nick})
 
-    def post(self, channel_id, content, mention_user_id):
-        """A message from the bot. Only `mention_user_id` is notified: no @everyone or role pings from the text."""
+    def post(self, channel_id, content, mention_user_id=None):
+        """A message from the bot. Only `mention_user_id` (if given) is notified: no @everyone or role pings."""
+        users = [mention_user_id] if mention_user_id else []
         self._call(
             "POST",
             f"/channels/{channel_id}/messages",
-            body={"content": content, "allowed_mentions": {"parse": [], "users": [mention_user_id]}},
+            body={"content": content, "allowed_mentions": {"parse": [], "users": users}},
         )
 
     def add_role(self, user_id, role_id):
@@ -208,6 +217,7 @@ class FakeDiscord:
 
     STATE = ("server", "nicks", "messages", "codes", "users", "next_id")
     WELCOME_CHANNEL = "channel-welcome"
+    ANNOUNCEMENT_CHANNEL = "channel-announcements"
 
     def load(self):
         if self.path and os.path.exists(self.path):
@@ -270,7 +280,7 @@ class FakeDiscord:
         self.nicks[user_id] = nick
         self._save()
 
-    def post(self, channel_id, content, mention_user_id):
+    def post(self, channel_id, content, mention_user_id=None):
         self._maybe_fail()
         self.messages.append([channel_id, content])
         self._save()

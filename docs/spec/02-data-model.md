@@ -133,7 +133,11 @@ AcsNode (devices)   Settings (key/value)   AuditLog
   `locker_rent_charges` (rental, charge date, amount, status, like subscription charges). Location + number is unique
   for lockers.
 - **`proposals`**: `title`, `description` (markdown), `user_id`, `start_date`, `end_date`, results (`votes_cast`, `votes_for`, `votes_against`, `abstentions`, `quorum`, `result`, `processed`).
-- **`proposal_votes`**: `proposal_id`, `user_id`, `vote` (+1/0/−1), `abstain`.
+  New (`proposals.Proposal`): `created_by`; fixed when voting opens: `opened_at`, `eligible_voters`,
+  `quorum_percent`; counted: `votes_for`, `votes_neutral`, `votes_against`, `abstentions`, `quorum_met`, `passed`,
+  `counted_at`; `opening_posted` / `result_posted` (Discord); `legacy_id`. `votes_cast` and `result` are worked out.
+- **`proposal_votes`**: `proposal_id`, `user_id`, `vote` (+1/0/−1), `abstain`. New (`proposals.Vote`): `choice`
+  (1/0/−1, empty when abstaining), `abstain`, `voted_at`; one per member per proposal.
 - **`expenses`**: `user_id`, `category`, `description`, `amount` (**pence**), `expense_date`, `file` (receipt on S3), `approved`, `declined`, `approved_by_user`.
 - **`settings`**: key/value. Legacy's only key, `emergency_door_key_storage_pin`, is defunct and is not migrated. See §2.8 for the new system's settings.
 - **`roles`**, **`role_user`**: see 01 §1.3.
