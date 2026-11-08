@@ -13,6 +13,10 @@
     <option value="">Everyone</option>
     {% for person in claimants %}<option value="{{ person.pk }}"{% if filters.member == person.pk|stringformat:"d" %} selected{% endif %}>{{ person.full_name }}</option>{% endfor %}
   </select></label>
+  <label>Machine <select name="machine">
+    <option value="">Any</option>
+    {% for machine in machines %}<option value="{{ machine.pk }}"{% if filters.machine == machine.pk|stringformat:"d" %} selected{% endif %}>{{ machine.name }}</option>{% endfor %}
+  </select></label>
   {% endif %}
   <label>Status <select name="status">
     <option value="">Any</option>
@@ -49,6 +53,6 @@
   </p>
 {% endif %}
 {% else %}
-<p>No expenses{% if filters.status or filters.member %} match{% else %} yet{% endif %}.</p>
+<p>No expenses{% if filters.status or filters.member or filters.machine %} match{% else %} yet{% endif %}.</p>
 {% endif %}
 {% endblock %}

@@ -86,3 +86,13 @@ img.receipt { max-width: 100%; height: auto; border: 1px solid var(--border); }
   border-bottom: 1px solid var(--border); }
 .timeline time { min-width: 3rem; font-variant-numeric: tabular-nums; color: var(--muted); }
 .timeline .avatar.small, .people .avatar.small { width: 2rem; font-size: 0.8rem; margin-right: 0; }
+
+/* Finance stats: simple bar charts in a table. */
+.bars th { width: 12rem; }
+.bars .bar { width: 60%; }
+.bars .bar span { display: block; height: 0.9rem; background: var(--accent); border-radius: 2px; min-width: 2px; }
+/* Wide pages: tables with many columns (finance). */
+body.wide main { max-width: 72rem; }
+.table .nowrap { white-space: nowrap; }
+.table input:not([type]), .table select { max-width: 100%; }
+.bars .bar span.spent { background: var(--error); margin-top: 2px; height: 0.5rem; }

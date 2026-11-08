@@ -57,6 +57,17 @@ def can_see_all(user) -> bool:
     return user.is_authenticated and (user.has_perm("expenses.see_all_expenses") or can_approve(user))
 
 
+def can_set_machine(user) -> bool:
+    """Approvers and finance (who see every expense) can say or correct which machine an expense was for."""
+    return can_approve(user) or (user.is_authenticated and user.has_perm("finance.manage_finance"))
+
+
+def set_machine(expense, equipment, by):
+    expense.equipment = equipment
+    expense.save(update_fields=["equipment"])
+    logger.info("Expense %s: machine set to %s by member %s", expense.pk, equipment and equipment.pk, by.pk)
+
+
 def can_see(user, expense) -> bool:
     return user.is_authenticated and (expense.member_id == user.pk or can_see_all(user))
 
@@ -107,10 +118,15 @@ def _link(expense) -> str:
     return reverse("expenses:detail", args=[expense.pk])
 
 
-def submit(member, *, category, description, amount_pence, spent_on, receipt) -> Expense:
+def submit(member, *, category, description, amount_pence, spent_on, receipt, equipment=None) -> Expense:
     """Record a claim. `receipt` is what `receipt_file` returned."""
     expense = Expense(
-        member=member, category=category, description=description, amount_pence=amount_pence, spent_on=spent_on
+        member=member,
+        category=category,
+        description=description,
+        amount_pence=amount_pence,
+        spent_on=spent_on,
+        equipment=equipment,
     )
     expense.receipt.save(receipt.name, receipt, save=False)
     expense.save()

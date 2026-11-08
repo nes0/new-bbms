@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Charges · {{ SITE_NAME }}{% endblock %}
+{% block body_class %}wide{% endblock %}
+{% block content %}
+<h1>Subscription and rent charges</h1>
+{% include "finance/_nav.html" %}
+<form method="get" class="filters">
+  <label>Month <select name="month"><option value="">Any</option>{% for month in months %}{% with value=month|date:"Y-m" %}<option value="{{ value }}"{% if filters.month == value %} selected{% endif %}>{{ month|date:"F Y" }}</option>{% endwith %}{% endfor %}</select></label>
+  <label>Kind <select name="kind"><option value="">Both</option>{% for value, label in kinds %}<option value="{{ value }}"{% if filters.kind == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+  <label>Status <select name="status"><option value="">Any</option>{% for value, label in statuses %}<option value="{{ value }}"{% if filters.status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+  <label>Member <input name="member" list="members" value="{{ filters.member }}" placeholder="Anyone"></label>
+  <button type="submit">Show</button>
+</form>
+{% include "finance/_members.html" %}
+{% if page.object_list %}
+<div class="scroll"><table class="table">
+  <thead><tr><th>Due</th><th>Member</th><th>For</th><th class="number">Amount</th><th>Status</th><th>Paid</th></tr></thead>
+  <tbody>
+  {% for charge in page %}
+    <tr>
+      <td class="nowrap">{{ charge.charge_date|date:"j M Y" }}</td>
+      <td>{{ charge.member.full_name }}</td>
+      <td>{% if charge.rental %}Rent: {{ charge.rental.locker }}{% else %}Subscription{% endif %}</td>
+      <td class="number">{% if charge.amount_pence %}{{ charge.amount_pence|pounds }}{% endif %}</td>
+      <td>{% if charge.status == "failed" %}<span class="error">Failed</span>{% elif charge.status == "paid" %}<span class="ok">Paid</span>{% else %}{{ charge.get_status_display }}{% endif %}</td>
+      <td class="nowrap">{{ charge.paid_on|date:"j M Y" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% include "finance/_pager.html" %}
+{% else %}<p>No charges match.</p>{% endif %}
+{% endblock %}

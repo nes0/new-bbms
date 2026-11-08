@@ -12,7 +12,7 @@ from .models import Expense
 @admin.register(Expense)
 class ExpenseAdmin(admin.ModelAdmin):
     list_display = ["submitted_at", "member", "category", "amount", "status", "decided_by"]
-    list_filter = ["status", "category"]
+    list_filter = ["status", "category", "equipment"]
     search_fields = ["member__given_name", "member__family_name", "member__email", "description"]
     date_hierarchy = "submitted_at"
     list_select_related = ["member", "decided_by"]
@@ -23,6 +23,7 @@ class ExpenseAdmin(admin.ModelAdmin):
         "description",
         "amount",
         "spent_on",
+        "equipment",
         "receipt",
         "legacy_receipt",
         "submitted_at",

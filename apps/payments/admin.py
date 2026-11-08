@@ -29,22 +29,18 @@ class PaymentAdmin(admin.ModelAdmin):
     change_list_template = "admin/payments/payment/change_list.html"
     autocomplete_fields = ("member",)
 
-    @staticmethod
-    def _unmatched(obj):
-        """Money nobody could match to a member (an unknown PayPal payer, 04 §4.4), which finance can assign."""
-        return obj is not None and obj.member_id is None and obj.reason == Payment.Reason.DONATION
-
     def get_readonly_fields(self, request, obj=None):
-        if self._unmatched(obj):
+        if obj is not None and services.is_unmatched(obj):
             return [name for name in self.readonly_fields if name != "member"]
         return self.readonly_fields
 
     def save_model(self, request, obj, form, change):
         if change and "member" in form.changed_data and obj.member_id:
             # Assigning an unmatched payment: it becomes a top-up of that member's credit (04 §4.1, §4.8).
-            obj.reason = Payment.Reason.BALANCE
-            obj.note = (obj.note + "\n" if obj.note else "") + f"Assigned to this member by {request.user}."
+            Payment.objects.filter(pk=obj.pk).update(note=obj.note)
+            services.assign_unmatched(obj, obj.member, request.user)
             messages.info(request, f"Added to {obj.member}'s credit.")
+            return
         super().save_model(request, obj, form, change)
 
     @admin.display(description="Amount", ordering="amount_pence")

@@ -138,6 +138,9 @@ Choices made in the script (change them there if the trustees decide otherwise):
   (source `reimbursement`, source id = the expense id); approved claims with no such payment are listed. Unknown
   categories become "other". Receipts are copied from legacy's S3 bucket with `--photos-from` (they sit beside the
   photos' folder); otherwise legacy's path is kept on the claim. The `finance` role is given "see all expenses".
+- **Bank matches:** each member's `import_match_string` becomes a bank match ("the description contains this", 04
+  §4.6), in capitals with spaces tidied. One shared by two members is left out and counted in the report. The
+  `finance` role is given "see finance" and "manage finance".
 
 Not imported yet: equipment photos. Tested on the legacy clone's data
 inside the Docker image

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Bank matches · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<h1>Bank matches</h1>
+{% include "finance/_nav.html" %}
+<p>How BBMS knows who a bank payment is from, before it tries family names. Descriptions you've recorded for a
+  member are remembered here; you can also give text that's always in a member's payments (for example their
+  standing order reference).</p>
+{% if can_manage %}
+<form method="post" class="filters">
+  {% csrf_token %}
+  <label>Description contains <input name="text" required minlength="3" maxlength="500"></label>
+  <label>Member <input name="member" list="members" required></label>
+  {% include "finance/_members.html" %}
+  <button type="submit">Add</button>
+</form>
+{% endif %}
+{% if matches %}
+<div class="scroll"><table class="table">
+  <thead><tr><th>Text</th><th>Matches when</th><th>Member</th><th></th></tr></thead>
+  <tbody>
+  {% for match in matches %}
+    <tr>
+      <td>{{ match.text }}</td>
+      <td>{% if match.whole %}the whole description is this{% else %}the description contains this{% endif %}</td>
+      <td>{{ match.member.full_name }}</td>
+      <td>{% if can_manage %}<form method="post" class="inline">{% csrf_token %}<button type="submit" name="forget" value="{{ match.pk }}" class="link">Forget</button></form>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}<p>None yet.</p>{% endif %}
+{% endblock %}

@@ -1,0 +1,7 @@
+<form method="get" class="filters">
+  {% if months %}<label>Month <select name="month"><option value="">—</option>{% for month in months %}{% with value=month|date:"Y-m" %}<option value="{{ value }}"{% if choices.month == value %} selected{% endif %}>{{ month|date:"F Y" }}</option>{% endwith %}{% endfor %}</select></label>{% endif %}
+  <label>Year <select name="year"><option value="">—</option>{% for year in years %}<option value="{{ year }}"{% if choices.year == year|stringformat:"d" %} selected{% endif %}>{{ year }}</option>{% endfor %}</select></label>
+  <label>From <input type="date" name="start" value="{{ choices.start }}"></label>
+  <label>To <input type="date" name="end" value="{{ choices.end }}"></label>
+  <button type="submit">Show</button>
+</form>

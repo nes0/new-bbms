@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Bank statements · {{ SITE_NAME }}{% endblock %}
+{% block body_class %}wide{% endblock %}
+{% block content %}
+<h1>Bank statements</h1>
+{% include "finance/_nav.html" %}
+
+{% if can_manage %}
+<section class="card">
+  <h2>Import a statement</h2>
+  <p>Upload the bank's monthly statement as a CSV file. BBMS reads the money coming in and suggests who each payment
+    is from. <strong>Nothing is recorded until you've checked it</strong> and pressed "Record".</p>
+  <form method="post" enctype="multipart/form-data" class="stack form">
+    {% csrf_token %}
+    <label for="statement">Statement (CSV)</label>
+    <input type="file" id="statement" name="statement" accept=".csv,text/csv" required>
+    <p><button type="submit">Read the statement</button></p>
+  </form>
+  <p class="hint">Payouts from GoCardless, Stripe and PayPal are listed but not recorded again: the payments in them
+    are already in BBMS.</p>
+</section>
+{% endif %}
+
+{% if page.object_list %}
+<h2>Imported</h2>
+<div class="scroll"><table class="table">
+  <thead><tr><th>Uploaded</th><th>File</th><th class="number">Credits</th><th class="number">Total in</th><th>State</th></tr></thead>
+  <tbody>
+  {% for item in page %}
+    <tr>
+      <td class="nowrap">{{ item.uploaded_at|date:"j M Y" }}{% if item.uploaded_by %} <span class="hint">{{ item.uploaded_by.full_name }}</span>{% endif %}</td>
+      <td><a href="{% url 'finance:statement' item.pk %}">{{ item.filename }}</a></td>
+      <td class="number">{{ item.credits }}</td>
+      <td class="number">{{ item.total|pounds }}</td>
+      <td>{% if item.is_draft %}<span class="error">Not recorded yet</span>{% else %}Recorded {{ item.recorded_at|date:"j M Y" }}{% if item.unmatched %}, <a href="{% url 'finance:bank-lines' %}?outcome=unmatched">{{ item.unmatched }} unmatched</a>{% endif %}{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% include "finance/_pager.html" %}
+{% endif %}
+{% endblock %}

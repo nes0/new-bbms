@@ -222,6 +222,10 @@ ballot; new proposals announced by email and on Discord.
 - **Lists** (`/expenses/`): members see only their own claims; those who can approve, and the `finance` role ("see
   all expenses" permission, given by the import), see everyone's, filtered by member and status, sorted, 25 a page.
   The admin (Expenses) is a read-only record; decisions are made on the expense's page, next to the receipt.
+- **Which machine** (requested by the trustees, 2026-11-08): a claim can name the machine it was for (optional; a
+  part, a repair, its consumables). Approvers and finance can set or correct it on the expense's page at any time,
+  and filter the list by machine. Approved expenses for a machine count against what it has made (04 §4.9).
+  Legacy had no such link, so imported claims have none until someone sets it.
 
 ## 6.5 In-app notifications
 

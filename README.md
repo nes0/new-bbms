@@ -61,6 +61,13 @@ The membership system for Build Brighton: members, payments, door and machine ac
   people in the space (home page and `/occupancy.json`);
 - **expenses**: members claim back what they spent for the space, with a receipt (`/expenses/claim/`); admins
   approve or decline each claim beside its receipt, and an approved claim is added to the member's credit;
+- **finance** (`/finance/`, the finance role and admins): an overview (credit held, deposits, locker rent, machine
+  fees), **income and spending** by heading (monthly fees, one-off payments, ongoing use, less approved expenses)
+  for any month or year, **what each machine has made** (induction + usage fees − expenses claimed for it), the
+  payments list with filters, totals and a CSV download, refunds to credit and cancelling cash recorded by mistake,
+  the charges list, and the **bank statement import**: upload the monthly CSV, check the suggested
+  member for each standing order, then record them. Every bank credit is kept, matched or not (`/finance/bank/`).
+  Membership stats for every member at `/stats/`;
 - **proposals and voting**: trustees write proposals in the admin, current members vote at `/proposals/` (a secret
   ballot; votes can be changed while voting is open). An hourly job opens proposals (emails every voter, posts on
   Discord), counts them when voting closes against the quorum in Settings, and posts the result.
@@ -81,6 +88,7 @@ The membership system for Build Brighton: members, payments, door and machine ac
 | `apps/discord/` | Linking members' Discord accounts, their roles on the server, the welcome message |
 | `apps/proposals/` | Proposals and voting, the hourly job that opens and counts them |
 | `apps/expenses/` | Expense claims, private receipts, approving them into members' credit |
+| `apps/finance/` | The finance pages, the bank statement import and remembered bank matches, membership stats |
 | `apps/billing/` | Subscription and locker rent charges, GoCardless (Direct Debit) and its webhook, the nightly billing and membership jobs |
 | `templates/`, `static/` | Page templates; CSS and HTMX (kept locally, no build step) |
 | `docs/spec/` | The specification |

@@ -104,15 +104,24 @@ def legacy_tables():
                 status="payment-warning",
                 payment_method="paypal",
                 secondary_email="Sam.PayPal@example.com",
+                import_match_string=" sam  so-ref ",
                 monthly_subscription=20,
                 cash_balance=13,
                 hash="made-up-hash-sam",
             ),
             user(3, "admin@example.com", payment_method="balance", payment_day=0, cash_balance=0),  # really -5p
             user(4, "kim@example.com"),  # same email as user 1, differently cased
-            user(5, "gone@example.com", status="left", password=""),
+            user(5, "gone@example.com", status="left", password="", import_match_string="SHARED"),
             # Confirmed by someone not imported, so the door needs it confirming again.
-            user(6, "odd@example.com", status="on-hold", inducted_by=99, trusted=1, key_holder=1),
+            user(
+                6,
+                "odd@example.com",
+                status="on-hold",
+                inducted_by=99,
+                trusted=1,
+                key_holder=1,
+                import_match_string="shared",
+            ),
         ],
         "user_address": [
             # Kim: an old approved address, the current one, and a change waiting for approval
@@ -785,6 +794,16 @@ class ExpenseImportTests(TestCase):
         self.assertIn("run with --photos-from to copy them", output)
         finance = Group.objects.get(name="finance")
         self.assertTrue(finance.permissions.filter(codename="see_all_expenses").exists())
+        self.assertTrue(finance.permissions.filter(codename="manage_finance").exists())
+
+    def test_bank_match_strings(self):
+        from apps.finance.models import BankMatch
+
+        output = self.run_import()
+        self.assertEqual(
+            list(BankMatch.objects.values_list("text", "whole", "member__legacy_id")), [("SAM SO-REF", False, 2)]
+        )
+        self.assertIn("1 match string(s) used by more than one member weren't imported", output)
 
     def test_receipts_are_copied(self):
         from apps.expenses.models import Expense

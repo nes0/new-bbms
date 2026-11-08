@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Stats · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<h1>Membership stats</h1>
+{% if finance_link %}{% include "finance/_nav.html" %}{% endif %}
+<p><strong>{{ members }}</strong> member{{ members|pluralize }} (active or leaving){% if honorary %}, and {{ honorary }} honorary{% endif %}.
+  {{ came_in_month }} came in during the last month, {{ came_in_quarter }} in the last three months.</p>
+
+<h2>How members pay</h2>
+<table class="table bars">
+  <tbody>{% for row in by_method %}
+    <tr><th>{{ row.label }}</th><td class="number">{{ row.count }}</td><td class="bar"><span style="width: {% widthratio row.count widest 100 %}%"></span></td></tr>
+  {% endfor %}</tbody>
+</table>
+
+<h2>Monthly subscriptions</h2>
+{% if average %}<p>The average is {{ average|pounds }} a month.</p>{% endif %}
+<table class="table bars">
+  <thead><tr><th>About</th><th class="number">Members</th><th></th></tr></thead>
+  <tbody>{% for row in spread %}
+    <tr><th>{{ row.label }}</th><td class="number">{{ row.count }}</td><td class="bar"><span style="width: {% widthratio row.count widest 100 %}%"></span></td></tr>
+  {% endfor %}</tbody>
+</table>
+<p class="hint">Amounts are rounded to the nearest £5.</p>
+{% endblock %}

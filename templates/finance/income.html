@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Income and spending · {{ SITE_NAME }}{% endblock %}
+{% block body_class %}wide{% endblock %}
+{% block content %}
+<h1>Income and spending: {{ label }}</h1>
+{% include "finance/_nav.html" %}
+{% include "finance/_period.html" %}
+<p class="hint">Pick a month, a year, or a from–to range (dates win over a year, a year over a month).</p>
+
+<h2>Income: {{ summary.net|pounds }}</h2>
+<div class="scroll"><table class="table">
+  <thead><tr><th>Heading</th><th class="number">Taken</th><th class="number">Provider fees</th><th class="number">Net</th></tr></thead>
+  <tbody>
+  {% for heading in summary.headings %}
+    <tr><th>{{ heading.label }}</th><th class="number">{{ heading.gross|pounds }}</th><td class="number">{{ heading.fees|pounds }}</td><th class="number">{{ heading.net|pounds }}</th></tr>
+    {% for line in heading.lines %}
+      <tr><td>&emsp;<a href="{% url 'finance:payments' %}?reason={{ line.reason }}{% if choices.month %}&month={{ choices.month }}{% endif %}">{{ line.label }}</a></td><td class="number">{{ line.gross|pounds }}</td><td class="number">{{ line.fees|pounds }}</td><td></td></tr>
+    {% endfor %}
+  {% endfor %}
+    <tr><th>Total income</th><th class="number">{{ summary.gross|pounds }}</th><th class="number">{{ summary.fees|pounds }}</th><th class="number">{{ summary.net|pounds }}</th></tr>
+  </tbody>
+</table></div>
+{% if summary.pending %}<p class="hint">Not counted yet: {{ summary.pending|pounds }} of Direct Debits on their way.</p>{% endif %}
+
+<h2>Spending: {{ summary.spent|pounds }}</h2>
+{% if summary.expenses %}
+<table class="table">
+  <tbody>{% for row in summary.expenses %}<tr><td>{{ row.label }}</td><td class="number">{{ row.total|pounds }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p>No expenses approved in this period.</p>{% endif %}
+<p class="hint">Only expenses members claimed back (counted when approved). The space's other spending, such as rent
+  and bills, isn't recorded in BBMS.</p>
+<p><strong>Income after expenses: {{ summary.after_expenses|pounds }}</strong></p>
+
+<h2>Money held for members</h2>
+<table class="table">
+  <tbody>
+    <tr><td>Credit topped up by members</td><td class="number">{{ summary.credit_added|pounds }}</td></tr>
+    <tr><td>Paid out of credit to members (withdrawals)</td><td class="number">{{ summary.credit_paid_out|pounds }}</td></tr>
+  </tbody>
+</table>
+<p class="hint">Not income: it becomes income when it's spent on something above. Approved expenses are paid into
+  credit too; they're under spending.</p>
+
+<h2>The last twelve months</h2>
+<div class="scroll"><table class="table bars">
+  <thead><tr><th>Month</th>{% for key, label, reasons in headings %}<th class="number">{{ label }}</th>{% endfor %}<th class="number">Income (net)</th><th class="number">Expenses</th><th></th></tr></thead>
+  <tbody>
+  {% for row in trend %}
+    <tr>
+      <td class="nowrap"><a href="?month={{ row.month|date:'Y-m' }}">{{ row.month|date:"M Y" }}</a></td>
+      <td class="number">{{ row.monthly|pounds }}</td><td class="number">{{ row.oneoff|pounds }}</td><td class="number">{{ row.use|pounds }}</td>
+      <td class="number"><strong>{{ row.income|pounds }}</strong></td><td class="number">{{ row.spent|pounds }}</td>
+      <td class="bar">{% if row.income > 0 %}<span style="width: {% widthratio row.income widest 100 %}%"></span>{% endif %}{% if row.spent %}<span class="spent" style="width: {% widthratio row.spent widest 100 %}%"></span>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+<p class="hint">Before the switch to this system, some money was taken outside BBMS (standing orders not imported,
+  cash not recorded), and fees weren't recorded for Direct Debits, so older months are less complete.</p>
+{% endblock %}

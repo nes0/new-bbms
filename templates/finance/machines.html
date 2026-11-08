@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Machines · {{ SITE_NAME }}{% endblock %}
+{% block body_class %}wide{% endblock %}
+{% block content %}
+<h1>What each machine has made: {{ label }}</h1>
+{% include "finance/_nav.html" %}
+{% include "finance/_period.html" %}
+<p>Induction fees and usage fees, less the expenses members claimed back for the machine. Machines that share an
+  induction are counted together, because the induction fee covers all of them.</p>
+{% if report.rows %}
+<div class="scroll"><table class="table">
+  <thead><tr><th>Machine</th><th class="number">Induction fees</th><th class="number">Usage fees</th><th class="number">Expenses</th><th class="number">Made</th></tr></thead>
+  <tbody>
+  {% for row in report.rows %}
+    <tr>
+      <td>{% for machine in row.machines %}{{ machine.name }}{% if machine.archived %} <span class="hint">(archived)</span>{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+      <td class="number">{% if row.machines.0.requires_induction %}{{ row.induction|pounds }}{% else %}<span class="hint">no induction</span>{% endif %}</td>
+      <td class="number">{{ row.usage|pounds }}</td>
+      <td class="number">{% if row.expenses and row.machines|length == 1 %}<a href="{% url 'expenses:index' %}?machine={{ row.machines.0.pk }}">−{{ row.expenses|pounds }}</a>{% elif row.expenses %}−{{ row.expenses|pounds }}{% else %}{{ row.expenses|pounds }}{% endif %}</td>
+      <td class="number"><strong>{{ row.net|pounds }}</strong></td>
+    </tr>
+  {% endfor %}
+    <tr><th>All machines</th><th class="number">{{ report.induction|pounds }}</th><th class="number">{{ report.usage|pounds }}</th><th class="number">−{{ report.expenses|pounds }}</th><th class="number">{{ report.net|pounds }}</th></tr>
+  </tbody>
+</table></div>
+{% else %}<p>No machines yet.</p>{% endif %}
+<ul class="hint">
+  {% if report.unlinked_expenses %}<li>{{ report.unlinked_expenses|pounds }} of approved expenses aren't linked to a machine. A trustee or finance can choose the machine on each expense's page.</li>{% endif %}
+  {% for reference, total in report.other_inductions %}<li>Induction fees for “{{ reference }}”, which no machine uses now: {{ total|pounds }}.</li>{% endfor %}
+  {% if report.unlinked_usage %}<li>{{ report.unlinked_usage|pounds }} of usage fees aren't linked to a machine session (older records).</li>{% endif %}
+  <li>Expenses before November 2026 weren't linked to machines: the old system had no way to.</li>
+</ul>
+{% endblock %}
