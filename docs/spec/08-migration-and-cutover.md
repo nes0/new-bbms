@@ -34,10 +34,38 @@
 PayPal payers to Direct Debit or standing order (both methods are dropped). Records for dropped features (CCTV,
 detected devices) aren't migrated.
 
+**Members to move (counted on production, 2026-11-08; counts only).** After cutover the new system doesn't record
+old-style GoCardless or PayPal payments, so these members would be charged from credit or suspended while their old
+payments carry on. 10 active members:
+
+| Group | Members | Paying now | Before cutover |
+|---|---|---|---|
+| Old-style GoCardless subscription, payment method `gocardless` | 3 | Monthly, through the old subscription | Set up a variable Direct Debit, **then** cancel the old subscription (cancelling first leaves a month unpaid). |
+| Old-style GoCardless subscription, payment method `balance` | 2 | Monthly, through the old subscription (reason `subscription`); nothing taken from credit, so not paying twice today | The same, then set their payment method to Direct Debit. Otherwise the new system takes the subscription from credit as well as GoCardless. |
+| PayPal | 5 | Monthly (3–5 PayPal payments a month over the last year) | Move to Direct Debit or a standing order; the member cancels the PayPal subscription from their own PayPal account. |
+
+50 members who have left are still marked `paypal`; they need nothing. A trustee finds who is in each group from
+the live admin (names stay out of the repo), contacts them, and re-runs the counts before cutover: every row should
+be 0. The import also lists any left over, by legacy id. The queries:
+
+```sql
+-- Who is set to a dropped method, and how many still pay that way (last 3 months)
+SELECT p.source, u.payment_method AS current_method, u.status, COUNT(DISTINCT p.user_id) AS members
+FROM payments p JOIN users u ON u.id = p.user_id
+WHERE p.source IN ('gocardless', 'paypal') AND p.status = 'paid'
+  AND p.created_at >= NOW() - INTERVAL 3 MONTH
+GROUP BY p.source, u.payment_method, u.status;
+
+SELECT payment_method, status, COUNT(*) AS members
+FROM users WHERE payment_method IN ('gocardless', 'paypal') AND status <> 'left'
+GROUP BY payment_method, status;
+```
+
 ### Import script status (2026-11-07)
 
 `manage.py import_legacy` (code in `apps/legacy/`) reads the legacy MySQL with a read-only user and imports, into an
-**empty** database: members (legacy passwords keep working), roles, key fobs, devices (keeping their API keys),
+**empty** database: members (legacy passwords keep working, with how they pay, their payment day, mandate,
+monthly amount and paid-until date), subscription charges, roles, key fobs, devices (keeping their API keys),
 equipment, inductions, machine sessions and the door log. It prints a report with counts, skipped rows (by legacy
 id) and things to check; it never shows names or emails. `--dry-run` imports, reports and rolls back.
 
@@ -50,8 +78,13 @@ Choices made in the script (change them there if the trustees decide otherwise):
   legacy system hadn't billed are counted in the report, with what they'd cost.
 - Legacy `402` door entries become check-ins.
 - Equipment charged per gram or per page has its usage cost set to 0 (per hour only), and is listed.
+- Members paying by old-style GoCardless or PayPal are imported with **no payment method** and listed by legacy id:
+  move them to Direct Debit or a standing order before cutover. A payment day after the 28th becomes the 1st.
+- Subscription charges are imported as they are; a second charge for the same member and date is skipped and
+  listed. ⚠️ Charges still `processing` at cutover only finish when the legacy payments are imported too (their
+  GoCardless payment ids link the webhook's events to them), so the payments import must come before cutover.
 
-Not imported yet (waiting for their apps): payments, charges, addresses, proposals, expenses, notifications, the
+Not imported yet (waiting for their apps): payments, addresses, proposals, expenses, notifications, the
 audit log, photos and receipts. Tested on the legacy clone's data inside the Docker image (`tools/clone_test/`).
 
 ## 8.3 Testing before cutover, and phases

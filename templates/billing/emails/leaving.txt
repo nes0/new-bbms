@@ -1,0 +1,7 @@
+{% autoescape off %}{{ site_name }}: you're leaving
+Hello {{ member.given_name }},
+
+We've stopped your monthly payments. Your membership continues until {% if member.subscription_expires %}{{ member.subscription_expires|date:"j F Y" }}{% else %}the end of the period you've paid for{% endif %}, and then ends.
+
+Changed your mind? Set up your payment again from your account page: {{ site_url }}/account/
+{% endautoescape %}

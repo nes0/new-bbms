@@ -1,0 +1,8 @@
+{% autoescape off %}{{ site_name }}: paying your {{ what }} by Direct Debit instead
+Hello {{ member.given_name }},
+
+Your credit (£{{ credit }}) wasn't enough to pay your {{ what }} of £{{ amount }}, so we've asked for it by Direct
+Debit instead, as you set up as a backup.
+
+Your account: {{ site_url }}/account/
+{% endautoescape %}

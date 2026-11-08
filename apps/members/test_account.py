@@ -225,13 +225,17 @@ class LeaveTests(TestCase):
         self.assertContains(response, "contact the trustees")
         self.assertTrue(Member.objects.exists())
 
-    def test_a_current_member_is_asked_to_contact_the_trustees_for_now(self):
+    def test_a_current_member_leaves_when_their_paid_time_runs_out(self):
+        # The billing app's tests cover the Direct Debit being cancelled (apps/billing/tests).
         self.member.status = Member.Status.ACTIVE
         self.member.save()
-        self.assertContains(self.client.get("/account/leave/"), "contact the trustees")
-        self.client.post("/account/leave/", {"confirm": "on"})
+        self.assertContains(self.client.get("/account/leave/"), "stop your monthly payments")
+        self.client.post("/account/leave/", {})  # not confirmed
         self.member.refresh_from_db()
         self.assertEqual(self.member.status, Member.Status.ACTIVE)
+        self.client.post("/account/leave/", {"confirm": "on"})
+        self.member.refresh_from_db()
+        self.assertEqual(self.member.status, Member.Status.LEAVING)
 
 
 class PendingAddressTests(TestCase):

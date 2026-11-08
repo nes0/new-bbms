@@ -1,0 +1,10 @@
+{% autoescape off %}Welcome to {{ site_name }}
+Hello {{ member.given_name }},
+
+Your membership is now active. Thank you for joining {{ site_name }}.
+
+On your first visit a trustee will give you a fob: tap it at the door when you arrive, and use it on the machines
+you're trained on.
+
+Your account: {{ site_url }}/account/
+{% endautoescape %}

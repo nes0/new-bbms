@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Fake GoCardless payments{% endblock %}
+{% block content %}
+<h1>Fake GoCardless payments</h1>
+<p class="hint">Local development only. Each button sends BBMS the webhook event GoCardless would.</p>
+{% if payments %}
+<table class="table">
+  <thead><tr><th>Payment</th><th>Mandate</th><th>Amount</th><th>What</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for id, p in payments.items %}
+    <tr>
+      <td>{{ id }}</td><td>{{ p.mandate }}</td><td>{{ p.amount }}p</td><td>{{ p.description }}</td><td>{{ p.status }}</td>
+      <td>
+        <form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="payment" value="{{ id }}">
+          <button name="action" value="confirmed">Confirm</button>
+          <button name="action" value="failed">Fail (insufficient funds)</button>
+          <input type="hidden" name="cause" value="insufficient_funds">
+          <button name="action" value="cancelled">Cancel</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p>No payments yet. Run <code>manage.py bill_members</code> after setting up a Direct Debit.</p>{% endif %}
+{% endblock %}

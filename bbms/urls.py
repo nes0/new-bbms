@@ -18,4 +18,5 @@ urlpatterns = [
     path("", include("apps.access.urls")),
     path("", include("apps.payments.urls")),
     path("", include("apps.storage.urls")),
+    path("", include("apps.billing.urls")),
 ]

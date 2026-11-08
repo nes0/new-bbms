@@ -162,11 +162,11 @@ row a new field whose default is the starting value.
 | Lockers allowed per member (admins can override per member) | new; ❓ suggested 1, so it starts at 1 (0–20). **Built** |
 | Locker rents | a default per **size and location**, in Storage → Default rents (06 §6.2), not on this page. **Built** |
 | Minimum monthly subscription (self-service) | £20; **£25 in the new system** (decided 2026-11-07). Built. Members already paying less keep their amount until they change it |
-| Minimum monthly subscription (set by admin) | £5 |
+| Minimum monthly subscription (set by admin) | £5. **Built** |
 | Unchecked proofs of identity are deleted after | new; 30 days (03 §3.1), 1–90 days. **Built** |
-| Suspension before a member is marked left | new; 30 days (decided provisionally) |
-| Failed Direct Debit retries | new; "BBMS retries" (default) or "let GoCardless retry" (Success+); BBMS mode: retries (default 1) and days between (default 5) |
-| Grace period per payment method | DD 10 days, standing order 6 months, other 7 days (03 §3.5) |
+| Suspension before a member is marked left | new; 30 days (decided provisionally). **Built** |
+| Failed Direct Debit retries | new; "BBMS retries" (default) or "let GoCardless retry" (Success+); BBMS mode: retries (default 1) and days between (default 5). **Built** |
+| Grace period per payment method | DD 10 days, standing order 6 months (183 days), other 7 days (03 §3.5). **Built** |
 | Minimum billable equipment session | 15 minutes. **Built**. Readers show it, so changing it bumps every machine's `config_version` (09 §9.4) |
 | Allowed negative credit for equipment fees | £5. **Built**, as "credit below zero still allowed to start a machine session": a member can start a charged session while their credit is above −£5. A session that has started is always charged in full (decided 2026-11-07, 04 §4.1) |
 | How often v2 readers check in | new; 5 minutes (05 §5.4: also how quickly a revoked fob reaches readers), 1–60 minutes. **Built** |

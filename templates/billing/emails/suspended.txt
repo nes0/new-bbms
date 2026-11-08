@@ -1,0 +1,10 @@
+{% autoescape off %}{{ site_name }}: your membership is suspended
+Hello {{ member.given_name }},
+
+We haven't received your subscription, so your membership is suspended and your fob won't work for now.
+
+Pay what's owed from your account page and you'll be active again straight away:
+{{ site_url }}/account/
+
+If we don't hear from you within {{ days }} days, your membership will end.
+{% endautoescape %}

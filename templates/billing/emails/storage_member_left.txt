@@ -1,0 +1,6 @@
+{% autoescape off %}{{ site_name }}: lockers to clear
+{{ member }} (member {{ member.pk }}) has left. Their locker rental{{ lockers|length|pluralize }} ended today:
+{% for locker in lockers %}- {{ locker }}
+{% endfor %}{% if box %}They had paid for a member box: please look for a box labelled with their name.
+{% endif %}
+{% endautoescape %}

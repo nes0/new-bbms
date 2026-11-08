@@ -1,3 +1,4 @@
+from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
@@ -18,6 +19,16 @@ class MemberChangeForm(UserChangeForm):
     class Meta:
         model = Member
         fields = "__all__"
+
+    def clean_monthly_subscription_pence(self):
+        """Admins may go below the usual minimum, down to the admin minimum (03 §3.7)."""
+        from apps.site_settings.models import SiteSettings
+
+        pence = self.cleaned_data.get("monthly_subscription_pence")
+        minimum = SiteSettings.load().admin_minimum_subscription_pence
+        if pence is not None and pence < minimum:
+            raise forms.ValidationError(f"At least {minimum}p (£{minimum // 100}).")
+        return pence
 
 
 @admin.register(Address)
@@ -58,11 +69,13 @@ class MemberAdmin(UserAdmin):
     add_form = MemberCreationForm
     inlines = [AddressInline]
 
-    list_display = ("full_name", "email", "status", "trusted", "key_holder", "date_joined")
-    list_filter = ("status", "trusted", "key_holder", "banned", "is_staff")
+    list_display = ("full_name", "email", "status", "payment_method", "subscription_expires", "date_joined")
+    list_filter = ("status", "payment_method", "trusted", "key_holder", "banned", "is_staff")
     search_fields = ("email", "given_name", "family_name")
     ordering = ("given_name", "family_name")
-    readonly_fields = ("legacy_id", "date_joined", "updated_at", "last_login")
+    # The mandate comes from GoCardless; a status change by hand doesn't send the emails or cancel charges, so the
+    # billing jobs and the member's own pages are the usual way to change it.
+    readonly_fields = ("legacy_id", "date_joined", "updated_at", "last_login", "mandate_id", "suspended_at")
 
     fieldsets = (
         (None, {"fields": ("email", "password")}),
@@ -73,6 +86,11 @@ class MemberAdmin(UserAdmin):
                 "fields": (
                     "status",
                     "monthly_subscription_pence",
+                    "payment_method",
+                    "payment_day",
+                    "subscription_expires",
+                    "mandate_id",
+                    "suspended_at",
                     "founder",
                     "induction_completed",
                     "rules_agreed_at",

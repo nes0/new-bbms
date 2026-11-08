@@ -236,7 +236,10 @@ def end_rental(rental, by, reason: str = "") -> LockerRental:
     rental.ended_by = by
     rental.end_reason = reason
     rental.save(update_fields=["ended_at", "ended_by", "end_reason"])
-    # TODO(subscriptions app): cancel pending rent charges; no refund for the month already paid (❓ 06 §6.2).
+    # Rent stops: charges not yet billed are cancelled. No refund for the month already paid (❓ 06 §6.2).
+    from apps.billing.billing import cancel_rent_charges
+
+    cancel_rent_charges(rental)
     _log(
         LockerChange.What.ENDED,
         str(rental.locker),

@@ -77,3 +77,9 @@ class LeaveForm(forms.Form):
     """Confirmation for deleting a setting-up account (03 §3.8)."""
 
     confirm = forms.BooleanField(label="Yes, delete my account and everything I've sent")
+
+
+class LeaveMembershipForm(forms.Form):
+    """Confirmation for leaving (03 §3.8): the Direct Debit stops, access lasts until the paid-up date."""
+
+    confirm = forms.BooleanField(label="Yes, I want to leave and stop my monthly payments")

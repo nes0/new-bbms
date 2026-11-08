@@ -72,6 +72,14 @@ class Payment(models.Model):
     usage_session = models.ForeignKey(
         "equipment.UsageSession", on_delete=models.PROTECT, null=True, blank=True, related_name="payments"
     )
+    charge = models.ForeignKey(
+        "billing.Charge",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="payments",
+        help_text="The subscription or locker rent charge this pays.",
+    )
     corrects = models.ForeignKey(
         "self",
         on_delete=models.PROTECT,

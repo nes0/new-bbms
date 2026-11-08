@@ -13,8 +13,7 @@
       <ol class="steps">
         <li><strong>Set up your monthly payment</strong>
           {% if member.monthly_subscription_pence %}({{ member.monthly_subscription_pence|pounds }} a month){% endif %}.
-          {# TODO(subscriptions app): Direct Debit set-up, or paying from credit (03 §3.1). #}
-          <span class="hint">Coming soon: for now a trustee will set this up with you.</span></li>
+          <a href="{% url 'billing:payment' %}">Set it up</a> by Direct Debit, or pay from your credit.</li>
         <li><strong>Send your proof of identity</strong>: photo ID and proof of address.
           {% if id_status == "approved" %}<span class="ok">Done.</span>
           {% elif id_status == "waiting" %}<span class="hint">Sent; waiting for a trustee to check.</span>
@@ -36,7 +35,11 @@
       <dt>Monthly subscription</dt>
       <dd>{% if member.monthly_subscription_pence %}{{ member.monthly_subscription_pence|pounds }}{% else %}—{% endif %}
         <a href="{% url 'members:change-subscription' %}">Change</a></dd>
-      {# TODO(subscriptions app): payment method, payment day, paid until, and the charges (03 §3.3). #}
+      <dt>Payment</dt>
+      <dd>{{ member.get_payment_method_display|default:"Not set up" }}{% if member.payment_day %}, on the {{ member.payment_day }}{{ payment_day_suffix }} of each month{% endif %}
+        <a href="{% url 'billing:payment' %}">Payments and charges</a>
+        {% if unpaid_charges %}<span class="error">({{ unpaid_charges }} to pay)</span>{% endif %}</dd>
+      {% if member.subscription_expires %}<dt>Paid until</dt><dd>{{ member.subscription_expires|date:"j F Y" }}</dd>{% endif %}
       <dt>Credit</dt><dd>{{ credit_pence|pounds }} <a href="{% url 'payments:credit' %}">History and withdrawals</a></dd>
       <dt>Lockers</dt><dd><a href="{% url 'storage:lockers' %}">Your lockers and ones to rent</a></dd>
       <dt>Member since</dt><dd>{{ member.date_joined|date:"j F Y" }}</dd>
@@ -85,7 +88,16 @@
   </section>
 
   <section>
-    <h2>Leaving</h2>
-    <p><a href="{% url 'members:leave' %}">Leave {{ SITE_NAME }}</a></p>
+    {% if member.status == "left" %}
+      <h2>Rejoin</h2>
+      <form method="post" action="{% url 'billing:rejoin' %}">{% csrf_token %}<button type="submit">Rejoin {{ SITE_NAME }}</button></form>
+    {% elif member.status == "leaving" %}
+      <h2>Leaving</h2>
+      <p>You're leaving{% if member.subscription_expires %}: your membership ends on {{ member.subscription_expires|date:"j F Y" }}{% endif %}.
+        Changed your mind? <a href="{% url 'billing:payment' %}">Set up your payment again</a>.</p>
+    {% else %}
+      <h2>Leaving</h2>
+      <p><a href="{% url 'members:leave' %}">Leave {{ SITE_NAME }}</a></p>
+    {% endif %}
   </section>
 {% endblock %}

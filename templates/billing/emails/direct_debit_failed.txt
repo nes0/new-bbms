@@ -1,0 +1,12 @@
+{% autoescape off %}{{ site_name }}: your Direct Debit failed
+Hello {{ member.given_name }},
+
+Your Direct Debit of £{{ amount }} for your {{ what }} didn't go through{% if cause %} ({{ cause }}){% endif %}.
+{% if retry_on %}
+We'll try again on {{ retry_on|date:"j F" }}. Please make sure there's enough money in your account by then.
+{% else %}
+We won't try again. Please pay it from your account page, from credit or another way:
+{{ site_url }}/account/
+{% endif %}
+If you've changed bank or think this is a mistake, please contact the trustees.
+{% endautoescape %}

@@ -4,8 +4,9 @@ Copy the legacy system's data into the new models (spec 08 §8.2).
 Run through `manage.py import_legacy`, always into an **empty** database: the script is meant to be run again and
 again against fresh copies of production before the real cutover, so it never tries to merge into existing data.
 
-What is imported so far (the apps that exist): members and their roles, key fobs, devices (keeping their API
-keys, so today's door and laser keep working), equipment, inductions, machine usage sessions and the door log.
+What is imported so far (the apps that exist): members (with how they pay and what they've paid up to) and their
+roles, subscription charges, key fobs, devices (keeping their API keys, so today's door and laser keep working),
+equipment, inductions, machine usage sessions and the door log.
 Everything else is counted and listed as "not imported yet".
 
 The report only ever shows legacy **ids** and counts, never names or email addresses, so it's safe to share.
@@ -22,6 +23,7 @@ from django.utils.text import slugify
 
 from apps.access import tags
 from apps.access.models import AccessEvent, Device, KeyFob
+from apps.billing.models import Charge
 from apps.equipment import rules
 from apps.equipment.models import Equipment, Induction, UsageSession
 from apps.members.hashers import from_legacy_hash
@@ -44,6 +46,18 @@ STATUS_MAP = {
 # The "Member Box" equipment item becomes a "box paid" flag instead (08 §8.2, decided 2026-11-07).
 BOX_INDUCTION_KEY = "box"
 
+# How members pay (02 §2.2). Old-style GoCardless subscriptions and PayPal are dropped: those members must be moved
+# to a Direct Debit or standing order before cutover (08), so they're imported with no method and listed.
+PAYMENT_METHOD_MAP = {
+    "": Member.PaymentMethod.NONE,
+    "gocardless-variable": Member.PaymentMethod.DIRECT_DEBIT,
+    "balance": Member.PaymentMethod.CREDIT,
+    "standing-order": Member.PaymentMethod.STANDING_ORDER,
+    "cash": Member.PaymentMethod.CASH,
+}
+
+CHARGE_STATUSES = {status.value for status in Charge.Status}
+
 SESSION_REASONS = {
     "": UsageSession.Reason.NORMAL,
     "training": UsageSession.Reason.TRAINING,
@@ -52,7 +66,6 @@ SESSION_REASONS = {
 
 NOT_IMPORTED_YET = [
     ("payments", "payments app"),
-    ("subscription_charge", "payments app"),
     ("user_address", "members: addresses"),
     ("proposals", "governance app"),
     ("proposal_votes", "governance app"),
@@ -148,6 +161,7 @@ class Importer:
         # List every table in the report, even empty ones, in the order they're imported.
         for table in (
             "users",
+            "subscription_charge",
             "profile_data",
             "roles",
             "role_user",
@@ -160,6 +174,7 @@ class Importer:
         ):
             self.report.read[table] += 0
         self.import_members()
+        self.import_charges()
         self.import_profiles()
         self.import_roles()
         self.import_fobs()
@@ -178,6 +193,7 @@ class Importer:
         unusable_password = make_password(None)
         seen_emails = {}
         statuses = Counter()
+        dropped_methods = defaultdict(list)
         batch = []
         for row in self.source.rows(table):
             report.read[table] += 1
@@ -196,6 +212,15 @@ class Importer:
                 report.note(f"user {row['id']}: unknown status {legacy_status!r}, imported as suspended")
             statuses[legacy_status] += 1
             password = text(row.get("password"))
+            legacy_method = text(row.get("payment_method"))
+            method = PAYMENT_METHOD_MAP.get(legacy_method)
+            if method is None:
+                dropped_methods[legacy_method].append(row["id"])
+                method = Member.PaymentMethod.NONE
+            payment_day = int(row.get("payment_day") or 0) or None
+            if payment_day is not None and payment_day > 28:
+                payment_day = 1  # as legacy did (02 §2.2)
+            pounds = int(row.get("monthly_subscription") or 0)
             batch.append(
                 Member(
                     email=email,
@@ -215,6 +240,11 @@ class Importer:
                     banned_at=when(row.get("banned_date")),
                     banned_reason=text(row.get("banned_reason")),
                     notes=text(row.get("notes")),
+                    payment_method=method,
+                    payment_day=payment_day,
+                    monthly_subscription_pence=pounds * 100 if pounds > 0 else None,
+                    mandate_id=text(row.get("mandate_id"), 50),
+                    subscription_expires=day(row.get("subscription_expires")),
                     legacy_id=row["id"],
                     date_joined=when(row.get("created_at")) or self.now,
                 )
@@ -226,6 +256,50 @@ class Importer:
         for old in ("payment-warning", "on-hold"):
             if statuses[old]:
                 report.note(f"{statuses[old]} '{old}' members imported as {STATUS_MAP[old].label.lower()} (❓)")
+        for old, ids in sorted(dropped_methods.items()):
+            sample = ", ".join(str(i) for i in ids[:10])
+            report.note(
+                f"{len(ids)} member(s) paying by '{old}', which isn't supported any more, imported with no payment "
+                f"method: move them to Direct Debit or a standing order before cutover (legacy ids {sample})"
+            )
+
+    def import_charges(self):
+        """Subscription charges, as they are (08 §8.2). The payments they link to come with the payments import."""
+        table, report = "subscription_charge", self.report
+        batch, seen = [], set()
+        for row in self.source.rows(table):
+            report.read[table] += 1
+            member = self.members.get(row.get("user_id"))
+            if member is None:
+                report.skip(table, "no such member", row["id"])
+                continue
+            charge_date = day(row.get("charge_date"))
+            if charge_date is None:
+                report.skip(table, "no charge date", row["id"])
+                continue
+            if (member.pk, charge_date) in seen:
+                report.skip(table, "a second charge for the same member and date", row["id"])
+                continue
+            seen.add((member.pk, charge_date))
+            status = text(row.get("status"))
+            if status not in CHARGE_STATUSES:
+                report.skip(table, f"unknown status {status!r}", row["id"])
+                continue
+            amount = int(row.get("amount") or 0)
+            batch.append(
+                Charge(
+                    member=member,
+                    kind=Charge.Kind.SUBSCRIPTION,
+                    charge_date=charge_date,
+                    amount_pence=amount if amount > 0 else None,
+                    status=status,
+                    paid_on=day(row.get("payment_date")) if status == Charge.Status.PAID else None,
+                    created_at=when(row.get("created_at")) or self.now,
+                    legacy_id=row["id"],
+                )
+            )
+        Charge.objects.bulk_create(batch, batch_size=BATCH)
+        report.imported[table] = len(batch)
 
     def import_profiles(self):
         table, report = "profile_data", self.report

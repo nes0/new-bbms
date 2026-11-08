@@ -1,0 +1,8 @@
+{% autoescape off %}{{ site_name }}: your {{ what }} couldn't be paid
+Hello {{ member.given_name }},
+
+Your {{ what }} of £{{ amount }} is due, but your credit (£{{ credit }}) isn't enough to pay it.
+
+Please top up your credit, or pay it from your account page: {{ site_url }}/account/
+We'll try again from your credit each night.
+{% endautoescape %}

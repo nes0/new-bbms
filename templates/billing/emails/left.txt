@@ -1,0 +1,11 @@
+{% autoescape off %}{{ site_name }}: your membership has ended
+Hello {{ member.given_name }},
+
+Your membership of {{ site_name }} has ended. Thank you for being a member.
+{% if lockers %}
+You were renting {{ lockers|join:", " }}. Please collect anything you left in it: the storage team will clear it.
+{% endif %}{% if box %}
+If you left a member box at the space, please collect it.
+{% endif %}
+You're welcome back at any time: log in at {{ site_url }}/account/ and choose "Rejoin".
+{% endautoescape %}
