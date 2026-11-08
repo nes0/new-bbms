@@ -200,7 +200,10 @@ def _payment_failed(rows, charges, action, details, day) -> str:
         if config.dd_retry_mode == SiteSettings.RetryMode.GOCARDLESS:
             will_retry = bool(details.get("will_attempt_retry"))
         else:
-            will_retry = cause in RETRYABLE_CAUSES and all(c.retries < config.dd_retries for c in charges)
+            # BBMS only retries subscription and rent charges; a one-off payment (a fee, a top-up) isn't retried.
+            will_retry = (
+                bool(charges) and cause in RETRYABLE_CAUSES and all(c.retries < config.dd_retries for c in charges)
+            )
             if will_retry:
                 retry_on = day + timedelta(days=config.dd_retry_after_days)
     else:
@@ -214,10 +217,16 @@ def _payment_failed(rows, charges, action, details, day) -> str:
             charge.save(update_fields=["status", "retry_on"])
         elif charge.status != Charge.Status.PAID or action == "charged_back":
             membership.charge_failed(charge, day)
-    if charges:
-        member = charges[0].member
+    if not will_retry:
+        # A one-off induction fee that wasn't paid after all: the member isn't paid up for that induction.
+        from apps.equipment.models import Induction
+
+        Induction.objects.filter(payment__in=rows).update(paid=False)
+    first = rows.select_related("member").first()
+    if first is not None and first.member is not None:
+        member = first.member
         total = sum(abs(r.amount_pence) for r in rows)
-        kinds = {c.get_kind_display().lower() for c in charges}
+        kinds = {r.get_reason_display().lower() for r in rows}
         what = " and ".join(sorted(kinds, reverse=True))
         emails.send(
             member,

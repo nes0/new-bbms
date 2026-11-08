@@ -35,7 +35,8 @@
               <button type="submit">Pay from credit</button></form>
             <form method="post" action="{% url 'payments:pay-card' %}" style="display:inline">{% csrf_token %}
               <input type="hidden" name="item" value="charge:{{ charge.pk }}">
-              <button type="submit">Pay by card</button></form></li>
+              <button type="submit">Pay by card</button>
+              {% if member.mandate_id and charge.status == "failed" %}<button type="submit" formaction="{% url 'payments:pay-direct-debit' %}">Pay by Direct Debit</button>{% endif %}</form></li>
         {% endfor %}
       </ul>
       <p class="hint">Paying from credit? <a href="{% url 'payments:credit' %}">Top it up</a> first if it's low.</p>

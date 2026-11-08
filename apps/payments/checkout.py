@@ -79,7 +79,7 @@ def find_payable(member, key) -> Payable | None:
 
 def top_up_limits() -> tuple[int, int]:
     config = SiteSettings.load()
-    return config.card_top_up_minimum_pence, config.card_top_up_maximum_pence
+    return config.top_up_minimum_pence, config.top_up_maximum_pence
 
 
 # --- paying ---
@@ -107,6 +107,60 @@ def pay_from_credit(member, item: Payable) -> Payment:
     return _record(
         member, item.purpose, Payment.Source.BALANCE, item.amount_pence, equipment=item.equipment, charge=item.charge
     )
+
+
+class DirectDebitUnavailable(Exception):
+    """The member has no Direct Debit mandate to take a one-off payment from."""
+
+
+def pay_by_direct_debit(member, *, purpose, amount_pence, label, key, equipment=None, charge=None, today=None):
+    """A one-off Direct Debit from the member's mandate (04 §4.2, "pay by DD"). Raises GoCardlessError.
+
+    The ledger row is `pending` until GoCardless confirms it (a few working days). Like legacy, a pending payment
+    already counts: a pending top-up is credit, a pending induction fee marks the induction paid, and a pending
+    charge payment makes the charge `processing`. If GoCardless then says it failed, that's undone (the webhook).
+    Asking twice on the same day for the same thing gives the same payment.
+    """
+    from apps.billing import gocardless, membership
+    from apps.billing.models import Charge
+    from apps.members.models import Member
+
+    today = today or timezone.localdate()
+    with transaction.atomic():
+        member = Member.objects.select_for_update().get(pk=member.pk)
+        if not member.mandate_id:
+            raise DirectDebitUnavailable("Set up a Direct Debit first.")
+        if charge is not None:
+            charge = Charge.objects.select_for_update().get(pk=charge.pk)
+            if charge.status not in Charge.UNPAID:
+                raise DirectDebitUnavailable("That doesn't need paying any more.")
+        created = gocardless.client().create_payment(
+            member.mandate_id,
+            amount_pence,
+            f"{SiteSettings.load().space_name}: {label}"[:100],
+            idempotency_key=f"bbms-pay-{member.pk}-{key}-{amount_pence}-{today.isoformat()}",
+            metadata={"member": str(member.pk), "for": key[:500]},
+        )
+        existing = Payment.objects.filter(source=Payment.Source.GOCARDLESS, source_id=created.id).first()
+        if existing is not None:
+            return existing  # asked twice: GoCardless gave back the same payment
+        fields = {"status": Payment.Status.PENDING, "source_id": created.id}
+        if purpose == Purpose.CHARGE:
+            if charge.amount_pence != amount_pence:
+                charge.amount_pence = amount_pence
+                charge.save(update_fields=["amount_pence"])
+            payment = services.record_payment(
+                member,
+                charge.reason,
+                Payment.Source.GOCARDLESS,
+                amount_pence,
+                charge=charge,
+                reference=f"charge {charge.pk}",
+                **fields,
+            )
+            membership.charge_processing(charge)
+            return payment
+        return _record(member, purpose, Payment.Source.GOCARDLESS, amount_pence, equipment=equipment, **fields)
 
 
 def start_card_checkout(member, *, purpose, amount_pence, label, success_url, cancel_url, equipment=None, charge=None):

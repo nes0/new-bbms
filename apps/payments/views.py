@@ -43,6 +43,7 @@ def credit(request):
         "top_up_low": low,
         "top_up_high": high,
         "back": "credit",
+        "has_direct_debit": bool(member.mandate_id),
     }
     return render(request, "payments/credit.html", context)
 
@@ -65,6 +66,7 @@ def pay(request):
         "top_up_form": TopUpForm(),
         "top_up_low": low,
         "top_up_high": high,
+        "has_direct_debit": bool(member.mandate_id),
     }
     return render(request, "payments/pay.html", context)
 
@@ -101,6 +103,49 @@ def pay_by_card(request):
         messages.error(request, str(error))
         return redirect("payments:pay")
     return redirect(url)
+
+
+@login_required
+@require_POST
+def pay_with_direct_debit(request):
+    """A one-off Direct Debit from the member's mandate (04 §4.2)."""
+    from apps.billing.gocardless import GoCardlessError
+
+    member = request.user
+    key = request.POST.get("item", "")
+    if key == "top-up":
+        form = TopUpForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, " ".join(form.errors["amount"]))
+            return redirect(BACK.get(request.POST.get("back"), "payments:pay"))
+        amount = form.cleaned_data["amount"]
+        item = checkout.Payable(CardCheckout.Purpose.TOP_UP, "Credit top-up", amount, f"top-up-{amount}")
+    else:
+        item = checkout.find_payable(member, key)
+        if item is None:
+            messages.error(request, "That doesn't need paying any more.")
+            return redirect("payments:pay")
+    try:
+        checkout.pay_by_direct_debit(
+            member,
+            purpose=item.purpose,
+            amount_pence=item.amount_pence,
+            label=item.label,
+            key=item.key,
+            equipment=item.equipment,
+            charge=item.charge,
+        )
+    except checkout.DirectDebitUnavailable as error:
+        messages.error(request, str(error))
+        return redirect("payments:pay")
+    except GoCardlessError:
+        messages.error(request, "We couldn't reach GoCardless just now. Please try again in a few minutes.")
+        return redirect("payments:pay")
+    messages.success(
+        request,
+        f"{item.label}: we've asked for it by Direct Debit. It leaves your bank account in a few working days.",
+    )
+    return redirect(AFTER.get(item.purpose, "payments:pay"))
 
 
 @login_required

@@ -4,7 +4,9 @@
 {% block content %}
 <h1>Pay</h1>
 <p>You have <strong>{{ balance|pounds }}</strong> in credit. Card payments go through Stripe: your card details
-  never reach {{ SITE_NAME }}.</p>
+  never reach {{ SITE_NAME }}.
+  {% if has_direct_debit %}Direct Debit payments come from the account you pay your subscription from, and take a few
+  working days.{% else %}<a href="{% url 'billing:payment' %}">Set up a Direct Debit</a> to pay that way too.{% endif %}</p>
 
 {% if items %}
   <table class="table">
@@ -17,6 +19,10 @@
           <td class="actions">
             <form method="post" action="{% url 'payments:pay-card' %}">{% csrf_token %}
               <input type="hidden" name="item" value="{{ item.key }}"><button type="submit">Pay by card</button></form>
+            {% if has_direct_debit %}
+              <form method="post" action="{% url 'payments:pay-direct-debit' %}">{% csrf_token %}
+                <input type="hidden" name="item" value="{{ item.key }}"><button type="submit">Pay by Direct Debit</button></form>
+            {% endif %}
             <form method="post" action="{% url 'payments:pay-credit' %}">{% csrf_token %}
               <input type="hidden" name="item" value="{{ item.key }}">
               <button type="submit"{% if balance < item.amount_pence %} disabled title="Not enough credit"{% endif %}>Pay from credit</button></form>

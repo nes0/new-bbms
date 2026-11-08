@@ -11,6 +11,7 @@ urlpatterns = [
     path("pay/card/done/", views.card_done, name="card-done"),
     path("pay/card/cancelled/", views.card_cancelled, name="card-cancelled"),
     path("pay/credit/", views.pay_with_credit, name="pay-credit"),
+    path("pay/direct-debit/", views.pay_with_direct_debit, name="pay-direct-debit"),
     # Stripe calls this (spec 04 §4.3).
     path("stripe/webhook", views.stripe_webhook, name="stripe-webhook"),
     # Stands in for Stripe's Checkout page when developing without a key (DEBUG only).

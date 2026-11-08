@@ -4,6 +4,7 @@
   <input type="hidden" name="item" value="top-up">
   {% if back %}<input type="hidden" name="back" value="{{ back }}">{% endif %}
   <label>Amount (£) <input type="number" name="amount" min="0" step="0.01" required></label>
-  <span class="hint">By card, between {{ top_up_low|pounds }} and {{ top_up_high|pounds }}.</span>
+  <span class="hint">Between {{ top_up_low|pounds }} and {{ top_up_high|pounds }}.</span>
   <button type="submit">Top up by card</button>
+  {% if has_direct_debit %}<button type="submit" formaction="{% url 'payments:pay-direct-debit' %}">Top up by Direct Debit</button>{% endif %}
 </form>
