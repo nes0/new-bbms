@@ -224,7 +224,9 @@ while building (change them in the code if the trustees decide otherwise):
   events again"), Direct Debit set-ups, and billing fields on the member's page. A subscription paid in cash is
   recorded with "Record a payment" and pays the oldest unpaid charge (or one dated today).
 
-Still to build: card payments (Stripe), the standing-order statement import (04 §4.6), self-service locker renting
+Card payments (Stripe) are built (04 §4.3): a due or failed charge can be paid by card from `/account/payment/`.
+
+Still to build: the standing-order statement import (04 §4.6), self-service locker renting
 with its first pro-rata payment (06 §6.2), shadow-site comparisons (08), and a heartbeat alert per job.
 
 ## 3.7 Changing a subscription

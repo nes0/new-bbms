@@ -15,3 +15,4 @@ media/
 # cloned here so tests/door_compat can run it.
 BBMSDoorEntry/
 .fake-gocardless.json
+.fake-stripe.json

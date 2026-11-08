@@ -257,21 +257,36 @@ def locked_rows(payment_id):
 # --- paying a charge another way ---
 
 
+def charge_amount(charge: Charge) -> int | None:
+    """What a member pays for a charge now: its billed amount, or what it would be billed."""
+    return charge.amount_pence or amount_for(charge)
+
+
 @transaction.atomic
-def pay_charge_from_credit(charge: Charge, today: date) -> Payment:
-    """The member pays a due or failed charge from their credit (account page). Raises InsufficientCredit."""
+def pay_charge(charge: Charge, source, today: date, *, amount_pence=None, **fields) -> Payment:
+    """The member pays a due or failed charge themselves: from credit (raises InsufficientCredit) or by card.
+
+    `amount_pence` is what a card payment actually charged.
+    """
     charge = Charge.objects.select_for_update(of=("self",)).select_related("member", "rental__locker").get(pk=charge.pk)
     if charge.status not in Charge.UNPAID:
         raise ValueError("That charge isn't waiting to be paid.")
-    amount = charge.amount_pence or amount_for(charge)
+    amount = amount_pence or charge_amount(charge)
     if not amount:
         raise ValueError("That charge has no amount.")
     if charge.amount_pence != amount:
         charge.amount_pence = amount
         charge.save(update_fields=["amount_pence"])
-    payment = services.pay_from_credit(charge.member, charge.reason, amount, charge=charge, reference=_ref(charge))
+    payment = services.pay(
+        charge.member, charge.reason, source, amount, charge=charge, reference=_ref(charge), **fields
+    )
     membership.charge_paid(charge, today)
     return payment
+
+
+def pay_charge_from_credit(charge: Charge, today: date) -> Payment:
+    """The member pays a due or failed charge from their credit (account page). Raises InsufficientCredit."""
+    return pay_charge(charge, Payment.Source.BALANCE, today)
 
 
 @transaction.atomic

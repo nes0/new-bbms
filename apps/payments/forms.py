@@ -150,3 +150,18 @@ class WithdrawalRequestForm(forms.ModelForm):
         if commit:
             request.save()
         return request
+
+
+class TopUpForm(forms.Form):
+    """How much to add to credit by card. The limits are settings (04 §4.3)."""
+
+    amount = PoundsField(label="Amount (£)")
+
+    def clean_amount(self):
+        from .checkout import top_up_limits
+
+        pence = to_pence(self.cleaned_data["amount"])
+        low, high = top_up_limits()
+        if not low <= pence <= high:
+            raise forms.ValidationError(f"Between £{low / 100:.2f} and £{high / 100:.2f}, please.")
+        return pence

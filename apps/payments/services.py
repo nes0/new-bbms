@@ -63,8 +63,11 @@ def pay(member, reason, source, amount_pence, **fields) -> Payment:
 
 
 @transaction.atomic
-def pay_induction(member, equipment, source, **fields) -> Payment:
-    """Pay a machine's induction fee: the member then waits for a trainer to sign them off (05 §5.8)."""
+def pay_induction(member, equipment, source, *, amount_pence=None, **fields) -> Payment:
+    """Pay a machine's induction fee: the member then waits for a trainer to sign them off (05 §5.8).
+
+    `amount_pence` is only for a card payment, which records what the member was actually charged at checkout.
+    """
     from apps.equipment.models import Induction
 
     if not equipment.induction_fee_pence:
@@ -73,7 +76,7 @@ def pay_induction(member, equipment, source, **fields) -> Payment:
         member,
         Payment.Reason.INDUCTION,
         source,
-        equipment.induction_fee_pence,
+        amount_pence or equipment.induction_fee_pence,
         reference=equipment.induction_key,
         **fields,
     )
@@ -84,14 +87,21 @@ def pay_induction(member, equipment, source, **fields) -> Payment:
     return payment
 
 
-def pay_key_deposit(member, source, **fields) -> Payment:
+def pay_key_deposit(member, source, *, amount_pence=None, **fields) -> Payment:
     # TODO(members): record the deposit on the member (key issued date, number, returned) (02 §2.2).
-    return pay(member, Payment.Reason.KEY_DEPOSIT, source, prices.key_deposit_pence(), **fields)
+    amount = amount_pence or prices.key_deposit_pence()
+    return pay(member, Payment.Reason.KEY_DEPOSIT, source, amount, **fields)
 
 
-def pay_box_fee(member, source, **fields) -> Payment:
+def pay_box_fee(member, source, *, amount_pence=None, **fields) -> Payment:
     # TODO(storage app): set the member's "box paid" flag, date and payment (06 §6.2).
-    return pay(member, Payment.Reason.STORAGE_BOX, source, prices.box_fee_pence(), reference="box", **fields)
+    amount = amount_pence or prices.box_fee_pence()
+    return pay(member, Payment.Reason.STORAGE_BOX, source, amount, reference="box", **fields)
+
+
+def has_paid(member, reason) -> bool:
+    """Whether the member has a paid (or pending) payment for a one-off reason, e.g. the key deposit."""
+    return member.payments.filter(reason=reason, status__in=(Payment.Status.PAID, Payment.Status.PENDING)).exists()
 
 
 @transaction.atomic

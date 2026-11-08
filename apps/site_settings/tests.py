@@ -22,6 +22,8 @@ DEFAULTS = {
     "minimum_subscription_pounds": "25",
     "key_deposit_pounds": "15.00",
     "box_fee_pounds": "15.00",
+    "top_up_minimum_pounds": "5.00",
+    "top_up_maximum_pounds": "200.00",
     "minimum_session_minutes": "15",
     "machine_credit_limit_pounds": "5.00",
     "reader_check_in_seconds": "300",

@@ -35,7 +35,11 @@ The membership system for Build Brighton: members, payments, door and machine ac
   subscription and **locker rent charges**, billed together on the payment day; the GoCardless webhook
   (`/gocardless/webhook`); failed Direct Debits retried as the settings say; suspension and leaving; billing emails.
   The scheduled jobs are below. Without a GoCardless token, development uses a fake (`/dev/gocardless/payments/`
-  plays GoCardless's part).
+  plays GoCardless's part);
+- **card payments** through Stripe Checkout, and **one-off Direct Debits**: the member's Pay page (`/pay/`) for
+  induction fees, the key deposit, the box fee and unpaid charges (by card, Direct Debit or from credit), and
+  top-ups by card or Direct Debit on the credit page. Without a Stripe key,
+  development uses a fake checkout page (`/dev/stripe/…`).
 
 ## What's in this repository
 

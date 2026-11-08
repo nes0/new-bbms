@@ -14,7 +14,7 @@ from django.urls import path, reverse
 from . import services
 from .credit import credit_pence
 from .forms import RecordPaymentForm
-from .models import Payment, WithdrawalRequest
+from .models import CardCheckout, Payment, StripeEvent, WithdrawalRequest
 from .templatetags.money import pounds
 
 
@@ -120,3 +120,39 @@ class WithdrawalRequestAdmin(admin.ModelAdmin):
         for withdrawal in queryset.filter(status=WithdrawalRequest.Status.REQUESTED):
             services.reject_withdrawal(withdrawal, request.user)
             messages.info(request, f"{withdrawal.member}: rejected. Add a note to say why.")
+
+
+class _ReadOnly(admin.ModelAdmin):
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(CardCheckout)
+class CardCheckoutAdmin(_ReadOnly):
+    """Card payments through Stripe Checkout (04 §4.3): what was started, and what Stripe said."""
+
+    list_display = ("created_at", "member", "purpose", "amount_display", "status", "note")
+    list_filter = ("status", "purpose")
+    search_fields = ("member__email", "member__given_name", "member__family_name", "session_id")
+    list_select_related = ("member",)
+
+    @admin.display(description="Amount", ordering="amount_pence")
+    def amount_display(self, checkout):
+        return pounds(checkout.amount_pence)
+
+
+@admin.register(StripeEvent)
+class StripeEventAdmin(_ReadOnly):
+    list_display = ("received_at", "type", "object_id", "outcome", "has_error")
+    list_filter = ("type",)
+    search_fields = ("event_id", "object_id")
+
+    @admin.display(description="Failed", boolean=True)
+    def has_error(self, event):
+        return bool(event.error)

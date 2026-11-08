@@ -153,3 +153,59 @@ class WithdrawalRequest(models.Model):
 
     def __str__(self):
         return f"{self.member} · £{self.amount_pence / 100:.2f} · {self.get_status_display()}"
+
+
+class CardCheckout(models.Model):
+    """A member paying by card through Stripe Checkout (04 §4.3).
+
+    The amount is worked out by BBMS when the checkout starts, never taken from the browser. The payment is
+    recorded when Stripe says it's paid (its webhook, or the member's return to BBMS, whichever comes first).
+    """
+
+    class Purpose(models.TextChoices):
+        TOP_UP = "top-up", "Credit top-up"
+        INDUCTION = "induction", "Induction fee"
+        KEY_DEPOSIT = "key-deposit", "Key deposit"
+        STORAGE_BOX = "storage-box", "Box fee"
+        CHARGE = "charge", "Subscription or locker rent"
+
+    class Status(models.TextChoices):
+        OPEN = "open", "Waiting for the member to pay"
+        PAID = "paid", "Paid"
+        EXPIRED = "expired", "Not paid (expired or abandoned)"
+
+    member = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="card_checkouts")
+    purpose = models.CharField(max_length=20, choices=Purpose.choices)
+    amount_pence = models.PositiveIntegerField()
+    equipment = models.ForeignKey("equipment.Equipment", on_delete=models.PROTECT, null=True, blank=True)
+    charge = models.ForeignKey("billing.Charge", on_delete=models.PROTECT, null=True, blank=True)
+    session_id = models.CharField("Stripe Checkout session", max_length=255, unique=True, null=True, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
+    created_at = models.DateTimeField(default=timezone.now)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    payment = models.OneToOneField(Payment, on_delete=models.PROTECT, null=True, blank=True, related_name="checkout")
+    note = models.CharField(max_length=255, blank=True, help_text="E.g. why the money went to credit instead.")
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.get_purpose_display()} £{self.amount_pence / 100:.2f} by card · {self.get_status_display()}"
+
+
+class StripeEvent(models.Model):
+    """A webhook event from Stripe, kept so a repeat is ignored and a failure can be looked at."""
+
+    event_id = models.CharField(max_length=255, unique=True)
+    type = models.CharField(max_length=100)
+    object_id = models.CharField(max_length=255, blank=True)
+    received_at = models.DateTimeField(default=timezone.now)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    outcome = models.CharField(max_length=255, blank=True)
+    error = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-received_at"]
+
+    def __str__(self):
+        return f"{self.type} {self.object_id}"
