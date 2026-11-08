@@ -3,6 +3,7 @@ from decimal import Decimal
 from django import forms
 from django.contrib import admin
 from django.core.exceptions import ValidationError
+from django.db import models
 from django.shortcuts import redirect
 from django.urls import reverse
 
@@ -16,12 +17,20 @@ def _pounds_name(pence_name):
     return pence_name.removesuffix("_pence") + "_pounds"
 
 
+def _formfield(model_field, **kwargs):
+    # Web addresses typed without a scheme are taken as https:// (Django 6's default; silences its warning).
+    if isinstance(model_field, models.URLField):
+        kwargs.setdefault("assume_scheme", "https")
+    return model_field.formfield(**kwargs)
+
+
 class SiteSettingsForm(forms.ModelForm):
     """Money is stored in pence (01 §1.5) but entered in pounds; everything else is the model's own field."""
 
     class Meta:
         model = SiteSettings
         fields = OTHER_FIELDS
+        formfield_callback = _formfield
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -56,6 +65,7 @@ class SiteSettingsForm(forms.ModelForm):
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(admin.ModelAdmin):
     form = SiteSettingsForm
+    formfield_overrides = {models.URLField: {"assume_scheme": "https"}}
     fieldsets = [
         (title, {"fields": [_pounds_name(n) if n in PENCE_FIELDS else n for n in names]})
         for title, names in SiteSettings.GROUPS
