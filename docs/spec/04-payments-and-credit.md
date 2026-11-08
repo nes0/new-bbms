@@ -18,7 +18,7 @@
 | `balance` | any | Adds to member credit (top-up). |
 | `equipment-fee` | computed | Taken from credit when a session ends (05 §5.4, §5.6). If an admin later adjusts the session's times, a correcting `equipment-fee` entry (a refund or an extra charge) is added; the original is never edited. |
 | `withdrawal` | any | Credit paid out (cash) by an admin. |
-| `donation` | any | Legacy only: unmatched PayPal money. Kept in migrated history; can be refunded to a member's credit. |
+| `donation` | any | PayPal money from someone BBMS can't match to a member (4.4). Finance can assign it to a member or refund it to their credit. |
 | `costs`, consumable service names | any | Deducted from credit. |
 
 **Decided:** the key deposit and box fee are admin-editable **settings** (02 §2.8) and locker rents come from the default rents per size and location (06 §6.2), not code. The amount charged is always worked out **on the server** from the reason and these settings, never taken from the browser.
@@ -29,6 +29,7 @@
 |---|---|
 | `gocardless-variable` | App creates a GoCardless *payment* against the member's mandate (subscription billing, or member clicks "pay by DD"). Status starts `pending`, updated by webhook. |
 | `stripe` | Card payment via Stripe Checkout/token; recorded `paid` immediately with fee = 2.4% + 20p (estimated, hard-coded). |
+| `paypal` | PayPal subscription payment or credit top-up, recorded when PayPal's IPN says it's completed, with PayPal's fee (4.4). |
 | `balance` | Spent from member credit. |
 | `cash` | Admin records cash received. |
 | `standing-order` | Bank statement import (finance). |
@@ -39,12 +40,13 @@
 
 | Payment for | Allowed methods |
 |---|---|
+| Subscription (monthly) | Direct Debit, credit, standing order, **PayPal subscription** (4.4) |
 | Subscription (when there's a problem) | GoCardless, Stripe, credit |
 | Induction fee | GoCardless, credit, Stripe |
 | Key deposit | GoCardless, Stripe, credit |
 | Box fee | GoCardless, credit, Stripe |
 | Locker rent (monthly) | GoCardless (Direct Debit mandate), credit |
-| Credit top-up | GoCardless, Stripe |
+| Credit top-up | GoCardless, Stripe, **PayPal** (4.4) |
 | Equipment fees | credit |
 
 **Paying from credit** is refused if it would take credit below the allowed minimum: **£0** for everything,
@@ -134,16 +136,103 @@ Built in `apps/payments` (`checkout.py` for the rules, `cards.py` for Stripe). C
 - **Top-ups** (by card or Direct Debit) are limited by two settings: £5 to £200 to start with (the providers'
   fixed fees make small top-ups costly).
 - What can be paid where follows the table in 4.1: charges that are due or failed, induction fees, the key deposit
-  (trusted members), the box fee, and top-ups (card only). Paying from credit is refused below £0.
+  (trusted members), the box fee, and top-ups (not from credit; PayPal top-ups are in 4.4). Paying from credit is refused below £0.
 - Without `STRIPE_SECRET_KEY`, development and tests use a fake (`/dev/stripe/…`), and a live site says card
   payments aren't available.
 - Refunds are done in Stripe's dashboard and recorded by an admin for now; BBMS logs `charge.refunded` events but
   doesn't act on them.
 
-## 4.4 PayPal — dropped
+## 4.4 PayPal (kept; decided 2026-11-08)
 
-Not rebuilt (decided 2026-11-05). Historic PayPal payments are migrated as ledger history. Before cutover, check
-whether any member still pays by PayPal and move them to Direct Debit or standing order (08).
+PayPal stays for two things: a **monthly subscription** (for members without a UK bank account: it costs the space
+more than Direct Debit, so the pages say Direct Debit is preferred) and **credit top-ups**. Fees and charges aren't
+paid by PayPal directly; a member tops up credit and pays from it. (Reverses the 2026-11-05 decision to drop it.)
+
+### How legacy does it (`PaypalIPNController`)
+- The member's account page has a PayPal **subscribe button** (`_xclick-subscriptions`, monthly, for their
+  `monthly_subscription`). PayPal tells BBMS about payments by **IPN** at `POST /paypal-ipn`.
+- `subscr_payment` with status `Completed`: the member is found by `payer_email` = their email or
+  `secondary_email`. A `left` member is rejoined; a `setting-up` member gets payment method `paypal`, payment day
+  today and a first charge. If a charge is open, the payment is a `subscription` payment for it, otherwise a credit
+  top-up. Other statuses are only logged.
+- No member found: recorded as a `donation` with no member, and the payer (cc the trustees) is emailed "Unknown
+  PayPal payment received", asking them to add their PayPal address to their account.
+- `subscr_cancel`: if the member still pays by PayPal, they start leaving.
+- Leaving in BBMS doesn't cancel the PayPal subscription; the member is told to cancel it at PayPal.
+- Grace period 7 days (03 §3.5). Fees come from PayPal (`mc_fee`), so they're real.
+- There are no one-off PayPal top-ups: credit only comes from a subscription payment with no open charge.
+
+### What the new system does
+**A new PayPal account** (decided 2026-11-08): the space switches to a brand-new PayPal account at cutover. A
+PayPal subscription belongs to the account it was made with, so the members paying by PayPal today **re-subscribe**
+to the new account from BBMS, then cancel the old subscription (08).
+
+**Integration.** PayPal's **subscribe and "buy now" buttons with IPN** at `/paypal-ipn`. No PayPal API credentials
+are needed: BBMS only builds the buttons and checks IPNs. Each button sets its own `notify_url`, so nothing needs
+setting in the PayPal account. ⚠️ Check when opening the new account that it can still use subscribe buttons and
+IPN (PayPal calls them older products). If not, use PayPal's REST Subscriptions and Orders APIs with webhooks
+instead; the rules below stay the same.
+
+**Every IPN**:
+- is **verified with PayPal** first (sent back with `cmd=_notify-validate`); anything not `VERIFIED` is refused
+  and logged, and nothing is recorded;
+- must be to the space's PayPal account (`PAYPAL_ACCOUNT_EMAIL`, or during the switch one of
+  `PAYPAL_OLD_ACCOUNT_EMAILS`; see below) and in GBP, or it's kept for a person to look at;
+- is stored, and a repeat (same `txn_id` and `payment_status`, or the same `ipn_track_id`) is ignored; stored IPNs
+  are handled in order, and one that fails is kept with its error for review, like GoCardless events (4.2). A
+  payment is recorded once per `txn_id`.
+
+**Finding the member**, in this order: the PayPal subscription id stored on the member (`subscr_id`); the `custom`
+field (a signed member reference that BBMS puts on every button it builds); the payer's email matching the member's
+email or their **PayPal email** (legacy `secondary_email`, kept and editable on the account page). The first match
+stores the `subscr_id` on the member, so later payments don't depend on the email.
+
+**Subscription** (`txn_type`):
+| PayPal says | Effect |
+|---|---|
+| `subscr_signup` | Store `subscr_id`. A `setting-up` or `left` (rejoining, 03 §3.8) member gets payment method `paypal` and payment day today (the 1st after the 28th), and is *activated* (03 §3.4); the first charge is due today. |
+| `subscr_payment`, `Completed` | Recorded as source `paypal` with PayPal's fee. It pays the member's oldest `due` or `failed` subscription charge (amount: what PayPal took); if none is waiting, it goes to **credit** (PayPal sometimes pays a day or two before the charge date). If no `subscr_signup` was seen, the first payment sets the member up as above. |
+| `subscr_payment`, `Pending` | Logged; PayPal sends `Completed` later (same `txn_id`). |
+| `subscr_failed` | Logged; the member is emailed that PayPal couldn't take the payment and will try again. PayPal retries by itself; BBMS doesn't. |
+| `subscr_cancel`, `subscr_eot` | If the member still pays by PayPal, they start **leaving** (03 §3.8): access until their paid-until date. Otherwise logged only. |
+
+**Billing a PayPal payer** (03 §3.6): charges are created as for everyone. At the nightly run, a due charge is taken
+from credit if there's enough (that's where an early PayPal payment went); otherwise it waits for PayPal, with no
+"credit too low" email. The usual grace period (7 days, a setting) and suspension rules apply after that.
+
+**Amount.** A PayPal subscription is for a fixed amount, set when the member subscribes. Changing the monthly amount
+(03 §3.7) means a new PayPal subscription: BBMS shows a new subscribe button and tells the member to cancel the old
+one at PayPal. A charge is paid with what PayPal actually took.
+
+**Top-ups.** The credit page and the Pay page get **"Top up by PayPal"**: a one-off PayPal payment (`_xclick`, GBP)
+for an amount the member chooses within the top-up limits (4.3), with `custom` set. The `web_accept` IPN with status
+`Completed` records a `balance` payment from `paypal` for **what PayPal says it took** (`mc_gross`), so editing the
+amount in the browser only changes how much credit is bought. An amount outside the limits is still recorded (the
+money was taken) and logged. The credit shows once PayPal confirms it, not before.
+
+**Refunds and reversals.** A `Refunded` or `Reversed` IPN (with `parent_txn_id`) adds a correcting negative entry
+linked to the original. If the original paid a subscription charge, that charge becomes `failed` (03 §3.6); if it
+was a top-up, the credit goes down (it may go below £0; finance is told). `Canceled_Reversal` undoes the reversal.
+
+**Leaving.** BBMS doesn't cancel a PayPal subscription; the "Leave" page tells PayPal payers to cancel it at PayPal,
+as legacy does. A payment from a member who has **left** is put in their credit and the trustees are told; it doesn't
+rejoin them (legacy did).
+
+**Unknown payers.** No member found: the payment is recorded with no member, reason `donation`, and listed for
+finance to assign to a member (4.8). The payer is emailed (as legacy, without a copy to the trustees' inbox) and
+finance is notified in BBMS.
+
+**Configuration (environment variables, not admin settings, since changing the account is a deployment job):**
+- `PAYPAL_ACCOUNT_EMAIL`: the space's PayPal account (the new one). Every button BBMS shows pays this account, and
+  IPNs must be for it. Unset: PayPal buttons aren't shown and IPNs are refused (development and tests use the fake).
+- `PAYPAL_OLD_ACCOUNT_EMAILS` (optional, comma-separated): accounts whose payments BBMS still **records** but never
+  asks members to pay. For the switch-over: point the old account's IPN URL at the new BBMS, and PayPal payers'
+  old subscriptions keep counting until they've moved. Remove it once they have.
+- `PAYPAL_SANDBOX`: use PayPal's sandbox (buttons and IPN checks) instead of the live site.
+When developing and testing, a fake PayPal page sends BBMS a made-up IPN (like the fakes for Stripe and GoCardless).
+
+**Build status:** not built yet. The import (08) currently imports PayPal payers with no payment method; it should
+keep `paypal` and the PayPal email once this is built.
 
 ## 4.5 Cash & manual (admin)
 

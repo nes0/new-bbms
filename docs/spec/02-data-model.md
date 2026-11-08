@@ -28,7 +28,7 @@ AcsNode (devices)   Settings (key/value)   AuditLog
 |---|---|---|
 | `given_name`, `family_name` | Required. | |
 | `email` | Required, unique. Login identifier. | |
-| `secondary_email` | Optional, unique. Used to match PayPal payments. | **Drop** (PayPal dropped) |
+| `secondary_email` | Optional, unique. Used to match PayPal payments. | Keep, shown as **PayPal email** (04 §4.4). **New:** `paypal_subscription_id` (PayPal's `subscr_id`), stored the first time a PayPal payment is matched |
 | `email_verified` | Set via link `account/confirm-email/{id}/{hash}`. | Use framework's verification |
 | `hash` | Random 30-char string. Used for email confirmation and **photo file names**. | Replace with signed tokens; photo keys use random UUID |
 | `password` | bcrypt. Min 8 chars. | Framework default (argon2/bcrypt) |
@@ -46,7 +46,7 @@ AcsNode (devices)   Settings (key/value)   AuditLog
 | `induction_completed` | Member completed the online general induction / agreed rules. | |
 | `inducted_by` | User id of the `comms` member who confirmed the general induction. | |
 | `rules_agreed` | Timestamp the rules were accepted. | |
-| `payment_method` | `gocardless-variable`, `balance`, `standing-order`, `paypal`, `gocardless` (old), `cash`, `''`. | Enum: `gocardless-variable`, `balance`, `standing-order`, `cash`, none |
+| `payment_method` | `gocardless-variable`, `balance`, `standing-order`, `paypal`, `gocardless` (old), `cash`, `''`. | Enum: `gocardless-variable`, `balance`, `standing-order`, `paypal`, `cash`, none |
 | `secondary_payment_method` | Backup when `balance` is insufficient (only `gocardless-variable`). | |
 | `payment_day` | 1–28 (values > 28 become 1). | |
 | `monthly_subscription` | **Whole pounds**. Min 20 self-service / 5 admin. | Store pence; minimums are settings |
@@ -170,7 +170,7 @@ row a new field whose default is the starting value.
 | Unchecked proofs of identity are deleted after | new; 30 days (03 §3.1), 1–90 days. **Built** |
 | Suspension before a member is marked left | new; 30 days (decided provisionally). **Built** |
 | Failed Direct Debit retries | new; "BBMS retries" (default) or "let GoCardless retry" (Success+); BBMS mode: retries (default 1) and days between (default 5). **Built** |
-| Grace period per payment method | DD 10 days, standing order 6 months (183 days), other 7 days (03 §3.5). **Built** |
+| Grace period per payment method | DD 10 days, standing order 6 months (183 days), other 7 days (03 §3.5). **Built** (PayPal uses "other": 7 days, as legacy) |
 | Minimum billable equipment session | 15 minutes. **Built**. Readers show it, so changing it bumps every machine's `config_version` (09 §9.4) |
 | Allowed negative credit for equipment fees | £5. **Built**, as "credit below zero still allowed to start a machine session": a member can start a charged session while their credit is above −£5. A session that has started is always charged in full (decided 2026-11-07, 04 §4.1) |
 | How often v2 readers check in | new; 5 minutes (05 §5.4: also how quickly a revoked fob reaches readers), 1–60 minutes. **Built** |

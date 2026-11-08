@@ -30,26 +30,42 @@
 | Passwords | Auth | Legacy stores bcrypt (`$2y$…`). Laravel reads these natively; Django needs the hashes prefixed into its `bcrypt$` format (or a small custom hasher) — then members don't need to reset. Prove this with a test during phase 1. |
 | GoCardless mandates | — | Mandates live at GoCardless; just carry `mandate_id`. **Reuse the same GoCardless account** — no re-authorisation needed. |
 
-**Before cutover:** move any member still on old-style GoCardless subscriptions to variable Direct Debit, and any
-PayPal payers to Direct Debit or standing order (both methods are dropped). Records for dropped features (CCTV,
-detected devices) aren't migrated.
+**Before cutover:** move any member still on old-style GoCardless subscriptions to variable Direct Debit (that
+method is dropped). PayPal is kept (04 §4.4, decided 2026-11-08), but with a new account, so PayPal payers subscribe
+again (below). Records for
+dropped features (CCTV, detected devices) aren't migrated.
 
 **Members to move (counted on production, 2026-11-08; counts only).** After cutover the new system doesn't record
-old-style GoCardless or PayPal payments, so these members would be charged from credit or suspended while their old
-payments carry on. 10 active members:
+old-style GoCardless payments, so these members would be charged from credit or suspended while their old payments
+carry on. 5 active members need moving to Direct Debit, and 5 PayPal payers need to subscribe again to the new
+PayPal account:
 
 | Group | Members | Paying now | Before cutover |
 |---|---|---|---|
 | Old-style GoCardless subscription, payment method `gocardless` | 3 | Monthly, through the old subscription | Set up a variable Direct Debit, **then** cancel the old subscription (cancelling first leaves a month unpaid). |
 | Old-style GoCardless subscription, payment method `balance` | 2 | Monthly, through the old subscription (reason `subscription`); nothing taken from credit, so not paying twice today | The same, then set their payment method to Direct Debit. Otherwise the new system takes the subscription from credit as well as GoCardless. |
-| PayPal | 5 | Monthly (3–5 PayPal payments a month over the last year) | Move to Direct Debit or a standing order; the member cancels the PayPal subscription from their own PayPal account. |
+| PayPal | 5 | Monthly (3–5 PayPal payments a month over the last year) | The space moves to a **new PayPal account** at cutover (04 §4.4), so after cutover each one subscribes again from their BBMS payment page (to the new account), **then** cancels the old subscription at PayPal. Until they have, their old-account payments are recorded if the old account is in `PAYPAL_OLD_ACCOUNT_EMAILS` and its IPN URL points at the new BBMS; check each one's PayPal email is on their account so those payments match. |
 
-50 members who have left are still marked `paypal`; they need nothing. A trustee finds who is in each group from
-the live admin (names stay out of the repo), contacts them, and re-runs the counts before cutover: every row should
-be 0. The import also lists any left over, by legacy id. The queries:
+50 members who have left are still marked `paypal`; they need nothing (a payment from one would go to their credit
+and the trustees would be told). A trustee finds who is in each group from the live admin (names stay out of the
+repo), contacts them, and re-runs the counts before cutover: every old-style GoCardless row should be 0.
+
+The import also lists any left over, by legacy id. The queries are below.
+
+**PayPal at cutover** (a new account, 04 §4.4):
+1. Before cutover: open the new PayPal account and check it can use subscribe buttons and IPN. Set
+   `PAYPAL_ACCOUNT_EMAIL` to it, and `PAYPAL_OLD_ACCOUNT_EMAILS` to the old account's email.
+2. At cutover: in the **old** account's settings, point its IPN URL at the new BBMS (`…/paypal-ipn`). Legacy's
+   buttons don't set their own, so the old subscriptions' IPNs go there. PayPal resends an IPN it couldn't deliver
+   for a few days, so a short outage loses nothing.
+3. Ask the PayPal payers to subscribe again from BBMS and then cancel the old subscription. Watch the old account
+   until no subscriptions are left on it.
+4. Then remove `PAYPAL_OLD_ACCOUNT_EMAILS`, move the remaining money and close the old account.
+
+The queries:
 
 ```sql
--- Who is set to a dropped method, and how many still pay that way (last 3 months)
+-- Who pays by old-style GoCardless or PayPal, and how many still pay that way (last 3 months)
 SELECT p.source, u.payment_method AS current_method, u.status, COUNT(DISTINCT p.user_id) AS members
 FROM payments p JOIN users u ON u.id = p.user_id
 WHERE p.source IN ('gocardless', 'paypal') AND p.status = 'paid'
@@ -90,8 +106,9 @@ Choices made in the script (change them there if the trustees decide otherwise):
   legacy system hadn't billed are counted in the report, with what they'd cost.
 - Legacy `402` door entries become check-ins.
 - Equipment charged per gram or per page has its usage cost set to 0 (per hour only), and is listed.
-- Members paying by old-style GoCardless or PayPal are imported with **no payment method** and listed by legacy id:
-  move them to Direct Debit or a standing order before cutover. A payment day after the 28th becomes the 1st.
+- Members paying by old-style GoCardless are imported with **no payment method** and listed by legacy id: move
+  them to Direct Debit before cutover. PayPal payers are imported the same way for now; ⚠️ once PayPal is built
+  (04 §4.4) the import must keep `paypal` and the `secondary_email` (as the PayPal email). A payment day after the 28th becomes the 1st.
 - Subscription charges are imported as they are; a second charge for the same member and date is skipped and
   listed. Charges still `processing` at cutover finish when GoCardless's events arrive, matched through the imported
   payments' GoCardless ids.
