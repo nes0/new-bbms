@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('site_settings', '0011_moodle'),
+        ('site_settings', '0012_trusted_review'),
     ]
 
     operations = [
