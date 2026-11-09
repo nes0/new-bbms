@@ -344,7 +344,9 @@ Built in `apps/access` (`activity.py`, `activity_views.py`). Choices made while 
 - **Settings → Who's in**: the timeout (4 hours), the reset hour (4am) and the public count (off).
 - **Public count** (when on): "N people are in the space now" on the home page for visitors, and
   `GET /occupancy.json` → `{"in_space": N, "as_of": "<time>"}` (any website may fetch it), 404 when off. Never names.
-- Not built yet: the count on the exit reader's screen (09).
+- **On the readers by the door** (built 2026-11-09): entry and exit readers' tap replies carry the count, and
+  `GET occupancy` and `GET photos/{id}` serve the list with photos for a screen by the door (05 §5.4, "Occupancy
+  screen"). Private profiles are counted without a name or photo there.
 
 ## 6.8 Resources and policies
 

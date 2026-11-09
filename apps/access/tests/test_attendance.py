@@ -51,10 +51,13 @@ class VisitTests(TestCase):
         self.assertEqual(record.days, [TODAY, TODAY - timedelta(days=1), TODAY - timedelta(days=3)])
         self.assertEqual((record.first, record.last), (TODAY - timedelta(days=3), TODAY))
 
-    def test_refused_taps_and_tapping_out_dont_count(self):
+    def test_refused_taps_dont_count(self):
         tap(self.kim, TODAY, AccessEvent.Kind.REFUSED)
-        tap(self.kim, TODAY - timedelta(days=1), AccessEvent.Kind.EXIT)
         self.assertEqual(attendance.attendance(self.kim).visits, 0)
+
+    def test_tapping_out_counts_for_someone_let_in_by_another_member(self):
+        tap(self.kim, TODAY, AccessEvent.Kind.EXIT)
+        self.assertEqual(attendance.attendance(self.kim).days, [TODAY])
 
     def test_days_are_uk_days(self):
         # 23:30 UK time in summer is 22:30 UTC: still the same UK day as a tap at noon.

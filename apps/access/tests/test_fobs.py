@@ -188,7 +188,7 @@ class EnrolmentTests(EnrolmentTestCase):
     def test_v2_reader_says_enrolled_with_the_members_name(self):
         enrolment = self.open()
         body = self.v2_tap(TAG.lower()).json()
-        self.assertEqual(body, {"allowed": False, "reason": "enrolled", "display_name": "Nia N."})
+        self.assertEqual(body, {"allowed": False, "reason": "enrolled", "display_name": "Nia N.", "in_space": 0})
         enrolment.refresh_from_db()
         self.assertEqual((enrolment.captured_card_number, enrolment.captured_tag_id), (CARD, TAG))
         # Tapping the same fob again during the window gets the same answer.
