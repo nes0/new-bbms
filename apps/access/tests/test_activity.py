@@ -1,6 +1,7 @@
 """Who's in the space, and the activity page (spec 06 §6.7)."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
+from unittest import mock
 
 from django.test import TestCase
 from django.utils import timezone
@@ -96,7 +97,11 @@ class PageTests(TestCase):
         self.sam = member(given_name="Sam", family_name="Ray", status=Member.Status.LEAVING)
 
     def test_who_is_in_and_the_day(self):
-        now = timezone.now()
+        # Midday, so the taps below are all today whenever the tests run (just after midnight they weren't).
+        now = timezone.make_aware(datetime.combine(timezone.localdate(), time(12, 0)))
+        clock = mock.patch("django.utils.timezone.now", return_value=now)
+        clock.start()
+        self.addCleanup(clock.stop)
         tap(self.kim, ENTRY, now - timedelta(minutes=30))
         tap(self.sam, CHECK_IN, now - timedelta(minutes=20), delayed=True)
         tap(self.sam, REFUSED, now - timedelta(minutes=10), reason="not a keyholder")

@@ -28,7 +28,7 @@ def what_choices():
         ("subscription", "Monthly subscription (pays what's owed, or a month from today)"),
         ("topup", "Credit top-up (cash received)"),
         ("withdrawal", "Cash paid out of the member's credit"),
-        ("induction", "Induction fee"),
+        ("induction", "Equipment access fee"),
         ("key-deposit", f"Key deposit (£{prices.key_deposit_pence() / 100:.2f})"),
         ("storage-box", f"Box fee (£{prices.box_fee_pence() / 100:.2f})"),
     ]
@@ -52,12 +52,12 @@ class RecordPaymentForm(forms.Form):
     paid_how = forms.ChoiceField(
         choices=PAID_HOW,
         required=False,
-        help_text="For subscriptions, induction fees, key deposits and box fees.",
+        help_text="For subscriptions, equipment access fees, key deposits and box fees.",
     )
     equipment = forms.ModelChoiceField(
         queryset=Equipment.objects.filter(archived=False, induction_fee_pence__gt=0),
         required=False,
-        help_text="For induction fees: the machine (its fee is used).",
+        help_text="For equipment access fees: the machine (its fee is used).",
     )
     amount = PoundsField(required=False, label="Amount (£)", help_text="For top-ups and withdrawals only.")
     note = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 2}))

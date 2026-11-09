@@ -1,0 +1,18 @@
+{% load money %}{% if rows %}
+<div class="scroll">
+  <table class="table">
+    <thead><tr><th>Machine</th><th>Where</th><th>Cost to use</th><th>You</th></tr></thead>
+    <tbody>
+      {% for machine, state in rows %}
+        <tr>
+          <td><a href="{% url 'equipment:detail' machine.slug %}">{{ machine.name }}</a>
+            {% if machine.status == "out_of_order" %} <strong class="error">Out of order</strong>{% endif %}</td>
+          <td>{{ machine.room|default:"—" }}</td>
+          <td class="nowrap">{% if machine.usage_cost_pence_per_hour %}{{ machine.usage_cost_pence_per_hour|pounds }} an hour{% else %}Free{% endif %}</td>
+          <td>{% include "equipment/_state.html" %}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}<p>None.</p>{% endif %}

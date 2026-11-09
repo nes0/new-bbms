@@ -1,10 +1,12 @@
 from django import forms
 from django.contrib import admin, messages
+from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import format_html
 
 from apps.payments import services
 
-from . import notices, rules
+from . import lifetime, notices, rules
 from .models import Equipment, Induction, MachineStatusChange, ServiceRecord, TrainingCompletion, UsageSession
 
 
@@ -31,6 +33,7 @@ class MachineStatusChangeInline(admin.TabularInline):
 @admin.register(Equipment)
 class EquipmentAdmin(admin.ModelAdmin):
     list_display = ("name", "slug", "status", "requires_induction", "usage_cost_pence_per_hour", "team", "archived")
+    actions = ["retire"]
     list_filter = ("status", "requires_induction", "archived", "team")
     search_fields = ("name", "slug", "asset_tag_id")
     prepopulated_fields = {"slug": ("name",)}
@@ -78,9 +81,10 @@ class EquipmentAdmin(admin.ModelAdmin):
                     "serial_number",
                     "asset_tag_id",
                     "permaloan_member",
+                    "purchase_price_pence",
                     "obtained_at",
-                    "removed_at",
                     "archived",
+                    "removed_at",
                     "legacy_id",
                 ),
             },
@@ -93,6 +97,38 @@ class EquipmentAdmin(admin.ModelAdmin):
         "service_due_display",
         "config_version",
     )
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = {**(extra_context or {}), "retired_url": reverse("equipment:retired")}
+        return super().changelist_view(request, extra_context)
+
+    @admin.action(description="Retire the selected equipment (disposed of): keeps its history for review")
+    def retire(self, request, queryset):
+        today = timezone.localdate()
+        count = 0
+        for machine in queryset.filter(archived=False):
+            machine.archived = True
+            machine.removed_at = machine.removed_at or today
+            machine.save(update_fields=["archived", "removed_at"])
+            count += 1
+        self.message_user(
+            request,
+            format_html(
+                'Retired {} machine(s). <a href="{}">Review retired equipment</a>.', count, reverse("equipment:retired")
+            ),
+        )
+
+    def has_delete_permission(self, request, obj=None):
+        # Removing equipment means retiring it: deleting would lose its sessions, training and money (05 §5.7).
+        # Only something added by mistake, with no history, can be deleted.
+        if obj is not None and lifetime.has_history(obj):
+            return False
+        return super().has_delete_permission(request, obj)
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        actions.pop("delete_selected", None)  # it would skip the history check above
+        return actions
 
     @admin.display(description="Running hours (total)")
     def total_hours(self, equipment):

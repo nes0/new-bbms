@@ -126,7 +126,7 @@ class MachineTeamTests(TestCase):
         rules.notify_team(machine, "Kim reported Red laser out of order.")
         (notification,) = Notification.objects.all()
         self.assertEqual(notification.member, team_member)
-        self.assertIn("/admin/equipment/equipment/", notification.url)
+        self.assertEqual(notification.url, "/equipment/laser/")  # the machine's page (05 §5.7)
 
     def test_a_machine_with_no_team_tells_the_admins(self):
         machine = laser(team=None)

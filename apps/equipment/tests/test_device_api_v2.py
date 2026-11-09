@@ -12,6 +12,7 @@ from apps.access.tests.test_api_v2 import V2TestCase
 from apps.equipment import rules
 from apps.equipment.models import Equipment, MachineStatusChange, MeterReading, ServiceRecord, UsageSession
 from apps.equipment.tests.helpers import laser, member, trained
+from apps.notifications.models import Notification
 
 
 class MachineTestCase(V2TestCase):
@@ -220,6 +221,20 @@ class MachineStatusTests(MachineTestCase):
         session_id = self.start()
         self.call(self.reader, f"sessions/{session_id}/end", {"ended_by": "button"})
         self.assertEqual(self.report(session_id)["reason"], "not_tapped_in")
+
+    def test_the_button_cant_give_a_reason_so_whoever_pressed_it_is_asked_for_one(self):
+        team_member = member()
+        team_member.groups.add(Group.objects.get(name="laser"))
+        self.report(self.start(), note="")
+        to_team = Notification.objects.get(member=team_member)
+        self.assertIn("reported Red laser out of order. No reason given yet.", to_team.message)
+        asked = Notification.objects.get(member=self.kim)
+        self.assertIn("Please tell its team what's wrong", asked.message)
+        self.assertEqual(asked.url, "/equipment/laser/#report")
+
+    def test_a_reader_that_sends_a_reason_doesnt_ask(self):
+        self.report(self.start(), note="Bent")
+        self.assertFalse(Notification.objects.filter(member=self.kim).exists())
 
     def test_bad_status_is_400(self):
         response = self.call(self.reader, "machine-status", {"status": "on_fire", "session_id": 1})

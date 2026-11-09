@@ -9,7 +9,7 @@
 
   {% for row in rows %}
     <div class="card">
-      <h2>{% for machine in row.machines %}{{ machine.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</h2>
+      <h2>{% for machine in row.machines %}<a href="{% url 'equipment:detail' machine.slug %}">{{ machine.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</h2>
       {% if row.completion %}
         <p class="ok">You finished the course on {{ row.completion.completed_at|date:"j F Y" }}.
           {% if row.signed_off %}You're signed off on {% if row.machines|length > 1 %}these machines{% else %}this machine{% endif %}.
@@ -24,7 +24,7 @@
             </form>
           {% endif %}
         </p>
-        {% if row.signed_off %}<p class="hint">You were signed off on {% if row.machines|length > 1 %}these machines{% else %}this machine{% endif %} before the course was needed, so you keep your access.</p>{% endif %}
+        {% if row.kept %}<p class="hint">You were signed off on {% if row.machines|length > 1 %}these machines{% else %}this machine{% endif %} before the course was needed, so you keep your access.</p>{% endif %}
       {% endif %}
     </div>
   {% empty %}

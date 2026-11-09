@@ -69,7 +69,7 @@ def payables(member) -> list[Payable]:
         if machine.induction_key in paid_categories or machine.induction_key in seen:
             continue
         seen.add(machine.induction_key)
-        label = f"Induction: {machine.name}"
+        label = f"Access fee: {machine.name}"
         items.append(Payable(Purpose.INDUCTION, label, machine.induction_fee_pence, f"induction:{machine.pk}", machine))
     return items
 
