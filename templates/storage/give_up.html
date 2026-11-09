@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Give up a locker · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Give up {{ rental.locker }}</h1>
+  <p>Rent stops from today. Rent you've already paid isn't refunded. Please empty the locker and leave it unlocked;
+    the storage team will check it.</p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="danger">Give it up</button>
+  </form>
+  <p><a href="{% url 'storage:lockers' %}">Keep it</a></p>
+{% endblock %}

@@ -1,0 +1,7 @@
+{% autoescape off %}{{ site_name }}: the rent for {{ locker }} is changing
+Hello {{ member.given_name }},
+
+The rent for {{ locker }} is changing from {{ old }} to {{ new }} a month.{% if lower %} The lower rent applies from your next payment.{% else %} You'll pay the new rent from your first payment on or after {{ starts|date:"j F Y" }}.{% endif %}
+
+If you'd rather give the locker up, go to {{ site_url }}/lockers/. Rent stops from that day.
+{% endautoescape %}

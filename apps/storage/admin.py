@@ -81,15 +81,15 @@ class LockerRentAdmin(admin.ModelAdmin):
         old = LockerRent.objects.filter(pk=obj.pk).values_list("monthly_rent_pence", flat=True).first()
         super().save_model(request, obj, form, change)
         if old != obj.monthly_rent_pence:
-            rules.log_default_rent_change(obj, old, request.user, form.cleaned_data.get("reason", ""))
-            if (
-                change
-                and rules.LockerRental.objects.filter(
-                    locker__location=obj.location_id, locker__size=obj.size_id, ended_at__isnull=True
-                ).exists()
-            ):
-                # ❓ 06 §6.2: existing renters should be told before they pay a new rent (suggested 30 days).
-                messages.warning(request, "Members renting these lockers now will pay the new rent.")
+            counts = rules.default_rent_changed(obj, old, request.user, form.cleaned_data.get("reason", ""))
+            if counts["raised"]:
+                messages.warning(
+                    request,
+                    f"{counts['raised']} member(s) renting these lockers have been emailed: they pay the new rent "
+                    f"from {rules.NOTICE_DAYS} days from today.",
+                )
+            if counts["lowered"]:
+                messages.info(request, f"{counts['lowered']} member(s) renting these lockers pay the lower rent now.")
 
 
 # --- lockers ---
@@ -184,7 +184,10 @@ class LockerRentalInline(admin.TabularInline):
 
 def _rent_label(rental):
     text = pounds(rules.rental_rent_pence(rental))
-    return f"{text} (override)" if rental.rent_override_pence is not None else text
+    if rental.rent_override_pence is not None:
+        return f"{text} (override)"
+    upcoming = rules.upcoming_rent(rental)
+    return f"{text} ({pounds(upcoming[0])} from {upcoming[1]:%d %b %Y})" if upcoming else text
 
 
 @admin.register(Locker)

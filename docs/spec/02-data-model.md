@@ -129,7 +129,9 @@ AcsNode (devices)   Settings (key/value)   AuditLog
   (location, size, default monthly rent in pence; one per location and size); `Locker` (location, number, size,
   availability: available / reserved for trustees / out of use + note, advertised rent override in pence + reason,
   retired; "rented" is worked out from an open rental); `LockerRental` (locker, member, started, started by, rent
-  override in pence + reason, ended, ended by, end reason; at most one open rental per locker);
+  override in pence + reason, agreed default rent, a new rent and the date it starts (after notice), ended,
+  ended by, end reason; at most one open rental per locker); charges gain a "first rent" mark for the pro-rata
+  first payment;
   `MemberLockerLimit` (member, limit, reason, set by, set at); `LockerChange` (the audit log); and later
   `locker_rent_charges` (rental, charge date, amount, status, like subscription charges). Location + number is unique
   for lockers.

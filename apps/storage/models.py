@@ -119,6 +119,18 @@ class LockerRental(models.Model):
         help_text="What this member pays instead of the default (can be £0). Ends with the rental.",
     )
     rent_override_reason = models.CharField(max_length=255, blank=True)
+    # Without an override the member pays the default rent, but a rise only reaches them after notice (06 §6.2):
+    # `rent_pence` is the default they've agreed to, and a rise waits in `new_rent_pence` until `new_rent_from`.
+    rent_pence = models.PositiveIntegerField(
+        "agreed rent",
+        null=True,
+        blank=True,
+        help_text="The default rent this member pays. Empty = the current default.",
+    )
+    new_rent_pence = models.PositiveIntegerField("new rent", null=True, blank=True)
+    new_rent_from = models.DateField(
+        null=True, blank=True, help_text="Charges on or after this date are for the new rent (after 30 days' notice)."
+    )
     ended_at = models.DateTimeField(null=True, blank=True)
     ended_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
