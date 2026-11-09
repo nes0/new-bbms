@@ -83,6 +83,8 @@ def detail(request, slug):
         "today": timezone.localdate().isoformat(),
         "minimum_minutes": pages.rules.minimum_charge_seconds() // 60,
     }
+    if pages.can_sign_off(member, equipment):
+        context["sign_off"] = pages.waiting_for_sign_off(equipment, member)
     return render(request, "equipment/detail.html", context)
 
 
@@ -110,7 +112,8 @@ def _act(request, slug, action, success):
     except pages.PageError as error:
         messages.error(request, str(error))
     else:
-        messages.success(request, success)
+        if success:
+            messages.success(request, success)
     return redirect("equipment:detail", slug=equipment.slug)
 
 
@@ -145,3 +148,14 @@ def reclassify(request, slug, session_id):
         pages.reclassify(session, request.user, request.POST.get("reason", ""))
 
     return _act(request, slug, action, "Session updated; any fee went back to the member's credit.")
+
+
+@require_POST
+def sign_off(request, slug, induction_id):
+    def action(equipment):
+        induction = pages.sign_off(equipment, request.user, induction_id)
+        messages.success(request, f"{induction.member.display_name} is signed off on {equipment.name}.")
+
+    response = _act(request, slug, action, None)
+    response["Location"] += "#sign-off"  # back to the list of members waiting
+    return response

@@ -111,7 +111,7 @@ same, so MySQL saves nothing. Django is also built and tested primarily against 
    2026-11-08: only current members (active, leaving, honorary) vote; the ballot is secret.
 4. Minimum subscription: **self-service decided 2026-11-07: £25** (was £20), an admin setting (02 §2.8). Still open:
    keep the £5 minimum for amounts set by an admin?
-5. Who may mark members as **trained**: admins only, or trainers too (05 §5.8)?
+5. ~~Who may mark members as **trained**~~: decided 2026-11-09: a machine's trainers too, not only admins (05 §5.8). Built.
 6. Should the door's public Discord announcement use the full name, the first name only, or respect private profiles (05)?
 7. Public (logged-out) member directory: keep (06 §6.1)? Built as a setting, off to start with.
 8. Storage (06 §6.2): default locker limit (suggested 1); first-month rent (suggested pro rata); rent changes for existing renters (suggested 30 days' notice); unpaid rent (suggested: locker may be cleared after 30 days); refunds when a locker is given up (suggested none); whether the box flag survives leaving and rejoining (suggested yes); whether the storage team manages the locker inventory.
@@ -120,7 +120,8 @@ same, so MySQL saves nothing. Django is also built and tested primarily against 
 11. Retention period for access and usage logs (08).
 12. Database: confirm PostgreSQL (§1.6).
 13. Fobs and keys (05 §5.1–5.2): ~~who may issue fobs~~ (decided: trustees, as a permission a role can be given); ~~free replacement for a lost fob~~ (decided: free); key deposit refunded when the key is returned (suggested yes, kept if lost).
-14. Attendance threshold for the trusted-status review list (05 §5.10; suggested 8 visits over at least 4 weeks).
+14. Attendance threshold for the trusted-status review list (05 §5.10; suggested 8 visits over at least 4 weeks). Built
+    with the suggestion as two settings, so the trustees can change it; still open: should anything else count?
 15. Moodle (06 §6.12): who may log in to Moodle (built as: any non-banned account with a confirmed email address, 03 §3.1); online training expiry (suggested none); members already signed off when a course is added (suggested they keep access).
 16. Reports (04 §4.9, 06 §6.13): who sees membership statistics (suggested all members; money figures finance and admins only); whether to build expenditure tracking later. (Built with the suggestion, 2026-11-09.)
 17. Proof of identity (03 §3.1): whether an unchecked ID blocks anything (today it doesn't); who checks (suggested

@@ -450,13 +450,17 @@ reviewed:
 1. Member pays the equipment's **access fee** (GoCardless, credit or Stripe). That creates an `inductions` row:
    `key` = induction category, `paid = true`.
 2. They appear in that equipment's "waiting for training" list.
-3. An **admin** marks them trained and chooses which trainer did it (`trained` = now, `trainer_user_id`).
+3. A **trainer** for that category, or an **admin**, marks them trained, recording which trainer did it (`trained` = now, `trainer_user_id`).
    For equipment with a Moodle course, sign-off is **only possible once BBMS has recorded the course as completed**
    (decided 2026-11-07, 06 §6.12); the waiting list shows each member's course status. **Built (2026-11-09):** the
    admin won't save a sign-off until the course is recorded, and Inductions → "Waiting for training" checks Moodle for
    the members listed and shows "Online course: Finished / Not finished".
    Nor until their email address is confirmed (03 §3.1).
-   ❓ Trustees: legacy restricts this to admins. Should **trainers** be able to mark their own trainees?
+   **Decided 2026-11-09: trainers can sign members off too** (legacy let only admins). **Built (2026-11-09):** on the
+   machine's page, its trainers (members marked trainer for its induction category who are current members) and
+   admins see "Sign off as trained" beside each member waiting, and are recorded as the trainer. The same checks as
+   the admin apply (a confirmed email address, the online course), and nobody can sign themselves off. The member
+   is told in BBMS. Making someone a trainer (step 4) stays with admins.
 4. An admin can promote a trained member to **trainer** for that category.
 5. An unpaid-for or untrained induction can be **cancelled**, which refunds the fee to credit.
 
@@ -489,3 +493,14 @@ door (keyholder entry or non-keyholder check-in) or starting a session on a mach
 - ❓ The threshold: suggested, a setting for "at least N visits over at least M weeks since joining" (e.g. 8 visits
   over 4 weeks). Should anything else count (inductions completed, training)?
 - Attendance is derived from the access log and usage sessions; nothing extra is stored.
+
+**Built (2026-11-09)** in `apps/access/attendance.py`:
+- A visit is a UK calendar day with a keyholder entry, a check-in, or the start of a machine session. Refused taps
+  and tapping out don't count.
+- Members see their visits on their account page (how many, since when, the last one, and the ten most recent).
+- Admins see "N visits from … to …; M in the last 4 weeks" in the Access part of the member's admin page.
+- **Trusted-status review** (Members → "Trusted-status review", for those who can change members): active and
+  honorary members who aren't trusted or banned, joined at least "weeks a member before review" ago (4), with at
+  least "visits before review" visits (8), most visits first. It shows their visits, the last four weeks, first and
+  last visit and whether their general induction is confirmed. Leaving and suspended members aren't listed. Both
+  numbers are settings (Settings → Trusted status).

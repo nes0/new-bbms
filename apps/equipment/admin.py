@@ -166,20 +166,15 @@ class InductionForm(forms.ModelForm):
         trained_at, member = cleaned.get("trained_at"), cleaned.get("member")
         if trained_at is None or member is None or "trained_at" not in self.changed_data:
             return cleaned
-        if not member.email_verified:  # 03 §3.1
-            raise forms.ValidationError(
-                f"{member} hasn't confirmed their email address yet, so they can't be signed off. "
-                "(Members' emails can be confirmed or reinstated by an admin on their page.)"
-            )
-        # Signing someone off needs the online course finished, where the machine has one (05 §5.8, 06 §6.12).
+        # A confirmed email address, and the online course where a machine has one (05 §5.8, 03 §3.1, 06 §6.12).
         category = cleaned.get("category") or self.instance.category
-        signing_off = Induction(member=member, category=category, trained_at=trained_at)
-        for machine in Equipment.objects.filter(moodle_course_id__isnull=False, archived=False):
-            if machine.induction_key == category and rules._course_reason(member, machine, signing_off):
-                raise forms.ValidationError(
-                    f"{member} hasn't finished the online course for {machine.name} yet, so they can't be signed off. "
-                    'Their course is checked when this list is opened with the "Waiting for training" filter.'
-                )
+        if problem := rules.sign_off_problem(member, category, trained_at):
+            hint = (
+                "(Members' emails can be confirmed or reinstated by an admin on their page.)"
+                if not member.email_verified
+                else 'Their course is checked when this list is opened with the "Waiting for training" filter.'
+            )
+            raise forms.ValidationError(f"{problem} {hint}")
         return cleaned
 
 
