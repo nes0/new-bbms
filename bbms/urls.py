@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 from apps.core import views as core_views
+from apps.signin import views as signin_views
 
 admin.site.site_header = "BBMS administration"
 admin.site.site_title = "BBMS admin"
@@ -14,7 +15,12 @@ urlpatterns = [
     path("resources/", core_views.resources, name="resources"),
     path("resources/policy/<slug:name>/", core_views.policy, name="policy"),
     path("feedback/", core_views.feedback, name="feedback"),
+    # Our login and password reset come first, so they're used instead of Django's (06 §6.11).
+    path("accounts/login/", signin_views.LoginView.as_view(), name="login"),
+    path("accounts/password_reset/", signin_views.PasswordResetView.as_view(), name="password_reset"),
+    path("admin/login/", signin_views.admin_login),
     path("accounts/", include("django.contrib.auth.urls")),
+    path("", include("apps.signin.urls")),
     path("", include("apps.members.urls")),
     path("admin/", admin.site.urls),
     # Device API v1 lives at /acs/... (the address today's door firmware uses).

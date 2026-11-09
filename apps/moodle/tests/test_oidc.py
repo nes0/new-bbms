@@ -140,9 +140,11 @@ class LogInWithBBMSTests(TestCase):
         self.kim.save()
         self.client.force_login(self.kim)
         response = self.authorize()
-        self.assertEqual(response.status_code, 403)
-        self.assertContains(response, "You can't log in to Moodle", status_code=403)
-        self.assertNotIn("code=", response.get("Location", ""))
+        # Logged out on their next request, with the login page's message (06 §6.11); no code for Moodle.
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "/accounts/login/")
+        self.assertNotIn("code=", response["Location"])
+        self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_a_deactivated_login_cant_even_reach_it(self):
         self.kim.is_active = False

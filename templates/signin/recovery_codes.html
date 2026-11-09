@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}Recovery codes · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>{% if new %}Two-factor login is on{% else %}New recovery codes{% endif %}</h1>
+  <p><strong>Save these recovery codes somewhere safe</strong>, such as a password manager or a printout. If you lose
+    your phone, each one logs you in once instead of a code from the app. They're shown only now{% if not new %}, and
+    your old ones no longer work{% endif %}.</p>
+  <ul class="plain codes">{% for code in codes %}<li><code>{{ code }}</code></li>{% endfor %}</ul>
+  <p><a href="{% url 'signin:manage' %}">Done</a></p>
+{% endblock %}

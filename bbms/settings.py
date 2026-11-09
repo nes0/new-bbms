@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "apps.proposals",
     "apps.expenses",
     "apps.finance",
+    "apps.signin",
     "oauth2_provider",
     "apps.moodle",
 ]
@@ -71,6 +72,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "apps.signin.middleware.SigninMiddleware",  # banned members logged out; two-factor for the admin site (06 §6.11)
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -261,6 +263,11 @@ OAUTH2_PROVIDER = {
 
 # Security settings for production (behind DigitalOcean App Platform's HTTPS proxy).
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# The request header holding the visitor's own IP address, set by the hosting's proxy (spec 06 §6.11). Used only to
+# rate-limit logins and password resets by address; empty turns those limits off (the limits by email still apply).
+# On DigitalOcean App Platform: HTTP_DO_CONNECTING_IP. Never name a header the proxy doesn't overwrite: visitors could
+# set it themselves.
+CLIENT_IP_HEADER = env("CLIENT_IP_HEADER", default="")
 SECURE_SSL_REDIRECT = env("SECURE_SSL_REDIRECT")
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG

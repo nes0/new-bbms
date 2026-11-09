@@ -386,8 +386,40 @@ In the new system, most of these should be the framework's **admin interface** r
 - **New:** the email address is confirmed by a link (03 §3.1) and can be changed by the member, with their password.
 - Banned users can log in but are refused on every protected page. **New:** refuse at login with a clear message.
 - **New:** rate-limit login and password reset; optional 2FA for admins.
-
 - BBMS is also the **single sign-on provider for Moodle** ("Log in with BBMS", 6.12).
+
+### Build status (2026-11-09)
+
+Built in `apps/signin`. Choices made while building:
+- **Banned members are refused at login** with "This account has been banned, so you can't log in. If you think
+  that's a mistake, please contact the trustees." It's only said once the password is right, so it reveals nothing
+  to anyone else. A member banned while logged in is logged out on their next page, with the same message (this
+  replaces Moodle's separate "you can't log in to Moodle" page in practice, though that check stays).
+- **"Remember me"** ("keep me logged in on this device", ticked to start with): unticked, the login ends when the
+  browser closes; ticked, it lasts Django's default two weeks.
+- **Rate limits**, counted in the database (the site runs several workers, each with its own memory):
+  - logins: 5 wrong passwords for one email address in 15 minutes, then that address waits 15 minutes; 30 failures
+    from one visitor's IP address in 15 minutes. A successful login clears the address's count;
+  - password reset emails: 3 for one address an hour, 10 from one visitor an hour;
+  - two-factor codes: 5 wrong codes for one member in 15 minutes, then back to the login page.
+  The limits by email apply whether or not there's an account, so the messages never show who has one. Email
+  addresses and IP addresses are stored only as keyed hashes, and attempts are deleted after a day. Limits per IP
+  address need `CLIENT_IP_HEADER` (the proxy's header with the visitor's address; deployment §5.4); without it they
+  are off, as every visitor would seem to come from the proxy and one limit would lock everyone out.
+- **The admin site's own login page isn't used**: `/admin/login/` sends people to the normal login page, so every
+  login is limited and checked the same way.
+- **Two-factor login** is open to **every member** (Account → "Two-factor login"), not only admins: codes from any
+  authenticator app (TOTP, 6 digits every 30 seconds), set up by scanning a QR code and entering a first code. Each
+  code works once. Turning it on gives **10 one-off recovery codes**, shown once and stored only as hashes; new ones
+  can be made, and it can be turned off, with the member's password.
+- With two-factor on, the password alone doesn't log in: the code must follow within 5 minutes.
+- **The admin site**: anyone with two-factor on gives a code before using it, even in a session that started before
+  they turned it on. The new setting **"admins must use two-factor login"** (Settings → Logging in; **off** to start
+  with, so admins can set it up first) sends any admin without it to set it up before the admin site opens.
+- **Lost phone and recovery codes**: an admin switches the member's two-factor off in the admin (Logging in →
+  Two-factor logins → action), after checking who's asking. Only who has it on is shown there, never the secret.
+- TOTP is written out in `apps/signin/totp.py` (about 40 lines, checked against RFC 6238's test values) rather than
+  adding a package; the QR code uses `segno`, already used for device screens.
 
 ## 6.12 Moodle (online training) integration
 
