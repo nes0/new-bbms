@@ -7,6 +7,8 @@ The membership system for Build Brighton: members, payments, door and machine ac
 **Status:** early. Built so far:
 
 - members can log in (including with passwords migrated from the legacy system) and admins can manage them;
+  logins and password resets are rate limited, banned members are refused with a clear message, and any member
+  can turn on **two-factor login** (`/account/two-factor/`), which a setting can require for the admin site;
 - online **registration** (`/register`) and proof-of-identity uploads checked by trustees (`/id-checks/`);
 - the **general induction**: members read the guidance and the rules and agree (`/account/induction/`); the comms
   role confirms it (`/general-inductions/`);

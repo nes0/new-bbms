@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Two-factor login · {{ SITE_NAME }}{% endblock %}
+
+{% block body_class %}backdrop{% endblock %}
+
+{% block content %}
+  <h1>Enter your code</h1>
+  <p>{% if logging_in %}Your password was right.{% else %}The admin site needs your two-factor code.{% endif %}
+    Open your authenticator app and enter the 6-digit code for {{ SITE_NAME }}.</p>
+  <form method="post" class="stack">
+    {% csrf_token %}
+    <label for="id_code">Code</label>
+    <input name="code" id="id_code" autocomplete="one-time-code" inputmode="numeric" maxlength="20" required autofocus>
+    {% for error in form.code.errors %}<p class="error">{{ error }}</p>{% endfor %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit">{% if logging_in %}Log in{% else %}Continue{% endif %}</button>
+  </form>
+  <p class="hint">Lost your phone? Enter one of your recovery codes instead. If you have none left, ask an admin to
+    switch two-factor login off for you.</p>
+{% endblock %}

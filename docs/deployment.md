@@ -233,6 +233,7 @@ and `check --deploy` lists what is missing.
 | `DB_CONN_MAX_AGE` | Seconds to keep database connections open (default 60). |
 | `LOG_LEVEL` | `INFO` (default). Logs go to the console, which App Platform collects. |
 | `WEB_CONCURRENCY` | gunicorn workers (default 2). |
+| `CLIENT_IP_HEADER` | `HTTP_DO_CONNECTING_IP` on App Platform: the header its proxy puts the visitor's address in. Lets BBMS limit login and password-reset attempts per visitor as well as per email address (spec 06 §6.11). Leave it unset anywhere a visitor could set that header themselves. ⚠️ Verify on the live app that the header is there and holds the visitor's address. `check --deploy` warns while it's unset (`signin.W001`). |
 | `LEGACY_DATABASE_URL` | Only for the import (§8). Don't leave it set afterwards. |
 | `HEARTBEAT_CREATE_CHARGES`, `HEARTBEAT_BILL_MEMBERS`, `HEARTBEAT_CHECK_MEMBERSHIPS`, `HEARTBEAT_RETRY_DIRECT_DEBITS` | Each nightly billing job's ping URL (§6.6), e.g. `https://hc-ping.com/<uuid>`. Treat them as secrets: anyone with one can fake that job's ping. `check --deploy` names any that are missing (`billing.W004`). |
 
@@ -581,6 +582,8 @@ Copy this into an issue and tick it off. The acceptance checks in
 - [ ] §4: domain points at the app and the certificate is valid; HSTS raised
 - [ ] §5: every variable set, secrets stored in the password manager
 - [ ] `check --deploy` shows no warnings
+- [ ] Admins have turned on two-factor login (Account → Two-factor login), then Settings → "admins must use two-factor
+  login" is ticked (spec 06 §6.11)
 - [ ] §6.1–6.4: GoCardless, Stripe, PayPal and Discord live; one real small payment of each kind tested and refunded
 - [ ] §6.5: SMTP set up and a test email delivered; password reset works; the sender domain's SPF and DKIM are verified
 - [ ] §6.6: billing job heartbeats set up, and each one tested; 🚧 uptime, error and other job alerts set up; each

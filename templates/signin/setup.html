@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Two-factor login · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <p class="hint"><a href="{% url 'members:account' %}">Your account</a></p>
+  <h1>Two-factor login</h1>
+  <p>With two-factor login, logging in needs a code from an app on your phone as well as your password, so a stolen
+    password isn't enough. Any authenticator app works, for example Google Authenticator, Microsoft Authenticator,
+    Aegis or 1Password.</p>
+  <ol>
+    <li>In your app, add an account and scan this code:
+      <div class="qr">{{ qr|safe }}</div>
+      <p class="hint">Can't scan it? Type in this key: <code>{{ secret }}</code></p></li>
+    <li>Enter the 6-digit code the app shows:
+      <form method="post" class="stack">
+        {% csrf_token %}
+        <label for="id_code">Code</label>
+        <input name="code" id="id_code" autocomplete="one-time-code" inputmode="numeric" maxlength="20" required>
+        {% for error in form.code.errors %}<p class="error">{{ error }}</p>{% endfor %}
+        <button type="submit">Turn on two-factor login</button>
+      </form></li>
+  </ol>
+{% endblock %}

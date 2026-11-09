@@ -8,12 +8,14 @@
   <h1>Log in</h1>
   <form method="post" class="stack">
     {% csrf_token %}
-    {% if form.non_field_errors %}<p class="error">Your email address and password didn't match. Please try again.</p>{% endif %}
+    {% for error in form.non_field_errors %}<p class="error">{{ error }}</p>{% endfor %}
     <label for="id_username">Email address</label>
     <input type="email" name="username" id="id_username" autocomplete="email" required autofocus
            value="{{ form.username.value|default:'' }}">
     <label for="id_password">Password</label>
     <input type="password" name="password" id="id_password" autocomplete="current-password" required>
+    <label class="check"><input type="checkbox" name="remember" {% if form.remember.value %}checked{% endif %}>
+      {{ form.remember.label }}</label>
     <input type="hidden" name="next" value="{{ next }}">
     <button type="submit">Log in</button>
   </form>

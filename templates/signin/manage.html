@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Two-factor login · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <p class="hint"><a href="{% url 'members:account' %}">Your account</a></p>
+  <h1>Two-factor login</h1>
+  <p class="ok">Two-factor login is on: logging in needs a code from your authenticator app as well as your password.</p>
+  <p>You have {{ left }} recovery code{{ left|pluralize }} left.</p>
+
+  <section>
+    <h2>New recovery codes</h2>
+    <form method="post" action="{% url 'signin:new-codes' %}" class="form stack">
+      {% csrf_token %}
+      <label for="codes-password">Your password</label>
+      <input type="password" name="password" id="codes-password" autocomplete="current-password" required>
+      <button type="submit">Make new recovery codes</button>
+      <p class="hint">Your old codes stop working.</p>
+    </form>
+  </section>
+
+  <section>
+    <h2>Turn it off</h2>
+    <form method="post" action="{% url 'signin:turn-off' %}" class="form stack">
+      {% csrf_token %}
+      <label for="off-password">Your password</label>
+      <input type="password" name="password" id="off-password" autocomplete="current-password" required>
+      <button type="submit">Turn off two-factor login</button>
+      {% if user.is_staff %}<p class="hint">If the admin site needs two-factor login, you'll be asked to set it up
+        again before you can use it.</p>{% endif %}
+    </form>
+  </section>
+{% endblock %}

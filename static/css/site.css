@@ -113,3 +113,7 @@ body.wide main { max-width: 72rem; }
 .viz-dash { flex: none; width: 1.5rem; border-top: 2px dashed var(--viz-series-1); }
 
 .stack.wide { max-width: 36rem; }
+
+/* Two-factor setup (06 §6.11) */
+.qr svg { display: block; width: 12rem; height: auto; margin: 0.5rem 0; border-radius: 4px; }
+.codes { display: grid; grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); gap: 0.25rem 1rem; }

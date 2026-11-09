@@ -54,6 +54,14 @@ class SiteSettings(models.Model):
         "the list (06 §6.1). Legacy showed it to everyone; whether to keep that is a trustee decision (01 §1.7).",
     )
 
+    # --- logging in (06 §6.11) ---
+    admins_need_two_factor = models.BooleanField(
+        "admins must use two-factor login",
+        default=False,
+        help_text="When on, anyone who can use the admin site must set up two-factor login (an authenticator app) "
+        "before they can open it. Any member can turn two-factor login on for themselves.",
+    )
+
     # --- Discord (06 §6.14) ---
     discord_welcome_message = models.TextField(
         "Discord welcome message",
@@ -294,6 +302,7 @@ class SiteSettings(models.Model):
         ("Expenses", ("expense_maximum_pence",)),
         ("Who's in", ("occupancy_timeout_hours", "occupancy_reset_hour", "public_occupancy_count")),
         ("Privacy", ("id_document_max_age_days", "public_member_directory")),
+        ("Logging in", ("admins_need_two_factor",)),
         ("Discord", ("discord_welcome_message",)),
         ("Moodle", ("moodle_url",)),
     )
