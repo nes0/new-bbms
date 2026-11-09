@@ -686,6 +686,17 @@ class Importer:
                 Permission.objects.get(content_type__app_label="finance", codename="see_finance"),
                 Permission.objects.get(content_type__app_label="finance", codename="manage_finance"),
             )
+        # Legacy let the laser role email everyone trained on the laser (06 §6.6); now it's a rule admins can change.
+        laser = next((g for g in self.groups.values() if g.name == "laser"), None)
+        if laser is not None:
+            from apps.group_email.models import SenderRule
+
+            SenderRule.objects.get_or_create(
+                sender=SenderRule.Sender.ROLE,
+                sender_role=laser,
+                audience=SenderRule.Audience.TRAINED,
+                category="laser",
+            )
         report.imported["role_user"] = len(links)
         report.note(f"{len(admins)} members of the 'admin' role can use the admin site (other roles: groups only)")
 

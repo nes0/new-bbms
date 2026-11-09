@@ -39,7 +39,7 @@ email address and chat channel (shown on the "groups" page).
 | `storage` | Release any member's locker; follow up unpaid locker rent; set or clear members' box flag. |
 | `comms` | Confirm members' general inductions. |
 | `acs` | Manage access-control devices; receives "device offline" notifications. |
-| `laser` (and any role named after an equipment slug) | Mark that equipment's usage sessions as training/testing (removes the charge); `laser` may email all laser-trained members. |
+| `laser` (and any role named after an equipment slug) | Mark that equipment's usage sessions as training/testing (removes the charge); `laser` may email all laser-trained members (now an admin rule, 06 §6.6). |
 | `storage-box-user` | Special: account exists only to rent storage; **cannot vote**. |
 | `trustees` | Referenced once in code. ⚠️ Verify whether still used. |
 
@@ -115,7 +115,7 @@ same, so MySQL saves nothing. Django is also built and tested primarily against 
 6. Should the door's public Discord announcement use the full name, the first name only, or respect private profiles (05)?
 7. Public (logged-out) member directory: keep (06 §6.1)? Built as a setting, off to start with.
 8. Storage (06 §6.2): default locker limit (suggested 1); first-month rent (suggested pro rata); rent changes for existing renters (suggested 30 days' notice); unpaid rent (suggested: locker may be cleared after 30 days); refunds when a locker is given up (suggested none); whether the box flag survives leaving and rejoining (suggested yes); whether the storage team manages the locker inventory.
-9. Group email for every equipment team, not just laser (06 §6.6).
+9. ~~Group email for every equipment team, not just laser~~: decided 2026-11-09: who may email which groups is an admin setting (06 §6.6). Built.
 10. Policies as Markdown in the repo, or editable by admins (06 §6.8)? (Built as Markdown in the repo, 2026-11-09.)
 11. Retention period for access and usage logs (08).
 12. Database: confirm PostgreSQL (§1.6).

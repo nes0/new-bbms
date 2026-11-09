@@ -186,6 +186,12 @@
       {% elif people.waiting %}
         <ul class="plain">{% for induction in people.waiting %}<li><a href="{% url 'profiles:member' induction.member.pk %}">{{ induction.member.get_full_name }}</a></li>{% endfor %}</ul>
       {% else %}<p>Nobody.</p>{% endif %}
+      {% if email_groups %}
+        <p class="actions">
+          {% if email_groups.trained %}<a href="{% url 'group_email:compose' %}?to={{ email_groups.trained|urlencode }}">Email everyone trained on it</a>{% endif %}
+          {% if email_groups.waiting %}<a href="{% url 'group_email:compose' %}?to={{ email_groups.waiting|urlencode }}">Email everyone waiting for training</a>{% endif %}
+        </p>
+      {% endif %}
     </section>
   {% endif %}
 

@@ -16,6 +16,7 @@ from apps.access.decisions import door_refusal_reason
 from apps.core import policies
 from apps.discord import client as discord
 from apps.equipment.models import Equipment
+from apps.group_email import audiences as group_email
 from apps.payments.credit import credit_pence
 from apps.proposals.voting import proposals_waiting_for
 
@@ -67,6 +68,7 @@ def account(request):
         "payment_day_suffix": _ordinal(member.payment_day) if member.payment_day else "",
         "discord_enabled": discord.enabled(),
         "proposals_to_vote_on": proposals_waiting_for(member),
+        "can_group_email": bool(group_email.allowed(member)),  # 06 §6.6
     }
     return render(request, "members/account.html", context)
 

@@ -1,0 +1,8 @@
+{% autoescape off %}{% if test %}This is a test: only you got it. The group would get the email below.
+
+{% endif %}{{ body }}
+
+--
+Sent by {{ sender.get_full_name }} to {{ label }}, through {{ site_name }}'s members' site ({{ site_url }}).
+Reply to this email to answer {{ sender.given_name }}.
+{% endautoescape %}
