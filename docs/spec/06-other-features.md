@@ -312,7 +312,39 @@ superusers and the `admin` role). Choices made while building:
 
 **Group email** (`/notification_email/create`): admins can email **all active members**; `laser` role holders can email
 **all laser-trained members**; anyone with a role can send a test to themselves. ❓ Generalise to "any equipment team can
-email its trained members"?
+email its trained members"? **Decided 2026-11-09: who may email which groups is an admin setting.**
+
+### Group email: build status (2026-11-09)
+
+Built in `apps/group_email`.
+- **Who may send to whom** is a list of rules the admins edit (admin → Group email → Who can send group emails). A
+  rule names who can send and which group they can email:
+  - **Who can send:** the members of a role; **each machine's team** (the role that looks after it); or **each
+    machine's trainers**. One "each machine's team" or "each machine's trainers" rule covers every machine, so it
+    answers "any equipment team can email its trained members" without a rule per team.
+  - **Which group:** all current members, trusted members, key holders, the members of a role, the members trained on
+    a machine, or the members waiting for training on a machine (paid, not yet signed off). Machines that share an
+    induction category share these groups. A machine's team or trainers can email only about their own machines. A
+    role can be given one machine, or (left empty) every machine it looks after.
+  - **Admins** (superusers) may email every group: they set the rules anyway.
+  - Senders must be current members (active, leaving or honorary) and not banned.
+- **Who gets it:** current members (active, leaving or honorary), not banned, with their login turned on. Suspended
+  and left members don't.
+- **The import** adds one rule matching legacy: the `laser` role may email the members trained on `laser`. Legacy's
+  "admins email all members" needs no rule.
+- **Sending** (`/group-email/`, linked from the account page for anyone who can send, and from a machine's page
+  for those who can email its trained or waiting members): choose the group, write a subject and a plain-text
+  message, then **Send me a test** (to yourself only, marked "[Test]") or **Check who it goes to**, which shows how
+  many members will get it. The send button appears only after checking, and sending a different group from the one
+  checked shows the check again instead of sending.
+- One email, **blind-copied** in batches of 50 (nobody sees anyone else's address, and batches stay under mail
+  providers' recipient limits). **Replies go to the sender.** A footer says who sent it and to which group.
+  Legacy sent one email per member from a queue; batches are sent straight away, so a few hundred members take a few
+  seconds.
+- **A record** of every group email (sender, group, subject, message, how many got it, how many the mail server
+  refused) is kept, read-only, at admin → Group email → Group emails. Senders see theirs on the page.
+- Nothing is sent during a dry run (the shadow site, 08).
+- Not built: there's no opt-out. Group emails are about membership and the machines members use.
 
 ## 6.7 Activity
 

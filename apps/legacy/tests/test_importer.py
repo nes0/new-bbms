@@ -498,6 +498,12 @@ class ImportTests(TestCase):
         self.assertTrue(admin.is_superuser and admin.is_staff)
         self.assertEqual(list(self.member(1).groups.values_list("name", flat=True)), ["laser"])
 
+    def test_the_laser_role_can_still_email_members_trained_on_the_laser(self):
+        from apps.group_email.models import SenderRule
+
+        rule = SenderRule.objects.get()
+        self.assertEqual((rule.sender_role.name, rule.audience, rule.category), ("laser", "trained", "laser"))
+
     def test_general_inductions_and_the_comms_role(self):
         self.assertEqual(self.member(1).inducted_by, self.member(3))
         self.assertEqual(self.member(1).general_induction_status, "confirmed")

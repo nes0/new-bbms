@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Group email · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Group email</h1>
+  <p>Email a group of members. Everyone gets it by blind copy, so nobody sees anyone else's address. A line at the end
+    says it's from you and why they got it, and replies come to you at {{ user.email }}.</p>
+  <form method="post" class="stack form wide" novalidate>
+    {% csrf_token %}
+    {% for field in form %}
+      <label for="{{ field.auto_id }}">{{ field.label }}</label>
+      {% if field.name == "subject" %}
+        <input type="text" name="subject" id="{{ field.auto_id }}" maxlength="150" value="{{ field.value|default_if_none:'' }}"
+          {% if field.errors %}aria-invalid="true"{% endif %}>
+      {% else %}{{ field }}{% endif %}
+      {% if field.help_text %}<span class="hint">{{ field.help_text }}</span>{% endif %}
+      {% if field.errors %}<span class="error">{{ field.errors|join:" " }}</span>{% endif %}
+    {% endfor %}
+    {# Enter in a field presses the first button, so "check" comes before "send". #}
+    <p class="actions">
+      <button type="submit" name="action" value="check">{% if check %}Check again{% else %}Check who it goes to{% endif %}</button>
+      <button type="submit" name="action" value="test">Send me a test</button>
+    </p>
+    {% if check %}
+      <div class="card" id="check">
+        <p><strong>This will go to {{ check.count }} member{{ check.count|pluralize }}</strong>: {{ check.label }}.
+          {% if not check.count %}There's nobody to send it to.{% endif %}</p>
+        {% if check.count %}
+          <input type="hidden" name="checked_to" value="{{ check.to }}">
+          <p><button type="submit" name="action" value="send">Send it to {{ check.count }} member{{ check.count|pluralize }}</button></p>
+        {% endif %}
+      </div>
+    {% endif %}
+  </form>
+
+  {% if sent %}
+    <h2>Sent by you</h2>
+    <div class="scroll">
+      <table class="table">
+        <thead><tr><th>Sent</th><th>Subject</th><th>To</th><th class="number">Members</th></tr></thead>
+        <tbody>
+          {% for email in sent %}
+            <tr>
+              <td class="nowrap">{{ email.sent_at|date:"j M Y, H:i" }}</td>
+              <td>{{ email.subject }}</td>
+              <td>{{ email.audience_label|capfirst }}</td>
+              <td class="number">{{ email.recipients }}{% if email.failed %} <span class="error">({{ email.failed }} not sent)</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+{% endblock %}

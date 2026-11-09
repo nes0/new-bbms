@@ -11,6 +11,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.core.markup import to_html
+from apps.group_email import audiences as group_email
 from apps.moodle import client as moodle
 from apps.profiles.views import is_member
 
@@ -85,6 +86,14 @@ def detail(request, slug):
     }
     if pages.can_sign_off(member, equipment):
         context["sign_off"] = pages.waiting_for_sign_off(equipment, member)
+    if equipment.requires_induction and not equipment.archived:
+        # Links to group email, for the groups about this machine the member may email (06 §6.6).
+        allowed = {choice.key for choice in group_email.allowed(member)}
+        context["email_groups"] = {
+            kind: f"{kind}:{equipment.induction_key}"
+            for kind in ("trained", "waiting")
+            if f"{kind}:{equipment.induction_key}" in allowed
+        }
     return render(request, "equipment/detail.html", context)
 
 

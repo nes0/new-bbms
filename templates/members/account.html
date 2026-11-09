@@ -115,6 +115,10 @@
       <dt>Trained on</dt>
       <dd>{% for machine in trained_on %}<a href="{% url 'equipment:detail' machine.slug %}">{{ machine.name }}</a>{% if not forloop.last %}, {% endif %}{% empty %}No machines yet{% endfor %}
         <br><a href="{% url 'equipment:index' %}">Equipment</a> · <a href="{% url 'moodle:training' %}">Online training</a></dd>
+      {% if can_group_email %}
+        <dt>Group email</dt>
+        <dd><a href="{% url 'group_email:compose' %}">Email a group of members</a></dd>
+      {% endif %}
     </dl>
   </section>
 
