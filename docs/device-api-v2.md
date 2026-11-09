@@ -63,7 +63,7 @@ use the values from the latest check-in, and the machine's `minimum_minutes` fro
 
 ## `POST access`
 `{"card": "0001234567"}`. Always `200` with `{"allowed", "reason", "display_name"}` (`display_name` is `null` for an
-unknown fob).
+unknown fob). Door and exit readers also get `in_space`: how many are in the space after this tap.
 
 **Door and exit readers**
 | `reason` | `allowed` | Meaning |
@@ -135,6 +135,26 @@ Response: `{"results": [{"id": "a1b2-17", "result": "recorded"}]}` where result 
 
 ## `GET qr`
 A QR code for the device's page (raw bytes, `ETag`, `?format=json`). Format: spec 05 §5.4.
+
+## `GET occupancy` (entry and exit readers)
+Who's in the space now, for a screen by the door; machine readers get `409 wrong_device_role`.
+```json
+{"in_space": 2, "as_of": 1793910000, "version": "3be1f0a2",
+ "people": [{"id": 12, "name": "Kim K.", "since": 1793908200, "using": ["Red laser"], "photo": "9c0d11e4"},
+            {"id": null, "name": null, "since": 1793905000, "using": [], "photo": null}]}
+```
+Most recent arrival first. `since` is `null` for someone only known from a machine they're using. A person with
+`id: null` has a private profile: show "a member". `photo` is `null` when there's no photo to show; otherwise it's the
+photo's version, which changes when the member's photo does. Poll every 30-60 s with `If-None-Match: "<version>"`
+(the `ETag`); `304` means nothing on the screen has changed.
+
+## `GET photos/{id}` (entry and exit readers)
+A person's photo from `occupancy`, square. `?size=16..200` (default 64), `?format=rgb565` (default), `png` or
+`jpeg` (baseline). `rgb565`: bytes 0-1 width, 2-3 height (little-endian), then width × height pixels, each a
+little-endian 16-bit RGB565 value, row by row from the top left (as an ESP32 holds a `uint16_t`; with TFT_eSPI's
+`pushImage`, call `setSwapBytes(true)`). The `ETag` is `"<photo version>-<size>-<format>"`: keep the photo and send
+`If-None-Match` to get `304`. `404 {"error": "no_photo"}` when the member isn't in the space now or has no photo that
+may be shown; `400 bad_field` for a bad size or format.
 
 ## Open questions
 - **Offline machine use:** may trained members start sessions while BBMS is unreachable, given credit can't be

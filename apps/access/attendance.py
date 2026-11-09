@@ -2,8 +2,9 @@
 Attendance (spec 05 §5.10): how often members come in, worked out from the door log and machine sessions.
 
 A **visit** is a calendar day (UK time) on which a member's fob was used: tapping in at the door (a keyholder entry
-or a check-in) or starting a session on a machine. Several taps on one day count once. Refused taps and tapping out
-don't count. Nothing extra is stored.
+or a check-in), tapping out at the exit reader (05 §5.2: "an exit tap counts", e.g. someone let in by another member),
+or starting a session on a machine. Several taps on one day count once. Refused taps don't count. Nothing extra is
+stored.
 
 The **trusted-status review list** is the members who aren't trusted yet but have come in often enough for an admin
 to consider them: current members (active or honorary, not banned) with at least the "visits before review" setting,
@@ -23,7 +24,7 @@ from apps.site_settings.models import SiteSettings
 
 from .models import AccessEvent
 
-VISIT_KINDS = (AccessEvent.Kind.ENTRY, AccessEvent.Kind.CHECK_IN)
+VISIT_KINDS = (AccessEvent.Kind.ENTRY, AccessEvent.Kind.CHECK_IN, AccessEvent.Kind.EXIT)
 RECENT = 10  # how many recent visit dates are shown
 
 

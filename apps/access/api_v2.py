@@ -22,7 +22,7 @@ from django.views.decorators.http import require_http_methods
 
 from apps.site_settings.models import SiteSettings
 
-from . import decisions, qr, tags
+from . import activity, decisions, qr, screen, tags
 from .models import AccessEvent, Device, KeyFob
 
 # The check-in and session heartbeat intervals are admin settings (apps/site_settings, 02 §2.8).
@@ -232,12 +232,12 @@ def access(request):
         return JsonResponse(equipment_access(device, fob, reason, enabled=device.enabled, enrolment=enrolment))
 
     if not device.enabled:
-        return JsonResponse({"allowed": False, "reason": "device_disabled", "display_name": None})
+        return _door_reply(False, "device_disabled", None)
     if fob is None:
         enrolment = enrolled(device, data, reason)
         if enrolment:
-            return JsonResponse({"allowed": False, "reason": "enrolled", "display_name": enrolment.member.display_name})
-        return JsonResponse({"allowed": False, "reason": reason, "display_name": None})
+            return _door_reply(False, "enrolled", enrolment.member.display_name)
+        return _door_reply(False, reason, None)
 
     decision = decisions.decide(device, "", timezone.now(), fob=fob)
     reasons = {
@@ -246,7 +246,14 @@ def access(request):
         decisions.Outcome.CHECKED_OUT: ("checked_out", True),
     }
     code, allowed = reasons.get(decision.outcome, (decision.reason, False))
-    return JsonResponse({"allowed": allowed, "reason": code, "display_name": decision.member.display_name})
+    return _door_reply(allowed, code, decision.member.display_name)
+
+
+def _door_reply(allowed, reason, display_name):
+    """A door or exit reader's reply, with how many are in the space now (after this tap) for its screen."""
+    return JsonResponse(
+        {"allowed": allowed, "reason": reason, "display_name": display_name, "in_space": activity.count()}
+    )
 
 
 @require_http_methods(["GET"])
@@ -376,4 +383,63 @@ def qr_code(request):
         response = HttpResponse(qr.raw(url), content_type="application/octet-stream")
     response["ETag"] = tag
     response["X-QR-URL"] = url
+    return response
+
+
+# --- the occupancy screen (05 §5.4, 06 §6.7) ---
+
+
+def door_side_or_error(device):
+    """The occupancy screen is for readers by the door (entry and exit), not machines."""
+    if device.role == Device.Role.EQUIPMENT:
+        raise ApiError(409, "wrong_device_role", "Only entry and exit readers show who's in.")
+
+
+@require_http_methods(["GET"])
+@device_api_v2
+def occupancy(request):
+    """Who's in the space now, for a screen by the door. Send `If-None-Match` with the last ETag to get 304."""
+    door_side_or_error(request.device)
+    now = timezone.now()
+    entries = screen.people(now)
+    version = screen.version(entries)
+    etag = f'"{version}"'
+    if request.headers.get("If-None-Match") == etag:
+        response = HttpResponseNotModified()
+    else:
+        response = JsonResponse({"in_space": len(entries), "as_of": unix(now), "version": version, "people": entries})
+    response["ETag"] = etag
+    return response
+
+
+@require_http_methods(["GET"])
+@device_api_v2
+def member_photo(request, member_id):
+    """A member's photo for the occupancy screen: only while they're in the space, and only if it may be shown.
+
+    `?size=` 16-200 pixels square (64 by default); `?format=` rgb565 (default), png or jpeg.
+    """
+    door_side_or_error(request.device)
+    fmt = request.GET.get("format", "rgb565")
+    if fmt not in screen.FORMATS:
+        raise ApiError(400, "bad_field", "format must be rgb565, png or jpeg.")
+    try:
+        size = int(request.GET.get("size", screen.DEFAULT_SIZE))
+    except ValueError:
+        raise ApiError(400, "bad_field", "size must be a whole number of pixels.") from None
+    if not screen.MIN_SIZE <= size <= screen.MAX_SIZE:
+        raise ApiError(400, "bad_field", f"size must be from {screen.MIN_SIZE} to {screen.MAX_SIZE}.")
+    from apps.members.models import Member
+
+    member = Member.objects.filter(pk=member_id).select_related("profile").first()
+    photo = screen.shown_photo(member) if member is not None and screen.is_in(member) else None
+    if photo is None:
+        raise ApiError(404, "no_photo", "No photo to show for that member now.")
+    etag = f'"{screen.photo_version(photo)}-{size}-{fmt}"'
+    if request.headers.get("If-None-Match") == etag:
+        response = HttpResponseNotModified()
+    else:
+        response = HttpResponse(screen.render(photo, size, fmt), content_type=screen.FORMATS[fmt])
+    response["ETag"] = etag
+    response["Cache-Control"] = "private, no-store"
     return response

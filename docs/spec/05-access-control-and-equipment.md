@@ -121,6 +121,31 @@ Refusals are written to the access log with response 402 and a reason message ("
   (so a member sees the success signal), which is harmless only if its relay isn't wired to a lock. Prefer v2
   firmware for the exit reader.
 - An exit tap counts as fob activity for attendance (5.10), like any other tap.
+- Entry and exit readers' `access` replies include **`in_space`**: how many are in the space after the tap, so the
+  reader can show "Bye Kim K. · 3 still in". Built 2026-11-09.
+
+### Occupancy screen (added 2026-11-09; built)
+
+A reader by the door (the exit reader, or a dedicated display node with the `exit` role) can show who's in the space
+now, with photos. It's the same best estimate as the "Who's in" page (06 §6.7).
+
+- **`GET occupancy`** (entry and exit readers; machine readers get `409 wrong_device_role`):
+  `{"in_space": 3, "as_of": <unix>, "version": "<8 hex>", "people": [{"id": 12, "name": "Kim K.", "since": <unix>,
+  "using": ["Red laser"], "photo": "<8 hex>"}]}`, most recent arrival first. `since` is the entry tap, or `null` for
+  someone only known from a machine they're using; `using` names the machines they're using now; `photo` is the
+  photo's version, or `null` when there's no photo to show. An `ETag` (the version) and `If-None-Match` give `304`
+  while nothing on the screen would change, so a display can poll every 30–60 seconds cheaply.
+- **`GET photos/{id}`**: that member's photo as a square, `?size=` 16–200 px (64 by default) and `?format=`
+  `rgb565` (default), `png` or `jpeg`. `rgb565` is 4 header bytes (width, height: 16-bit little-endian) then each
+  pixel as a 16-bit little-endian RGB565 value, row by row from the top left (8,196 bytes at 64 px). JPEG is
+  baseline. The `ETag` changes only when the member's photo changes (`"<photo version>-<size>-<format>"`), so a
+  display can keep photos and fetch each once. `404 no_photo` unless the member is **in the space now** and their
+  photo may be shown, so a device key can't be used to collect every member's photo.
+- **Privacy:** the screen is in the space, where visitors can see it, so it shows what a visitor may see. A member
+  with a **private profile** is counted but listed with `id`, `name` and `photo` all `null` (show "a member"). A
+  member who chose **"only members see my photo"** is listed by name without a photo. Only approved photos are used.
+  Names are `display_name`, like everything else a device shows; the open question on what devices may show (above)
+  applies here too.
 
 ## 5.3 Who may use a machine
 
@@ -182,6 +207,7 @@ clear rule for "BBMS answered" versus "BBMS couldn't answer".
 | `POST meter` | Equipment readers: motor-on seconds since the last report, with an increasing `seq` (see below). |
 | `POST machine-status` | Equipment readers: a tapped-in member reports the machine out of order or fixed (see below). |
 | `GET qr` | Any device: a QR code linking to the device's page on BBMS, in a raw format for a microcontroller (see below). Built 2026-11-07. |
+| `GET occupancy`, `GET photos/{id}` | Entry and exit readers: who's in the space now, and their photos, for a screen by the door (see "Occupancy screen" below). Built 2026-11-09. |
 
 **QR code for the device's screen** (added 2026-11-07; built): `GET /api/devices/v2/qr` returns a QR code for a
 short link to the device's page (`https://bbms.buildbrighton.com/d/<device-id>`, which redirects to
@@ -495,8 +521,8 @@ door (keyholder entry or non-keyholder check-in) or starting a session on a mach
 - Attendance is derived from the access log and usage sessions; nothing extra is stored.
 
 **Built (2026-11-09)** in `apps/access/attendance.py`:
-- A visit is a UK calendar day with a keyholder entry, a check-in, or the start of a machine session. Refused taps
-  and tapping out don't count.
+- A visit is a UK calendar day with a keyholder entry, a check-in, a tap on the exit reader, or the start of a
+  machine session. Refused taps don't count. (Corrected 2026-11-09: exit taps were left out at first.)
 - Members see their visits on their account page (how many, since when, the last one, and the ten most recent).
 - Admins see "N visits from … to …; M in the last 4 weeks" in the Access part of the member's admin page.
 - **Trusted-status review** (Members → "Trusted-status review", for those who can change members): active and
