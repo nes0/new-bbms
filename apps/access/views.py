@@ -30,3 +30,11 @@ def fake_device(request):
     if not settings.DEBUG:
         raise Http404
     return render(request, "access/fake_device.html")
+
+
+def fake_exit(request):
+    """A pretend exit node by the door: a portrait screen listing who's in, and a fob reader (05 §5.4, "Occupancy
+    screen"). Only when DEBUG is on; you paste a device key into it (see `manage.py create_demo_exit`)."""
+    if not settings.DEBUG:
+        raise Http404
+    return render(request, "access/fake_exit.html")

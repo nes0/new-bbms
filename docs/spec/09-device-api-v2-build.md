@@ -396,6 +396,36 @@ shape here, change the fake device to match. What it does with each reply:
 - if `end` fails it turns the relay off anyway and retries every 15 s (offline events aren't simulated, nor is the
   offline fob cache).
 
+### The fake exit node (added 2026-11-09)
+
+`/dev/fake-exit/` (only when `DEBUG` is on) is a pretend **exit node**: the screen by the door that lists who's in
+the space (05 §5.4, "Occupancy screen"). It's modelled on a small embedded Linux device with a portrait panel about
+the size of a tablet and no touchscreen; the fob reader is its only input. Code: `templates/access/fake_exit.html`,
+`static/access/fake_exit.js` and `fake_exit.css`.
+
+```bash
+DEBUG=True .venv/bin/python manage.py create_demo_exit   # an exit node and a front door, their keys, demo members
+DEBUG=True .venv/bin/python manage.py runserver          # then open http://localhost:8000/dev/fake-exit/
+```
+
+The demo command makes seven made-up members with fobs (cards `0001000011` to `0001000017`) and generated avatar
+photos. Five are checked in already, one of them using a "Demo lathe"; one has a private profile (shown as "A
+member") and one a members-only photo (shown by name, with initials). Paste the exit node's key, and optionally the
+front door's to tap people in from the bench. What the node does:
+
+- boot → `GET qr` (kept on "disk" with the ETag), `check-in`, `GET occupancy`; then `occupancy` every 30 s with
+  `If-None-Match` (304 while nothing changes) and `check-in` every `heartbeat_seconds`;
+- the screen: the space's name, "In the space" and the count, the time, then one row per person, newest arrival
+  first: photo (or initials, or a blank circle for a private profile), name, "In since 18:05" and "Using …". More
+  people than fit are shown a page at a time, turning every 8 s ("Page 1 of 3"); the footer says "Leaving? Tap your
+  fob below." beside the QR code;
+- photos are fetched once per photo version as 160 px PNGs (a Linux device decodes PNG easily) and **forgotten as
+  soon as the member leaves the list**;
+- a tap → `access`, a message for 4 s ("Bye, Kim K. · 5 people still in", or why it wasn't recorded), then the list
+  is fetched again at once;
+- BBMS unreachable: the last list stays up under "Can't reach BBMS: this is the list from 18:20", and a tap says it
+  wasn't recorded (the exit node keeps no offline cache: tapping out is a courtesy).
+
 ## 9.9 Tests to write
 
 Follow the style of `apps/access/tests/test_api_v1.py` and `apps/equipment/tests/` (reuse

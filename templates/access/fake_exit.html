@@ -1,0 +1,98 @@
+{% load static %}<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fake exit node</title>
+  {# A pretend exit node by the door: a portrait screen of who's in, and a fob reader. Local development only. #}
+  <link rel="stylesheet" href="{% static 'access/fake_device.css' %}">
+  <link rel="stylesheet" href="{% static 'access/fake_exit.css' %}">
+</head>
+<body>
+<main class="bench">
+  <section class="device exit-node" aria-label="The exit node">
+    <div class="device-top">
+      <span class="maker">BBMS exit node</span>
+      <span class="led-wrap" title="Network: green while BBMS answers">
+        <span id="led" class="led"></span> Network
+      </span>
+    </div>
+
+    <div class="panel-wrap">
+      <div id="panel" class="panel off" aria-live="polite">
+        <header class="panel-head">
+          <div>
+            <p id="space-name" class="space-name">Build Brighton</p>
+            <h2 class="panel-title">In the space</h2>
+          </div>
+          <div class="count-wrap">
+            <span id="count" class="count">–</span>
+            <span id="clock" class="clock"></span>
+          </div>
+        </header>
+        <p id="stale" class="stale" hidden></p>
+        <ol id="people" class="people"></ol>
+        <p id="empty" class="empty" hidden>Nobody's tapped in right now.</p>
+        <p id="page" class="page" hidden></p>
+        <footer class="panel-foot">
+          <div>
+            <p class="foot-main">Leaving? Tap your fob below.</p>
+            <p class="foot-small">Tapping out keeps this list right. Scan for this node's page.</p>
+          </div>
+          <canvas id="qr" class="qr" width="1" height="1" aria-label="QR code"></canvas>
+        </footer>
+        <div id="toast" class="toast" hidden>
+          <p id="toast-main" class="toast-main"></p>
+          <p id="toast-small" class="toast-small"></p>
+        </div>
+        <div id="boot" class="boot">Starting…</div>
+      </div>
+    </div>
+
+    <div class="reader-pad" title="The fob reader under the screen">
+      <span class="reader-ring"></span> Fob reader
+    </div>
+  </section>
+
+  <section class="controls" aria-label="Test bench">
+    <h1>Fake exit node</h1>
+    <p class="hint">
+      A screen by the door showing who's in the space, as an embedded Linux device would, through the v2 device API
+      (<code>occupancy</code>, <code>photos/{id}</code>, <code>access</code>). No touchscreen: the fob reader is the
+      only input. Set up demo readers and members with
+      <code>DEBUG=True .venv/bin/python manage.py create_demo_exit</code>, then paste the keys it prints.
+    </p>
+
+    <label class="field">Exit node API key
+      <input id="key" type="password" autocomplete="off" spellcheck="false">
+    </label>
+    <label class="field">Front door API key <span class="muted">(optional: to tap people in)</span>
+      <input id="door-key" type="password" autocomplete="off" spellcheck="false">
+    </label>
+
+    <div class="reader bench-reader">
+      <label for="card">Fob</label>
+      <input id="card" inputmode="numeric" autocomplete="off" placeholder="card number or 12-hex tag">
+    </div>
+    <div class="row">
+      <button id="tap" type="button">Tap on the exit node</button>
+      <button id="tap-door" type="button">Tap at the front door</button>
+    </div>
+
+    <div class="switches">
+      <label class="switch"><input id="power" type="checkbox" checked> Power</label>
+      <label class="switch"><input id="network" type="checkbox" checked> BBMS reachable</label>
+    </div>
+
+    <div class="row">
+      <button id="refresh" type="button">Refresh the list now</button>
+      <button id="clearlog" type="button">Clear log</button>
+    </div>
+
+    <h2>Requests</h2>
+    <ol id="log" class="log" reversed></ol>
+  </section>
+</main>
+<script src="{% static 'access/fake_exit.js' %}"></script>
+</body>
+</html>
