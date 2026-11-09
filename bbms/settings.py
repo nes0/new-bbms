@@ -25,6 +25,13 @@ env = environ.Env(
 environ.Env.read_env(BASE_DIR / ".env")
 
 DEBUG = env("DEBUG")
+# A demo site for trying BBMS out (made-up members, pretend payments and devices): every page says so, and the fakes
+# that stand in for GoCardless, Stripe, PayPal, Discord, Moodle and the devices are on (apps/core/fakes.py), as they
+# are when developing. Never on the live site.
+DEMO_SITE = env.bool("DEMO_SITE", default=False)
+# Where those fakes keep their state between requests: the project folder unless set (a demo site in a container sets
+# it to a volume, so a redeploy keeps it).
+FAKES_DIR = env("FAKES_DIR", default=str(BASE_DIR))
 # True while `manage.py test` runs (the test runner turns DEBUG off, so code can't rely on it).
 TESTING = len(sys.argv) > 1 and sys.argv[1] == "test"
 
@@ -135,7 +142,7 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 # links to them are signed and expire. Without SPACES_BUCKET, files go in MEDIA_ROOT (development only: App
 # Platform's disk is wiped on every deploy).
 MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = Path(env("MEDIA_ROOT", default=str(BASE_DIR / "media")))
 SPACES_BUCKET = env("SPACES_BUCKET", default="")
 if SPACES_BUCKET:
     DEFAULT_STORAGE = {

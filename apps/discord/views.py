@@ -2,13 +2,14 @@
 
 import secrets
 
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods, require_POST
+
+from apps.core import fakes
 
 from . import client as discord
 from . import linking
@@ -80,7 +81,7 @@ def unlink(request):
 @require_http_methods(["GET", "POST"])
 def fake_discord(request):
     """Stands in for Discord's "authorise" page when the DISCORD_* settings aren't set. DEBUG only."""
-    if not settings.DEBUG or not discord.using_fake():
+    if not fakes.allowed() or not discord.using_fake():
         raise Http404
     state = request.GET.get("state", "")
     if request.method == "POST":

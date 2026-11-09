@@ -14,6 +14,7 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods, require_POST
 
+from apps.core import fakes
 from apps.members.decorators import email_confirmed_required
 
 from . import checkout, paypal, paypal_ipn
@@ -229,7 +230,7 @@ def fake_stripe(request, session_id):
     """Stands in for Stripe's Checkout page when there's no key. DEBUG only."""
     from . import cards
 
-    if not settings.DEBUG or settings.STRIPE_SECRET_KEY:
+    if not fakes.allowed() or settings.STRIPE_SECRET_KEY:
         raise Http404
     fake = cards.fake()
     session = fake.sessions.get(session_id)
@@ -313,7 +314,7 @@ def paypal_notification(request):
 
 
 def _fake_only():
-    if not settings.DEBUG or not paypal.using_fake():
+    if not fakes.allowed() or not paypal.using_fake():
         raise Http404
 
 

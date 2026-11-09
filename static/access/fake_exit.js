@@ -448,6 +448,16 @@
   }
 
   // ---- Wiring the page up ----------------------------------------------------------------------------------------
+  // A link can carry the keys after a "#" (browsers never send that part to the server):
+  // …/fake-exit/#key=…&door=…
+  const fromLink = new URLSearchParams(location.hash.slice(1));
+  if (fromLink.get("key") && fromLink.get("key") !== disk.get("apiKey", "")) {
+    disk.set("apiKey", fromLink.get("key"));
+    disk.set("qr", null);
+    disk.set("cacheVersion", "");
+  }
+  if (fromLink.get("door")) disk.set("doorKey", fromLink.get("door"));
+  if (location.hash) history.replaceState(null, "", location.pathname);
   $("key").value = disk.get("apiKey", "");
   $("door-key").value = disk.get("doorKey", "");
   $("key").addEventListener("change", () => {

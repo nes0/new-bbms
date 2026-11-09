@@ -7,6 +7,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from apps.billing import gocardless
+from apps.core import fakes
 from apps.finance import payouts
 from apps.finance.models import Payout
 from apps.payments import cards
@@ -38,7 +39,7 @@ class Command(BaseCommand):
                 raise CommandError("--since must be YYYY-MM-DD") from error
         providers = [options["provider"]] if options["provider"] else None
         if options["fake_payouts"]:
-            if not settings.DEBUG or settings.GOCARDLESS_ACCESS_TOKEN or settings.STRIPE_SECRET_KEY:
+            if not fakes.allowed() or settings.GOCARDLESS_ACCESS_TOKEN or settings.STRIPE_SECRET_KEY:
                 raise CommandError("--fake-payouts is only for development, with the fake GoCardless and Stripe.")
             for fake in (gocardless.fake(), cards.fake()):
                 fake.pay_out(timezone.localdate())

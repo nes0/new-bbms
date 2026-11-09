@@ -19,6 +19,8 @@ from datetime import UTC, date, datetime, time
 
 from django.conf import settings
 
+from apps.core import fakes
+
 logger = logging.getLogger(__name__)
 
 
@@ -296,15 +298,15 @@ _fake = FakeCards()
 def client():
     if settings.STRIPE_SECRET_KEY:
         return StripeCards(settings.STRIPE_SECRET_KEY)
-    if settings.DEBUG or getattr(settings, "TESTING", False):
+    if fakes.allowed() or getattr(settings, "TESTING", False):
         return fake()
     return NotConfigured()
 
 
 def fake() -> FakeCards:
     global _fake
-    if settings.DEBUG and not getattr(settings, "TESTING", False):
-        _fake = FakeCards(path=str(settings.BASE_DIR / ".fake-stripe.json")).load()
+    if fakes.allowed() and not getattr(settings, "TESTING", False):
+        _fake = FakeCards(path=fakes.state_file(".fake-stripe.json")).load()
     return _fake
 
 

@@ -21,6 +21,7 @@ from django.conf import settings
 from django.core import signing
 from django.urls import reverse
 
+from apps.core import fakes
 from apps.site_settings.models import SiteSettings
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,7 @@ class Unreachable(Exception):
 
 
 def using_fake() -> bool:
-    return not settings.PAYPAL_ACCOUNT_EMAIL and (settings.DEBUG or getattr(settings, "TESTING", False))
+    return not settings.PAYPAL_ACCOUNT_EMAIL and (fakes.allowed() or getattr(settings, "TESTING", False))
 
 
 def account_email() -> str:
