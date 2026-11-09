@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Resources · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Resources</h1>
+
+  <section>
+    <h2>Rules and policies</h2>
+    <h3>Core rules</h3>
+    <ul>
+      {% for name, title in core_rules %}<li><a href="{% url 'policy' name %}">{{ title }}</a></li>{% endfor %}
+    </ul>
+    <h3>Policies</h3>
+    <ul>
+      {% for name, title in other_policies %}<li><a href="{% url 'policy' name %}">{{ title }}</a></li>{% endfor %}
+    </ul>
+  </section>
+
+  {% if user.is_authenticated %}
+    <section>
+      <h2>Our online community</h2>
+      <p>Discord is where members talk: announcements, arranging inductions and topic channels such as 3D printing
+        and electronics. Everyone using the space needs to be on it. <a href="{% url 'discord:page' %}">Link your
+        Discord account</a>.</p>
+      <p>Comments or ideas about this site? <a href="{% url 'feedback' %}">Send us feedback</a>.</p>
+    </section>
+  {% endif %}
+{% endblock %}

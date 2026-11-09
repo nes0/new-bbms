@@ -19,6 +19,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from apps.access.models import AccessEvent
 from apps.billing.models import Charge
+from apps.members import statistics
 from apps.members.models import Member
 from apps.payments import services
 from apps.payments.models import Payment
@@ -549,5 +550,8 @@ def stats(request):
         "came_in_month": came_in(30),
         "came_in_quarter": came_in(91),
         "finance_link": reverse("finance:overview") if can_see(request.user) else "",
+        # Totals by status and the trend (06 §6.13), for every member.
+        "now": statistics.now(),
+        "trend": statistics.trend(),
     }
     return render(request, "finance/stats.html", context)

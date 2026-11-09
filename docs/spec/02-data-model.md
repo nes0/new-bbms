@@ -91,7 +91,9 @@ AcsNode (devices)   Settings (key/value)   AuditLog
   - `paid_at`.
 - **New** (04 §4.9, 06 §6.13): `gocardless_payouts` and `stripe_payouts` (id, amount, fees, arrival date) with
   their line items linked to payments; bank statement lines (date, amount, description, matched to); member
-  **status history** (member, from, to, when, by); a daily **membership snapshot** (date, counts by status).
+  **status history** (member, from, to, when, by); a daily **membership snapshot** (date, counts by status). Both
+  built 2026-11-09 (`MemberStatusChange`, `MembershipSnapshot`), without "by": the change is recorded when the member
+  is saved, which doesn't know who did it. **Feedback** (member, comments, sent at) is kept too (06 §6.9).
 - **`subscription_charge`** — one row per member per billing month: `charge_date`, `payment_date`, `amount` (pence, filled when paid), `status` ∈ `pending → due → processing → paid`, or `failed` (new: GoCardless gave up), or `cancelled`.
 
 ## 2.5 Access control
