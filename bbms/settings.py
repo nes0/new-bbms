@@ -278,6 +278,10 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 CLIENT_IP_HEADER = env("CLIENT_IP_HEADER", default="")
 SECURE_SSL_REDIRECT = env("SECURE_SSL_REDIRECT")
 SESSION_COOKIE_SECURE = not DEBUG
+# Cookies belong to a host name, not a port: two sites tried on the same host (say localhost through SSH tunnels) log
+# each other out if their cookies share a name. A demo or test site sets its own names.
+SESSION_COOKIE_NAME = env("SESSION_COOKIE_NAME", default="sessionid")
+CSRF_COOKIE_NAME = env("CSRF_COOKIE_NAME", default="csrftoken")
 CSRF_COOKIE_SECURE = not DEBUG
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"

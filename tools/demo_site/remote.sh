@@ -40,6 +40,10 @@ MEDIA_ROOT=/data/media
 FAKES_DIR=/data/fakes
 ENV
 fi
+# Settings added since the env file was first made (appended if missing; existing values are kept).
+for setting in SESSION_COOKIE_NAME=bbms_demo_session CSRF_COOKIE_NAME=bbms_demo_csrf; do
+  grep -q "^${setting%%=*}=" env || echo "$setting" >> env
+done
 if [ ! -f demo-password ]; then
   [ -n "${DEMO_PASSWORD:-}" ] || { echo "First deploy: set DEMO_PASSWORD (the members' shared password)." >&2; exit 1; }
   printf '%s' "$DEMO_PASSWORD" > demo-password
