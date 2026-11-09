@@ -57,7 +57,8 @@ Build in this order; each phase is usable on its own and should end with green t
 - charging fees to credit and the real balance: the payments app (`member_credit_pence` stays a stub);
 - notifications to the machine's team: call one function, `notify_team(equipment, message)`, which now sends in-app
   notifications (06 §6.5);
-- member-facing web pages for equipment (status note, service history); the Django admin is enough for now;
+- member-facing web pages for equipment (status note, service history); the Django admin is enough for now
+  (**built since**, 05 §5.7);
 - the exit-reader occupancy display. (Fob enrolment windows, `reason: "enrolled"`, were built with the fobs slice.)
 
 ## 9.3 Conventions (all v2 endpoints)

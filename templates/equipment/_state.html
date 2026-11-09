@@ -1,0 +1,5 @@
+{% load money %}{% if state.step == "none" %}<span class="hint">No training needed</span>
+{% elif state.step == "trained" %}<span class="ok">You're trained</span>{% if state.course_needed %}: <strong>finish the online course</strong>{% endif %}
+{% elif state.step == "waiting" %}Waiting for a trainer{% if state.course_needed %}; finish the online course first{% endif %}
+{% elif machine.induction_fee_pence %}Access fee {{ machine.induction_fee_pence|pounds }}
+{% else %}Ask a trainer{% endif %}

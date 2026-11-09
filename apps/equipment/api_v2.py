@@ -210,10 +210,13 @@ def machine_status(request):
             source=MachineStatusChange.Source.BUTTON,
         )
         label = "out of order" if status == Equipment.Status.OUT_OF_ORDER else "working again"
-        rules.notify_team(
-            equipment,
-            f"{session.member.display_name} reported {equipment.name} {label}. {equipment.status_note}".strip(),
-        )
+        missing_reason = status == Equipment.Status.OUT_OF_ORDER and not equipment.status_note
+        reason = " No reason given yet." if missing_reason else f" {equipment.status_note}"
+        who = session.member.display_name
+        rules.notify_team(equipment, f"{who} reported {equipment.name} {label}.{reason}".rstrip())
+        if missing_reason:
+            # A reader has no keyboard: ask whoever pressed the button to say what's wrong on the machine's page.
+            rules.ask_reporter_for_reason(equipment, session.member)
     return JsonResponse({"changed": True, "machine": machine_payload(equipment)})
 
 

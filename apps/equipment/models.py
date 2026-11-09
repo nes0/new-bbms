@@ -46,7 +46,12 @@ class Equipment(models.Model):
     induction_category = models.SlugField(
         max_length=64, blank=True, help_text="Machines sharing a category share one induction (e.g. two drills)."
     )
-    induction_fee_pence = models.PositiveIntegerField(default=0)
+    induction_fee_pence = models.PositiveIntegerField(
+        "access fee (pence)",
+        default=0,
+        help_text="One-off equipment access fee a member pays before being signed off; it goes towards the machine's "
+        "upkeep and eventual replacement.",
+    )
     usage_cost_pence_per_hour = models.PositiveIntegerField(default=0)
 
     moodle_course_id = models.PositiveIntegerField(
@@ -83,9 +88,19 @@ class Equipment(models.Model):
         related_name="+",
         help_text="On long-term loan from this member.",
     )
-    archived = models.BooleanField(default=False)
+    archived = models.BooleanField(
+        "retired",
+        default=False,
+        help_text="Disposed of or no longer in the space. Retired equipment is kept, with its history, for review.",
+    )
     obtained_at = models.DateField(null=True, blank=True)
-    removed_at = models.DateField(null=True, blank=True)
+    removed_at = models.DateField("retired on", null=True, blank=True)
+    purchase_price_pence = models.PositiveIntegerField(
+        "bought for (pence)",
+        null=True,
+        blank=True,
+        help_text="What the space paid for it, if known: shown against its fees when it's retired.",
+    )
     legacy_id = models.PositiveIntegerField(null=True, blank=True, unique=True)
 
     class Meta:
@@ -260,6 +275,7 @@ class MachineStatusChange(models.Model):
     class Source(models.TextChoices):
         BUTTON = "button", "Button on the machine"
         ADMIN = "admin", "Admin"
+        WEB = "web", "Equipment page"
 
     equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name="status_changes")
     status = models.CharField(max_length=20, choices=Equipment.Status.choices)

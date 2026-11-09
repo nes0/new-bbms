@@ -16,7 +16,7 @@ a { color: var(--accent); }
 .site-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem;
   padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
 .site-name { font-weight: 600; text-decoration: none; color: var(--text); }
-.site-header nav { display: flex; gap: 1rem; align-items: center; }
+.site-header nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.25rem 1rem; align-items: center; }
 main { max-width: 48rem; margin: 0 auto; padding: 1.5rem 1rem; }
 form.inline { display: inline; }
 button.link { background: none; border: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; }

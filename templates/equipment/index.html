@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load money %}
+
+{% block title %}Equipment · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Equipment</h1>
+  <p>The space's tools and machines. Some need training before you can use them: pay the one-off access fee, take any online
+    course, then a trainer signs you off. <a href="{% url 'moodle:training' %}">Your online training</a></p>
+
+  <section>
+    <h2>Needs training</h2>
+    {% include "equipment/_list.html" with rows=needs_training %}
+  </section>
+  <section>
+    <h2>No training needed</h2>
+    {% include "equipment/_list.html" with rows=open_to_all %}
+  </section>
+  {% if can_review %}<p><a href="{% url 'equipment:retired' %}">Retired equipment</a>: lifetime fees, use and costs.</p>{% endif %}
+{% endblock %}

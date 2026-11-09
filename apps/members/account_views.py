@@ -39,10 +39,10 @@ def _ordinal(day):
 
 
 def _trained_on(member):
-    """The machines a member is signed off on, by name. Machines sharing an induction category all count."""
+    """The machines a member is signed off on, sorted by name. Machines sharing an induction category all count."""
     categories = {i.category for i in member.inductions.all() if i.is_trained}
     machines = Equipment.objects.filter(archived=False, requires_induction=True)
-    return sorted(m.name for m in machines if m.induction_key in categories)
+    return sorted((m for m in machines if m.induction_key in categories), key=lambda m: m.name)
 
 
 @login_required

@@ -12,7 +12,7 @@ from django.db.models import Sum
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.notifications.notify import notify_role
+from apps.notifications.notify import notify, notify_role
 from apps.payments import credit, services
 from apps.site_settings.models import SiteSettings
 
@@ -50,7 +50,17 @@ def notify_team(equipment: Equipment, message: str):
         admins=not roles,
         message=message,
         kind="equipment_team",
-        url=reverse("admin:equipment_equipment_change", args=[equipment.pk]),
+        url=reverse("equipment:detail", args=[equipment.slug]),
+    )
+
+
+def ask_reporter_for_reason(equipment: Equipment, member):
+    """Someone pressed the out-of-order button, which can't take a reason: ask them for one on the machine's page."""
+    notify(
+        member,
+        f"You reported {equipment.name} out of order. Please tell its team what's wrong.",
+        kind="equipment_reason",
+        url=reverse("equipment:detail", args=[equipment.slug]) + "#report",
     )
 
 

@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% load money %}
+
+{% block title %}{{ equipment.name }} · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <p class="hint"><a href="{% url 'equipment:index' %}">Equipment</a>{% if equipment.archived %} ·
+    <a href="{% url 'equipment:retired' %}">Retired equipment</a>{% endif %}</p>
+  <h1>{{ equipment.name }}</h1>
+
+  {% if life %}
+    <section class="card">
+      <h2>Retired{% if equipment.removed_at %} on {{ equipment.removed_at|date:"j F Y" }}{% endif %}</h2>
+      <dl class="details">
+        <dt>In service</dt><dd>{{ equipment.obtained_at|date:"j F Y"|default:"?" }} to {{ equipment.removed_at|date:"j F Y"|default:"?" }}{% if life.years is not None %} ({{ life.years|floatformat:1 }} years){% endif %}</dd>
+        <dt>Bought for</dt><dd>{% if equipment.purchase_price_pence is not None %}{{ equipment.purchase_price_pence|pounds }}{% else %}Not known{% endif %}</dd>
+        <dt>Access fees</dt><dd>{{ life.access_fees|pounds }}{% if life.shares_access_with %} <span class="hint">(shared induction)</span>{% endif %}</dd>
+        <dt>Usage fees</dt><dd>{{ life.usage_fees|pounds }}</dd>
+        <dt>Expenses</dt><dd>{{ life.expenses|pounds }}</dd>
+        <dt>Net</dt><dd><strong>{{ life.net|pounds }}</strong></dd>
+        <dt>Use</dt><dd>{{ life.sessions }} sessions by {{ life.users }} member{{ life.users|pluralize }}, {{ life.hours|floatformat:1 }} hours</dd>
+      </dl>
+    </section>
+  {% endif %}
+
+  {% if equipment.status == "out_of_order" %}
+    <p class="card error"><strong>Out of order</strong> since {{ equipment.status_since|date:"j F Y, H:i" }}{% if equipment.status_note %}:
+      {{ equipment.status_note }}{% endif %}</p>
+  {% endif %}
+
+  <dl class="details">
+    {% if equipment.manufacturer or equipment.model_number %}<dt>Make</dt><dd>{{ equipment.manufacturer }} {{ equipment.model_number }}</dd>{% endif %}
+    {% if equipment.room %}<dt>Where</dt><dd>{{ equipment.room }}</dd>{% endif %}
+    {% if equipment.team %}<dt>Looked after by</dt><dd>{% if team_listed %}<a href="{% url 'profiles:group' equipment.team.name %}">{{ equipment.team.name }}</a>{% else %}{{ equipment.team.name }}{% endif %}</dd>{% endif %}
+    <dt>Cost to use</dt>
+    <dd>{% if equipment.usage_cost_pence_per_hour %}{{ equipment.usage_cost_pence_per_hour|pounds }} an hour, at least {{ minimum_minutes }} minutes a session, from your credit{% else %}Free{% endif %}</dd>
+    <dt>Training</dt>
+    <dd>{% if equipment.requires_induction %}Needed{% if equipment.induction_fee_pence %}, with a one-off access fee of {{ equipment.induction_fee_pence|pounds }}{% endif %}{% if equipment.moodle_course_id %}, and an online course{% endif %}{% else %}Not needed{% endif %}</dd>
+    {% if ppe %}<dt>Protective equipment</dt><dd>{{ ppe|join:", " }}</dd>{% endif %}
+    {% if equipment.permaloan_member %}<dt>On loan</dt><dd>On long-term loan to the space from {{ equipment.permaloan_member.display_name }}</dd>{% endif %}
+  </dl>
+
+  {% if equipment.description %}<p>{{ equipment.description|linebreaksbr }}</p>{% endif %}
+  {% if equipment.help_text %}
+    <details><summary>How to use it</summary>{{ help_html }}</details>
+  {% endif %}
+
+  <section class="card">
+    <h2>You and this machine</h2>
+    {% if state.step == "unpaid" %}
+      {% if equipment.induction_fee_pence %}
+        <p>To use it, pay its one-off access fee of {{ equipment.induction_fee_pence|pounds }}. It goes towards the
+          machine's upkeep and, in time, its replacement. You'll then be on the list for a trainer to sign you off.</p>
+        <p><a href="{% url 'payments:pay' %}">Pay the access fee</a></p>
+      {% else %}
+        <p>To use it, ask one of its trainers to train you.</p>
+      {% endif %}
+    {% elif state.step == "waiting" %}
+      <p>You've paid the access fee{% if state.induction.payment %} ({{ state.induction.payment.paid_at|date:"j F Y" }}){% endif %}.
+        {% if state.course_needed %}Next, finish the online course; then a trainer can sign you off.
+        {% else %}A trainer can now sign you off: ask one of the trainers below.{% endif %}</p>
+    {% elif state.step == "trained" %}
+      <p class="ok">You're trained on it{% if state.induction.trained_at %} (since {{ state.induction.trained_at|date:"j F Y" }}){% endif %}.</p>
+    {% endif %}
+
+    {% if equipment.moodle_course_id %}
+      <h3>Online course</h3>
+      {% if state.course_done %}
+        <p class="ok">You've finished it.</p>
+      {% elif state.course_kept %}
+        <p>You were signed off before the course was needed, so you keep your access{% if course_link %}; the
+          <a href="{{ course_link }}">course</a> is there if you'd like it{% endif %}.</p>
+      {% else %}
+        <p>You haven't finished it yet. Log in on our training site with <strong>Log in with BBMS</strong>.</p>
+        <p class="actions">
+          {% if course_link %}<a href="{{ course_link }}">Go to the course</a>{% endif %}
+          {% if can_check_course %}
+            <form method="post" action="{% url 'moodle:check-now' equipment.moodle_course_id %}" class="inline">
+              {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+              <button type="submit" class="link">I've finished the course, check now</button>
+            </form>
+          {% endif %}
+        </p>
+      {% endif %}
+    {% endif %}
+
+    {% if state.step == "none" or state.step == "trained" %}
+      {% if refusal %}<p><strong>Right now:</strong> {{ refusal }}</p>{% else %}<p>Tap your fob on its reader to start.</p>{% endif %}
+    {% endif %}
+  </section>
+
+  {% if can_report %}
+    <section id="report"{% if awaiting_reason %} class="card"{% endif %}>
+      <h2>{% if awaiting_reason %}What's wrong with it?{% else %}Report a problem{% endif %}</h2>
+      {% if awaiting_reason %}<p>You marked it out of order with the button on its reader. Please tell the team what's
+        wrong, so they know what to fix.</p>{% endif %}
+      {% if equipment.status == "working" %}
+        <form method="post" action="{% url 'equipment:report' equipment.slug %}" class="form stack">
+          {% csrf_token %}<input type="hidden" name="status" value="out_of_order">
+          <label for="fault-note">What's wrong?</label>
+          <input id="fault-note" name="note" maxlength="255" required>
+          <button type="submit">Mark it out of order</button>
+          <p class="hint">Members can't use it until its team marks it fixed. The team is told straight away.</p>
+        </form>
+      {% else %}
+        <form method="post" action="{% url 'equipment:report' equipment.slug %}" class="form stack">
+          {% csrf_token %}
+          <label for="status-note">What's wrong?</label>
+          <input id="status-note" name="note" maxlength="255" value="{{ equipment.status_note }}"{% if awaiting_reason %} required autofocus{% endif %}>
+          <div class="actions">
+            <button type="submit" name="status" value="out_of_order">{% if equipment.status_note %}Update the note{% else %}Save{% endif %}</button>
+            {% if on_team %}<button type="submit" name="status" value="working" formnovalidate>Mark it working again</button>{% endif %}
+          </div>
+          {% if not on_team %}<p class="hint">Only its team can mark it working again.</p>{% endif %}
+        </form>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  {% if status_changes %}
+    <section>
+      <h2>Status history</h2>
+      <ul class="plain">
+        {% for change in status_changes %}
+          <li><span class="hint">{{ change.created_at|date:"j M Y H:i" }}</span>
+            {{ change.get_status_display }}{% if change.note %}: {{ change.note }}{% endif %}
+            {% if change.reported_by %}<span class="hint">({{ change.reported_by.display_name }}, {{ change.get_source_display|lower }})</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  <section>
+    <h2>Running hours and servicing</h2>
+    <dl class="details">
+      <dt>Running hours</dt><dd>{{ hours.total|floatformat:1 }}</dd>
+      <dt>Since the last service</dt><dd>{{ hours.since_service|floatformat:1 }}{% if hours.interval %} of {{ hours.interval }}{% endif %}
+        {% if hours.due %}<strong class="error">Service due</strong>{% endif %}</dd>
+      <dt>Last service</dt><dd>{% if hours.last_service %}{{ hours.last_service.serviced_at|date:"j F Y" }}{% else %}None recorded{% endif %}</dd>
+    </dl>
+    {% if services %}
+      <h3>Service history</h3>
+      <ul class="plain">
+        {% for record in services %}
+          <li><span class="hint">{{ record.serviced_at|date:"j M Y" }}</span> {{ record.note|default:"Serviced" }}
+            {% if record.recorded_by %}<span class="hint">({{ record.recorded_by.display_name }})</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    {% if on_team %}
+      <form method="post" action="{% url 'equipment:service' equipment.slug %}" class="form stack">
+        {% csrf_token %}
+        <h3>Record a service</h3>
+        <label for="serviced-at">Date</label>
+        <input type="date" id="serviced-at" name="serviced_at" value="{{ today }}" max="{{ today }}" required>
+        <label for="service-note">What was done</label>
+        <input id="service-note" name="note" maxlength="255">
+        <button type="submit">Record the service</button>
+        <p class="hint">The hours since the last service start again from this date.</p>
+      </form>
+    {% endif %}
+  </section>
+
+  {% if equipment.requires_induction %}
+    <section>
+      <h2>Who's trained</h2>
+      <h3>Trainers</h3>
+      {% include "equipment/_people.html" with people=people.trainers empty="No trainers yet." %}
+      <h3>Trained</h3>
+      {% include "equipment/_people.html" with people=people.trained empty="Nobody else yet." %}
+      <h3>Waiting for training</h3>
+      {% if people.waiting %}
+        <ul class="plain">{% for induction in people.waiting %}<li><a href="{% url 'profiles:member' induction.member.pk %}">{{ induction.member.get_full_name }}</a></li>{% endfor %}</ul>
+      {% else %}<p>Nobody.</p>{% endif %}
+    </section>
+  {% endif %}
+
+  <section>
+    <h2>Use</h2>
+    <p>Used for {{ usage.used }} minutes; training {{ usage.training }}, testing {{ usage.testing }},
+      maintenance {{ usage.maintenance }}.</p>
+    {% if sessions %}
+      <div class="scroll">
+        <table class="table">
+          <thead><tr><th>Started</th><th>Time</th><th>Member</th><th>For</th>{% if on_team %}<th></th>{% endif %}</tr></thead>
+          <tbody>
+            {% for session in sessions %}
+              <tr>
+                <td class="nowrap">{{ session.started_at|date:"j M Y H:i" }}</td>
+                <td class="nowrap">{% widthratio session.duration_seconds 60 1 %} min</td>
+                <td><a href="{% url 'profiles:member' session.member.pk %}">{{ session.member.get_full_name }}</a></td>
+                <td>{{ session.get_reason_display }}</td>
+                {% if on_team %}
+                  <td>{% if not session.reason %}
+                    <form method="post" action="{% url 'equipment:reclassify' equipment.slug session.pk %}" class="inline">
+                      {% csrf_token %}
+                      <select name="reason" aria-label="Mark as">{% for reason in reclassify_to %}<option value="{{ reason.value }}">{{ reason.label }}</option>{% endfor %}</select>
+                      <button type="submit" class="link">Mark</button>
+                    </form>{% endif %}</td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if sessions.has_other_pages %}
+        <p class="actions">
+          {% if sessions.has_previous %}<a href="?page={{ sessions.previous_page_number }}">Newer</a>{% endif %}
+          <span class="hint">Page {{ sessions.number }} of {{ sessions.paginator.num_pages }}</span>
+          {% if sessions.has_next %}<a href="?page={{ sessions.next_page_number }}">Older</a>{% endif %}
+        </p>
+      {% endif %}
+      {% if on_team %}<p class="hint">Marking a session as training or testing gives back any fee, once.</p>{% endif %}
+    {% else %}
+      <p>No sessions yet.</p>
+    {% endif %}
+  </section>
+{% endblock %}

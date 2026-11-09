@@ -397,6 +397,54 @@ as `training` or `testing` once. If it was already billed, the matching fee paym
 - The `managing_role_id` links equipment to a role (the "team" who looks after it).
 - **Permaloan**: equipment on long-term loan from a member (`permaloan_user_id`), with a permaloan policy.
 
+**Built (2026-11-09):** `/equipment/` and `/equipment/<slug>/` (in `apps/equipment`, `pages.py` and `views.py`).
+Creating and editing equipment stays in the admin. Choices made while building:
+- **Members only**, as legacy (its equipment pages needed the member role), the same people who see the member
+  directory (06 §6.1); visitors are asked to log in. This answers the ⚠️ above: the list isn't public.
+- The **list** splits machines into "needs training" and "no training needed", with where each is, its hourly cost,
+  whether it's out of order, and where the member is: access fee to pay, waiting for a trainer, or trained.
+- A **machine's page** shows the details, PPE, help text (markdown, with raw HTML removed), the team (linked to its
+  group page), and "you and this machine": how to get trained (a link to `/pay/` for the access fee), waiting for a
+  trainer, or trained, then why they can't use it right now if so (out of order, not enough credit, course not done).
+  It shows the **online course** and the "check now" button (06 §6.12), which comes back to the machine's page.
+- **Trainers, trained members and members waiting**: current members only (not those who have left), by full name,
+  linked to their member pages, as legacy.
+- **Use**: finished sessions (removed ones hidden), 25 a page, with who and what for (not the fee), and the total
+  minutes split into charged use, training, testing and maintenance.
+- **Reporting a fault from the page** (the web version of the out-of-order button): anyone who may use the machine
+  (ignoring credit) or its team can mark it out of order, and must say what's wrong. Only the **team** (or an admin)
+  marks it working again, so a fault isn't cleared by the next person who wants to use it. Whoever reported it, and
+  the team, can change the note. Each change is in the status history (source "equipment page") and the team is
+  notified; team notifications now link to the machine's page rather than the admin.
+- **A reason after the button** (asked for 2026-11-09): the reader's out-of-order button has no way to type a reason.
+  When it's pressed without one, the team is told "no reason given yet", and whoever pressed it gets a notification
+  asking what's wrong, linking to the machine's page, which asks them for it. Saving it tells the team.
+- **Running hours and servicing** (05 §5.4): total hours, hours since the last service against the interval,
+  "service due", and the **service history**, for every member. The **team records a service** (date, not in the
+  future, and a note) on the page; that starts the hours again and re-arms the reminder.
+- **Reclassifying a session** (05 §5.6): the team can mark a finished, normal session as training or testing, once,
+  from the page. Any fee goes back to credit as a new ledger row, and the member is told.
+
+**The access fee** (wording settled 2026-11-09): what a member pays before training is a one-off **equipment access
+fee**, not a training fee. It's nominally towards the machine's upkeep and eventual replacement, and many machines
+have a large access fee and no hourly charge. Members, the pay page, payment lists and the finance pages all call it
+that. In the code and database it is still `induction_fee_pence` and the payment reason `induction`.
+
+**Retired equipment** (asked for 2026-11-09). Disposed-of equipment is **retired**, not deleted, so its history can be
+reviewed:
+- In the admin, the action "Retire" sets "retired" and the "retired on" date (today, unless one is set). Equipment
+  with any history (sessions, training, service records or expenses) **can't be deleted**, and the admin's bulk delete
+  is switched off; only something added by mistake can be.
+- New optional field **"bought for"**: what the space paid for it, where known.
+- `/equipment/retired/` lists each retired machine with: when it was in service and for how long, running hours,
+  sessions and how many members used it, members trained, what it was bought for, **access fees**, **usage fees**,
+  **expenses** claimed for it, and **net** (fees less expenses and the price, where known), with totals. Access fees
+  are counted per induction, so machines sharing one induction show the same figure (and the page says so). Money is
+  counted as on the finance pages (04 §4.8).
+- Seen by admins, anyone who can edit equipment, and the finance pages' readers; they can also open a retired
+  machine's page, which shows the same figures and its full history, with nothing left to report or record.
+  Members don't see retired equipment.
+
 ## 5.8 Equipment inductions (training)
 
 1. Member pays the equipment's **access fee** (GoCardless, credit or Stripe). That creates an `inductions` row:

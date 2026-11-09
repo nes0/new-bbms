@@ -459,7 +459,8 @@ Built in `apps/moodle` (and `apps/equipment` for the sign-off). Choices made whi
   where the machine has one. The sign-off list shows each member's course status. A member signed off before the course
   was required keeps access (the equipment's "course required for existing" flag changes that).
 - `/account/training/` (linked from the account page) lists each course, the machines it unlocks, a link to it on
-  Moodle, and whether the member has finished it. There's no separate equipment page yet.
+  Moodle, and whether the member has finished it. Each machine's page (`/equipment/<slug>/`, 05 §5.7, built
+  2026-11-09) also shows its course, whether the member has finished it, and the "check now" button.
 - Not built: the optional Moodle plugin that would tell BBMS the moment a course is finished.
 
 ## 6.13 Membership statistics (requested by a trustee, 2026-11-07)

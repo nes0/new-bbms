@@ -15,7 +15,7 @@ class Payment(models.Model):
         """What the money is for (04 §4.1)."""
 
         SUBSCRIPTION = "subscription", "Monthly subscription"
-        INDUCTION = "induction", "Induction fee"
+        INDUCTION = "induction", "Equipment access fee"
         KEY_DEPOSIT = "key-deposit", "Key deposit"
         STORAGE_BOX = "storage-box", "Box fee"
         LOCKER_RENT = "locker-rent", "Locker rent"
@@ -164,7 +164,7 @@ class CardCheckout(models.Model):
 
     class Purpose(models.TextChoices):
         TOP_UP = "top-up", "Credit top-up"
-        INDUCTION = "induction", "Induction fee"
+        INDUCTION = "induction", "Equipment access fee"
         KEY_DEPOSIT = "key-deposit", "Key deposit"
         STORAGE_BOX = "storage-box", "Box fee"
         CHARGE = "charge", "Subscription or locker rent"

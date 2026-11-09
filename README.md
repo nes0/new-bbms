@@ -26,7 +26,8 @@ The membership system for Build Brighton: members, payments, door and machine ac
 - a **fake machine reader** at `/dev/fake-device/` (local development only) that behaves like the planned new
   firmware and talks to BBMS through the v2 device API. Set it up with `manage.py create_demo_device`;
 - equipment, inductions, Moodle course rules and machine usage sessions: fees, the hourly tidy-up
-  (`manage.py tidy_equipment_sessions`) and session adjustments in the admin;
+  (`manage.py tidy_equipment_sessions`) and session adjustments in the admin; members' equipment pages
+  (`/equipment/`) with training status, fault reports, service records and the team's session reclassifying;
 - **payments and member credit**: the ledger, credit worked out from it, machine fees taken from credit when a session
   ends (with corrections when a session changes), cash and manual payments in the admin, and the member's credit page
   (`/credit/`) with withdrawal requests;
