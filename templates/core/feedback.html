@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Feedback · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Feedback</h1>
+  {% if not_member %}
+    <p>Feedback is for members. If you have a question about your account, please contact the trustees.</p>
+  {% else %}
+    <p>Comments, thoughts or ideas about this site? We'd love to hear them. They go to the trustees.</p>
+    <p class="hint">For a question about your own account, contact the trustees directly.</p>
+    <form method="post" class="stack form wide" novalidate>
+      {% csrf_token %}
+      {% with field=form.comments %}
+        <label for="{{ field.auto_id }}">{{ field.label }}</label>
+        <textarea name="{{ field.html_name }}" id="{{ field.auto_id }}" rows="8" maxlength="5000"
+          {% if field.errors %}aria-invalid="true" aria-describedby="{{ field.auto_id }}_errors"{% endif %}>{{ field.value|default_if_none:"" }}</textarea>
+        {% if field.errors %}<span class="error" id="{{ field.auto_id }}_errors">{{ field.errors|join:" " }}</span>{% endif %}
+      {% endwith %}
+      <button type="submit">Send</button>
+    </form>
+  {% endif %}
+{% endblock %}

@@ -22,3 +22,19 @@ def html(name, top_heading=2):
     return markdown.markdown(
         text, extensions=["sane_lists", "toc"], extension_configs={"toc": {"baselevel": top_heading}}
     )
+
+
+# The resources page's lists (06 §6.8): (file name, title), in the order shown.
+CORE_RULES = [
+    ("rules", "Rules"),
+    ("code-of-conduct", "Code of conduct"),
+    ("grievance-procedure", "Grievance procedure"),
+    ("member-agreement", "Member agreement"),
+    ("trusted-member", "Trusted member"),
+    ("permaloan", "Permaloan"),
+]
+OTHER_POLICIES = [
+    ("3-week-bins", "3 week bins"),
+    ("member-storage", "Member storage and ongoing projects"),
+]
+TITLES = dict(CORE_RULES + OTHER_POLICIES)

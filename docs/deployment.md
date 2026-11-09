@@ -456,6 +456,7 @@ after local midnight, and write the chosen times in the table. ❓ The order mat
 | hourly | `python manage.py update_proposals` | Opens proposals (emails voters, posts on Discord), counts closed ones, posts results |
 | daily | `python manage.py shred_stale_id_documents` | Deletes proofs of identity nobody checked in time |
 | nightly | `python manage.py sync_discord` | Puts members' Discord roles right |
+| 23:50 daily | `python manage.py snapshot_members` | Records the day's member totals for the stats page's trend (a missed day only leaves a gap; running it twice a day is harmless) |
 
 Notes:
 

@@ -1,11 +1,43 @@
 {% extends "base.html" %}
-{% load money %}
+{% load money static %}
 {% block title %}Stats · {{ SITE_NAME }}{% endblock %}
 {% block content %}
 <h1>Membership stats</h1>
 {% if finance_link %}{% include "finance/_nav.html" %}{% endif %}
 <p><strong>{{ members }}</strong> member{{ members|pluralize }} (active or leaving){% if honorary %}, and {{ honorary }} honorary{% endif %}.
   {{ came_in_month }} came in during the last month, {{ came_in_quarter }} in the last three months.</p>
+
+<h2>Members now</h2>
+<table class="table">
+  <tbody>{% for label, count in now.by_status %}
+    <tr><th>{{ label }}</th><td class="number">{{ count }}</td></tr>
+  {% endfor %}</tbody>
+</table>
+<p>This month so far: {{ now.joined }} joined, {{ now.left }} left.</p>
+
+<h2>Members month by month</h2>
+<div class="viz-root">
+  <p class="hint">Active or leaving members at the end of each month.{% if trend.0.estimated %}
+    <span class="viz-key"><span class="viz-dash"></span> Estimated: before this system kept a history, months
+    are worked out from who paid a subscription that month.</span>{% endif %}</p>
+  <div class="viz-chart"><canvas id="members-chart" role="img" aria-label="Members month by month; the figures are in the table below"></canvas></div>
+  <h3>Joiners and leavers</h3>
+  <div class="viz-chart short"><canvas id="flow-chart" role="img" aria-label="Joiners and leavers each month; the figures are in the table below"></canvas></div>
+  <details>
+    <summary>The figures as a table</summary>
+    <table class="table">
+      <thead><tr><th>Month</th><th class="number">Members</th><th class="number">Joined</th><th class="number">Left</th></tr></thead>
+      <tbody>{% for row in trend reversed %}
+        <tr><th>{{ row.label }}{% if row.estimated %} <span class="hint">(estimated)</span>{% endif %}</th>
+          <td class="number">{{ row.members }}</td><td class="number">{{ row.joined }}</td><td class="number">{{ row.left }}</td></tr>
+      {% endfor %}</tbody>
+    </table>
+  </details>
+</div>
+{{ trend|json_script:"trend-data" }}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
+  integrity="sha384-bs/nf9FbdNouRbMiFcrcZfLXYPKiPaGVGplVbv7dLGECccEXDW+S3zjqSKR5ZEaD" crossorigin="anonymous"></script>
+<script src="{% static 'js/stats.js' %}"></script>
 
 <h2>How members pay</h2>
 <table class="table bars">

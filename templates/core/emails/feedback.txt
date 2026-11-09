@@ -1,0 +1,7 @@
+{% autoescape off %}{{ site_name }}: feedback from {{ member }}
+{{ member }} (member {{ member.pk }}) sent this feedback about the site:
+
+{{ comments }}
+
+Reply to them directly if it needs an answer. It's also kept at {{ site_url }}/admin/core/feedback/.
+{% endautoescape %}

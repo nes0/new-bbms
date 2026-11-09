@@ -196,9 +196,24 @@ class Member(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.full_name or self.email
 
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        member = super().from_db(db, field_names, values)
+        member._saved_status = member.__dict__.get("status")  # None if it wasn't loaded
+        return member
+
     def save(self, *args, **kwargs):
         self.email = self.email.strip().lower()
+        adding = self._state.adding
+        before = getattr(self, "_saved_status", None)
         super().save(*args, **kwargs)
+        fields = kwargs.get("update_fields")
+        if fields is not None and "status" not in fields:
+            return
+        # Every status change is recorded, for the membership statistics (06 §6.13).
+        if adding or (before is not None and before != self.status):
+            MemberStatusChange.objects.create(member=self, old_status="" if adding else before, new_status=self.status)
+        self._saved_status = self.status
 
     @property
     def full_name(self):
@@ -414,3 +429,33 @@ class IdCheck(models.Model):
 
     def __str__(self):
         return f"{self.member} · {self.get_result_display()} · {self.checked_at:%Y-%m-%d}"
+
+
+class MemberStatusChange(models.Model):
+    """A member's status changing, e.g. setting-up → active (06 §6.13). Written by Member.save, so every way of
+    changing a status is recorded; the legacy import doesn't add any (legacy kept no history)."""
+
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name="status_changes")
+    old_status = models.CharField(max_length=20, blank=True, help_text="Empty when the account was created.")
+    new_status = models.CharField(max_length=20)
+    changed_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ["-changed_at", "-pk"]
+
+    def __str__(self):
+        return f"{self.member}: {self.old_status or 'new'} → {self.new_status}"
+
+
+class MembershipSnapshot(models.Model):
+    """How many members had each status at the end of a day, taken nightly (06 §6.13)."""
+
+    date = models.DateField(unique=True)
+    counts = models.JSONField(help_text='Members by status, e.g. {"active": 120, "leaving": 3}.')
+    taken_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-date"]
+
+    def __str__(self):
+        return f"Members on {self.date:%d %b %Y}"

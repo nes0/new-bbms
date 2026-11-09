@@ -11,6 +11,9 @@ admin.site.site_title = "BBMS admin"
 urlpatterns = [
     path("", core_views.home, name="home"),
     path("healthz", core_views.healthz, name="healthz"),
+    path("resources/", core_views.resources, name="resources"),
+    path("resources/policy/<slug:name>/", core_views.policy, name="policy"),
+    path("feedback/", core_views.feedback, name="feedback"),
     path("accounts/", include("django.contrib.auth.urls")),
     path("", include("apps.members.urls")),
     path("admin/", admin.site.urls),

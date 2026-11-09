@@ -349,9 +349,22 @@ Built in `apps/access` (`activity.py`, `activity_views.py`). Choices made while 
   permaloan, trusted member.
 - **New:** keep policies as markdown files in the repo (reviewed via pull request), or make them editable by admins ❓.
 
+### Build status (2026-11-09)
+- Built as markdown files in the repo (`apps/core/policies/`), the way the member agreement and rules already were;
+  making them editable by admins can come later if the trustees want it. All eight legacy policies are there, with
+  their wording unchanged (only headings and lists fixed so they render). ⚠️ Some wording is out of date and is for
+  the trustees to update: the mailing list and IRC (now Discord), and boxes "up to 19 L" (06 §6.2).
+- `/resources/` lists them (core rules, then other policies) and `/resources/policy/<name>/` shows one; both are
+  public. Logged-in members also see a pointer to Discord and to the feedback form. Every page's footer links to
+  the resources page, and for logged-in members to the stats and feedback pages.
+
 ## 6.9 Feedback
 
 A member-only form whose comments are emailed to the trustees.
+
+Built 2026-11-09: `/feedback/` (footer link) for current members. The comments are emailed to everyone in the
+`trustees` role and also kept (admin → Feedback, read-only), so nothing is lost if the email can't be sent. Legacy
+emailed the original developer rather than the trustees.
 
 ## 6.10 Admin tools
 
@@ -477,6 +490,19 @@ A trustee asked for a member total and a picture of its history, to see the tren
 - ❓ Who can see membership statistics? Suggested: totals and the trend for every member (as the stats page today);
   money figures (4.9) for finance and admins only.
 - Charts are drawn in the browser with a small charting library; no extra service is needed.
+
+### Build status (2026-11-09)
+Built on the existing stats page (`/stats/`, every member, as suggested; the money figures stay on the finance pages):
+- **Members now:** totals by status, and joiners and leavers so far this month.
+- **Month by month** (the last 24 months): a line of members (active or leaving) at the end of each month, and bars
+  of joiners and leavers, with the figures also in a table. Chart.js from a CDN; without it the table still works.
+- **History:** every status change is recorded (`MemberStatusChange`, written whenever a member is saved with a new
+  status, so no code path can miss it), and `snapshot_members` records the totals each night (`MembershipSnapshot`).
+  A **joiner** is a member who becomes active or honorary from setting up (or is created that way); a **leaver**
+  becomes left.
+- **Estimated months** (before the first snapshot, dashed on the chart and marked in the table): members = those
+  with a paid subscription charge that month; joiners in the month of their first paid charge; leavers (members
+  now left) in the month after their last. Honorary members aren't in the estimate as they pay no subscription.
 
 ## 6.14 Discord (requested 2026-11-08)
 

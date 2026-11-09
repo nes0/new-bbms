@@ -40,7 +40,7 @@ button.danger[type="submit"] { background: var(--error); }
 .form legend { font-weight: 600; padding: 0 0.25rem; }
 .form label { margin-top: 0.25rem; }
 .form label.check { display: flex; gap: 0.5rem; align-items: center; }
-input[aria-invalid="true"] { border-color: var(--error); }
+input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--error); }
 .details { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; }
 .details dt { color: var(--muted); }
 .details dd { margin: 0; }
@@ -96,3 +96,20 @@ body.wide main { max-width: 72rem; }
 .table .nowrap { white-space: nowrap; }
 .table input:not([type]), .table select { max-width: 100%; }
 .bars .bar span.spent { background: var(--error); margin-top: 2px; height: 0.5rem; }
+
+/* Footer: rules and policies, stats, feedback */
+.site-footer { max-width: 48rem; margin: 0 auto; padding: 1rem; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.9rem; }
+.site-footer a { color: var(--muted); }
+
+/* Membership charts (stats page). Colours from the reference data-viz palette, stepped for each mode. */
+.viz-root { --viz-surface: var(--bg); --viz-text: var(--text); --viz-text-secondary: var(--muted);
+  --viz-grid: #e6e6e3; --viz-series-1: #2a78d6; --viz-series-2: #eb6834; }
+@media (prefers-color-scheme: dark) {
+  .viz-root { --viz-grid: #2e2f31; --viz-series-1: #3987e5; --viz-series-2: #d95926; }
+}
+.viz-chart { position: relative; height: 16rem; margin-bottom: 1rem; }
+.viz-chart.short { height: 12rem; }
+.viz-key { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem; }
+.viz-dash { flex: none; width: 1.5rem; border-top: 2px dashed var(--viz-series-1); }
+
+.stack.wide { max-width: 36rem; }
