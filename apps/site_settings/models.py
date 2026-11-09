@@ -234,6 +234,22 @@ class SiteSettings(models.Model):
         help_text="Uploads a trustee hasn't checked by then are deleted.",
     )
 
+    # --- trusted status (05 §5.10) ---
+    trusted_review_visits = models.PositiveSmallIntegerField(
+        "visits before review",
+        default=8,
+        validators=[MinValueValidator(1), MaxValueValidator(365)],
+        help_text="Members who aren't trusted yet appear on the trusted-status review list once they've visited on "
+        "this many days. A visit is a day their fob was used at the door or on a machine.",
+    )
+    trusted_review_weeks = models.PositiveSmallIntegerField(
+        "weeks a member before review",
+        default=4,
+        validators=[MaxValueValidator(520)],
+        help_text="And once they've been a member for at least this many weeks. Granting trusted status is still "
+        "an admin's decision.",
+    )
+
     # --- storage (06 §6.2) ---
     lockers_per_member = models.PositiveSmallIntegerField(
         "lockers each member may rent",
@@ -272,6 +288,7 @@ class SiteSettings(models.Model):
         ("Machines", ("minimum_session_minutes", "machine_credit_limit_pence")),
         ("Key fobs", ("max_active_fobs", "fob_enrolment_seconds")),
         ("Fob readers", ("reader_check_in_seconds", "session_heartbeat_seconds")),
+        ("Trusted status", ("trusted_review_visits", "trusted_review_weeks")),
         ("Storage", ("lockers_per_member",)),
         ("Proposals", ("proposal_quorum_percent",)),
         ("Expenses", ("expense_maximum_pence",)),

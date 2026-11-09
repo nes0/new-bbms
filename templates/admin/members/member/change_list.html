@@ -1,0 +1,6 @@
+{% extends "admin/change_list.html" %}
+{# The trusted-status review list (05 §5.10) sits next to "Add member". #}
+{% block object-tools-items %}
+  {% if perms.members.change_member %}<li><a href="{% url 'admin:members_member_trusted_review' %}">Trusted-status review</a></li>{% endif %}
+  {{ block.super }}
+{% endblock %}

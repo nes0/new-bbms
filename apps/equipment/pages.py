@@ -4,7 +4,8 @@ What the members' equipment pages show and let people do (spec 05 §5.7, 09 §9.
 Plain functions, so the views stay thin and the rules can be tested on their own:
 - `training_state` says where a member is with a machine's training (fee, sign-off, online course);
 - `report_status` is the web page's version of the out-of-order button;
-- `record_service` and `reclassify` are for the machine's team (05 §5.4, §5.6).
+- `record_service` and `reclassify` are for the machine's team (05 §5.4, §5.6);
+- `sign_off` lets the machine's trainers (and admins) mark members trained (05 §5.8, decided 2026-11-09).
 """
 
 from dataclasses import dataclass
@@ -221,3 +222,62 @@ def reclassify(session: UsageSession, member, reason: str) -> UsageSession:
             url="/credit/",
         )
     return session
+
+
+def can_sign_off(member, equipment: Equipment) -> bool:
+    """Who may mark members trained on this machine: its trainers, if they're current members, and admins
+    (decided by the trustees 2026-11-09; legacy let only admins do it)."""
+    if not equipment.requires_induction or equipment.archived:
+        return False
+    if member.has_perm("equipment.change_induction"):
+        return True
+    if not member.has_space_access:
+        return False
+    return Induction.objects.filter(
+        member=member, category=equipment.induction_key, is_trainer=True, paid=True, trained_at__isnull=False
+    ).exists()
+
+
+def waiting_for_sign_off(equipment: Equipment, trainer) -> list[tuple[Induction, str]]:
+    """The members waiting for training, each with why they can't be signed off yet ("" if they can)."""
+    found = []
+    for induction in people(equipment)["waiting"]:
+        if induction.member_id == trainer.pk:
+            problem = "You can't sign yourself off."
+        else:
+            problem = rules.sign_off_problem(induction.member, induction.category, timezone.now())
+        found.append((induction, problem))
+    return found
+
+
+@transaction.atomic
+def sign_off(equipment: Equipment, trainer, induction_id: int) -> Induction:
+    """A trainer (or an admin) marks a member trained on this machine's induction category (05 §5.8)."""
+    if not can_sign_off(trainer, equipment):
+        raise PageError("Only this machine's trainers can sign members off.")
+    induction = (
+        Induction.objects.select_for_update()
+        .select_related("member")
+        .filter(pk=induction_id, category=equipment.induction_key)
+        .first()
+    )
+    if induction is None or not induction.paid:
+        raise PageError("That member hasn't paid for training on this machine.")
+    if induction.trained_at is not None:
+        raise PageError(f"{induction.member.display_name} is already trained on it.")
+    if induction.member_id == trainer.pk:
+        raise PageError("You can't sign yourself off.")
+    if not induction.member.has_space_access:
+        raise PageError(f"{induction.member.display_name} isn't a current member.")
+    now = timezone.now()
+    if problem := rules.sign_off_problem(induction.member, induction.category, now):
+        raise PageError(problem)
+    induction.trained_at, induction.trainer = now, trainer
+    induction.save(update_fields=["trained_at", "trainer"])
+    notify(
+        induction.member,
+        f"{trainer.display_name} signed you off on {equipment.name}: you can use it now.",
+        kind="induction_trained",
+        url=f"/equipment/{equipment.slug}/",
+    )
+    return induction

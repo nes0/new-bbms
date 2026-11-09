@@ -279,8 +279,9 @@ success or fail), so a night where the job didn't run, failed or never finished 
 a run by hand with `--date` or `--dry-run` doesn't ping; a ping that can't be sent never stops billing; pings carry
 only the job's counts and the kind of error, never a member's details. Setup is in `docs/deployment.md` §6.6.
 
-Still to build: self-service locker renting
-with its first pro-rata payment (06 §6.2), shadow-site comparisons (08), and heartbeat alerts for the other jobs.
+Self-service locker renting, with its first pro-rata payment, is built (06 §6.2, 2026-11-08).
+
+Still to build: shadow-site comparisons (08), and heartbeat alerts for the other jobs.
 
 ## 3.7 Changing a subscription
 

@@ -11,7 +11,7 @@ from django.db.models import ProtectedError
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 
-from apps.access import tags
+from apps.access import attendance, tags
 from apps.access.decisions import door_refusal_reason
 from apps.core import policies
 from apps.discord import client as discord
@@ -61,6 +61,7 @@ def account(request):
         "credit_pence": credit_pence(member),
         "fobs": fobs,
         "trained_on": _trained_on(member),
+        "attendance": attendance.attendance(member),  # 05 §5.10
         "door_reason": door_refusal_reason(member),  # "" when their fob opens the front door (05 §5.2)
         "unpaid_charges": member.charges.filter(status__in=("due", "failed")).count(),
         "payment_day_suffix": _ordinal(member.payment_day) if member.payment_day else "",

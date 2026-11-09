@@ -89,6 +89,21 @@ def _course_reason(member, equipment: Equipment, induction: Induction) -> str:
     return "course_incomplete"
 
 
+def sign_off_problem(member, category: str, trained_at) -> str:
+    """Why this member can't be signed off as trained on an induction category yet, as a sentence, or "" (05 §5.8).
+
+    Their email address must be confirmed (03 §3.1), and the online course finished where a machine in the category
+    has one (06 §6.12). Used by the admin and by trainers on the machine's page.
+    """
+    if not member.email_verified:
+        return f"{member} hasn't confirmed their email address yet, so they can't be signed off."
+    signing_off = Induction(member=member, category=category, trained_at=trained_at)
+    for machine in Equipment.objects.filter(moodle_course_id__isnull=False, archived=False):
+        if machine.induction_key == category and _course_reason(member, machine, signing_off):
+            return f"{member} hasn't finished the online course for {machine.name} yet, so they can't be signed off."
+    return ""
+
+
 def machine_refusal_reason(member, equipment: Equipment, *, for_offline_cache=False) -> str:
     """Why this member can't start a session on this machine, or "" if they can (05 §5.3).
 

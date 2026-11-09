@@ -107,6 +107,11 @@
         {% else %}Tap your fob when you arrive to record your visit; a keyholder lets you in{% endif %}</dd>
       <dt>Fobs</dt>
       <dd>{% for fob in fobs %}{{ fob.label }}{% if not forloop.last %}, {% endif %}{% empty %}None yet: collect one on your first visit{% endfor %}</dd>
+      <dt>Visits</dt>
+      <dd>{% if attendance.visits %}{{ attendance.visits }} visit{{ attendance.visits|pluralize }} since {{ attendance.first|date:"j F Y" }}, most recently {{ attendance.last|date:"j F Y" }}
+        <br><span class="hint">Recent: {% for day in attendance.recent %}{{ day|date:"j M" }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
+        {% else %}None yet{% endif %}
+        <br><span class="hint">A visit is a day your fob was used at the door or on a machine. Regular visits count towards trusted status.</span></dd>
       <dt>Trained on</dt>
       <dd>{% for machine in trained_on %}<a href="{% url 'equipment:detail' machine.slug %}">{{ machine.name }}</a>{% if not forloop.last %}, {% endif %}{% empty %}No machines yet{% endfor %}
         <br><a href="{% url 'equipment:index' %}">Equipment</a> · <a href="{% url 'moodle:training' %}">Online training</a></dd>

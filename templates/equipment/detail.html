@@ -168,8 +168,22 @@
       {% include "equipment/_people.html" with people=people.trainers empty="No trainers yet." %}
       <h3>Trained</h3>
       {% include "equipment/_people.html" with people=people.trained empty="Nobody else yet." %}
-      <h3>Waiting for training</h3>
-      {% if people.waiting %}
+      <h3 id="sign-off">Waiting for training</h3>
+      {% if sign_off %}
+        <ul class="plain">
+          {% for induction, problem in sign_off %}
+            <li><a href="{% url 'profiles:member' induction.member.pk %}">{{ induction.member.get_full_name }}</a>
+              {% if problem %}<span class="hint">{{ problem }}</span>
+              {% else %}
+                <form method="post" action="{% url 'equipment:sign-off' equipment.slug induction.pk %}" class="inline">
+                  {% csrf_token %}
+                  <button type="submit" class="link">Sign off as trained</button>
+                </form>
+              {% endif %}</li>
+          {% endfor %}
+        </ul>
+        <p class="hint">Sign members off once you've trained them. You're recorded as their trainer, and they're told.</p>
+      {% elif people.waiting %}
         <ul class="plain">{% for induction in people.waiting %}<li><a href="{% url 'profiles:member' induction.member.pk %}">{{ induction.member.get_full_name }}</a></li>{% endfor %}</ul>
       {% else %}<p>Nobody.</p>{% endif %}
     </section>

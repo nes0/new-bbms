@@ -1,8 +1,14 @@
+from datetime import timedelta
+
 from django import forms
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
+from django.core.exceptions import PermissionDenied
+from django.template.response import TemplateResponse
+from django.urls import path
 from django.utils import timezone
+from django.utils.html import format_html
 
 from . import changes, email_confirmation, notices
 from .models import Address, IdCheck, Member, MemberChange
@@ -200,6 +206,7 @@ class MemberAdmin(UserAdmin):
     add_form = MemberCreationForm
     inlines = [AddressInline]  # other apps add theirs (fobs, lockers, charges); the audit log goes last, below
     change_form_template = "admin/members/member/change_form.html"
+    change_list_template = "admin/members/member/change_list.html"
 
     list_display = (
         "full_name",
@@ -243,6 +250,7 @@ class MemberAdmin(UserAdmin):
         "email_verified_at",
         "box_paid_at",
         "box_payment",
+        "attendance",
     )
 
     fieldsets = (
@@ -280,7 +288,7 @@ class MemberAdmin(UserAdmin):
             {
                 "description": "Changes here are written to the audit log at the bottom of the page. Making someone "
                 "trusted emails them.",
-                "fields": ("trusted", "key_holder", "photo_approved", "photo_on_wall"),
+                "fields": ("attendance", "trusted", "key_holder", "photo_approved", "photo_on_wall"),
             },
         ),
         ("Storage", {"fields": ("box_paid", "box_paid_at", "box_payment", "box_reason")}),
@@ -291,6 +299,48 @@ class MemberAdmin(UserAdmin):
     add_fieldsets = (
         (None, {"classes": ("wide",), "fields": ("email", "given_name", "family_name", "password1", "password2")}),
     )
+
+    @admin.display(description="Attendance")
+    def attendance(self, member):
+        """Visits (days the member's fob was used), to help decide on trusted status (05 §5.10)."""
+        from apps.access import attendance  # not at the top: apps.access uses this app's models
+
+        if member.pk is None:
+            return "-"
+        record = attendance.attendance(member)
+        if not record.visits:
+            return "No visits yet"
+        four_weeks = record.since(timezone.localdate() - timedelta(weeks=4))
+        return format_html(
+            "{} visit{} from {} to {}; {} in the last 4 weeks",
+            record.visits,
+            "" if record.visits == 1 else "s",
+            f"{record.first:%-d %b %Y}",
+            f"{record.last:%-d %b %Y}",
+            four_weeks,
+        )
+
+    def get_urls(self):
+        review = path(
+            "trusted-review/", self.admin_site.admin_view(self.trusted_review), name="members_member_trusted_review"
+        )
+        return [review, *super().get_urls()]
+
+    def trusted_review(self, request):
+        """Members who aren't trusted but come in often enough to be considered (05 §5.10, 06 §6.10)."""
+        from apps.access import attendance
+        from apps.site_settings.models import SiteSettings
+
+        if not self.has_change_permission(request):
+            raise PermissionDenied
+        context = {
+            **self.admin_site.each_context(request),
+            "opts": self.model._meta,
+            "title": "Trusted-status review",
+            "candidates": attendance.review_list(),
+            "config": SiteSettings.load(),
+        }
+        return TemplateResponse(request, "admin/members/member/trusted_review.html", context)
 
     def get_inlines(self, request, obj):
         return [*super().get_inlines(request, obj), *([MemberChangeInline] if obj else [])]

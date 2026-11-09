@@ -339,8 +339,8 @@ and put payments right); the import gives the `finance` role both.
   the admin site. **Assign** unmatched money to a member makes it a top-up of their credit (as in 4.4).
 - **Charges** (`/finance/charges/`): every subscription and locker rent charge, by month, kind, status and member.
 - **Stats** (`/stats/`, any member): members by payment method, the spread of monthly amounts (to the nearest £5)
-  and the average, and how many came in during the last month and three months (as legacy). The trend over time
-  is 06 §6.13, still to build.
+  and the average, and how many came in during the last month and three months (as legacy). The page also shows
+  members by status and the trend over time (06 §6.13, built 2026-11-09).
 
 ## 4.9 Money summary and bank reconciliation (requested by a trustee, 2026-11-07)
 
