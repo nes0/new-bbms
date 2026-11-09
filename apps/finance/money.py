@@ -201,3 +201,59 @@ def machines(start: date | None = None, end: date | None = None) -> dict:
         "unlinked_usage": unlinked_usage,
         "unlinked_expenses": expenses.filter(equipment__isnull=True).aggregate(t=Sum("amount_pence"))["t"] or 0,
     }
+
+
+# -- Money received, by source (04 §4.9, "Reconciliation with the bank") ------------------------------------------
+
+RECEIVED = [
+    # key, label, the bank statement's kind of line, what BBMS knows
+    ("gocardless", "GoCardless payouts", "gocardless", "payouts"),
+    ("stripe", "Stripe payouts", "stripe", "payouts"),
+    ("member", "Standing orders and transfers", "member", "standing-order"),
+    ("paypal", "PayPal transfers", "paypal", None),
+    ("other", "Other money in", "other", None),
+    ("cash", "Cash", None, "cash"),
+]
+
+
+def received(start: date, end: date) -> dict:
+    """What reached the bank from each source, by the day it arrived, as BBMS knows it and as the bank statements say,
+    so the two can be compared line by line. Payouts are dated by when they arrive at the bank, not when members
+    paid."""
+    from .models import BankLine, Payout
+
+    payouts = Payout.objects.filter(arrival_date__gte=start, arrival_date__lte=end).exclude(
+        status__in=("bounced", "failed", "canceled")
+    )
+    lines = BankLine.objects.filter(kept=True, date__gte=start, date__lte=end)
+    since, until = _range(start, end)
+    paid = Payment.objects.filter(status__in=COUNTED, paid_at__gte=since, paid_at__lt=until)
+    rows = []
+    for key, label, kind, known in RECEIVED:
+        bank = lines.filter(kind=kind).aggregate(t=Sum("amount_pence"))["t"] or 0 if kind else None
+        if known == "payouts":
+            ours = payouts.filter(provider=key).aggregate(t=Sum("amount_pence"))["t"] or 0
+        elif known == "standing-order":
+            ours = paid.filter(source=Payment.Source.STANDING_ORDER).aggregate(t=Sum("amount_pence"))["t"] or 0
+        elif known == "cash":
+            ours = (
+                paid.filter(source=Payment.Source.CASH, amount_pence__gt=0).aggregate(t=Sum("amount_pence"))["t"] or 0
+            )
+        else:
+            ours = None
+        difference = bank - ours if bank is not None and ours is not None else None
+        rows.append({"key": key, "label": label, "bbms": ours, "bank": bank, "difference": difference})
+    has_statement = lines.exists()
+    return {
+        "rows": rows,
+        "bank_total": sum(row["bank"] or 0 for row in rows),
+        "has_statement": has_statement,
+        "unmatched_lines": lines.filter(outcome=BankLine.Outcome.UNMATCHED).order_by("date"),
+        "payout_lines_alone": lines.filter(
+            kind__in=(BankLine.Kind.GOCARDLESS, BankLine.Kind.STRIPE), payout_match__isnull=True
+        ).order_by("date"),
+        # Only worth listing once a statement for the period has been imported.
+        "payouts_not_on_statement": payouts.filter(bank_line__isnull=True, status="paid").order_by("arrival_date")
+        if has_statement
+        else Payout.objects.none(),
+    }

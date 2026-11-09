@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Payout · {{ SITE_NAME }}{% endblock %}
+{% block body_class %}wide{% endblock %}
+{% block content %}
+<h1>{{ payout.get_provider_display }} payout, {{ payout.arrival_date|date:"j F Y" }}</h1>
+{% include "finance/_nav.html" %}
+<dl class="details">
+  <dt>Paid into the bank</dt><dd><strong>{{ payout.amount_pence|pounds }}</strong> ({{ payout.status }})</dd>
+  <dt>Payments</dt><dd>{{ gross|pounds }}</dd>
+  <dt>Fees</dt><dd>{{ payout.fees_pence|pounds }}</dd>
+  {% if payout.reference %}<dt>Reference</dt><dd>{{ payout.reference }}</dd>{% endif %}
+  <dt>{{ payout.get_provider_display }}'s id</dt><dd><code>{{ payout.provider_id }}</code></dd>
+  <dt>Bank statement</dt><dd>{% if payout.bank_line %}<a href="{% url 'finance:bank-line' payout.bank_line.pk %}">{{ payout.bank_line }}</a>{% else %}Not matched to a line yet{% endif %}</dd>
+</dl>
+<div class="scroll"><table class="table">
+  <thead><tr><th>What</th><th>Member</th><th>For</th><th class="number">Amount</th><th class="number">Fee</th></tr></thead>
+  <tbody>
+    {% for item in items %}
+      <tr>
+        <td>{% if item.payment %}<a href="{% url 'finance:payment' item.payment.pk %}">{{ item.get_kind_display }}</a>{% else %}{{ item.get_kind_display }}{% endif %}
+          {% if item.kind == "payment" and not item.payment %}<br><span class="error">Not in BBMS</span> <code>{{ item.provider_payment_id }}</code>{% elif item.description %}<br><span class="hint">{{ item.description }}</span>{% endif %}</td>
+        <td>{% if item.payment.member %}{{ item.payment.member.get_full_name }}{% else %}—{% endif %}</td>
+        <td>{% if item.payment %}{{ item.payment.get_reason_display }}{% endif %}</td>
+        <td class="number">{{ item.amount_pence|pounds }}</td>
+        <td class="number">{{ item.fee_pence|pounds }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table></div>
+{% if not items %}<p class="hint">Its payments are imported once it has been paid.</p>{% endif %}
+{% endblock %}

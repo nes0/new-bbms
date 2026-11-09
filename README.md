@@ -70,6 +70,9 @@ The membership system for Build Brighton: members, payments, door and machine ac
   payments list with filters, totals and a CSV download, refunds to credit and cancelling cash recorded by mistake,
   the charges list, and the **bank statement import**: upload the monthly CSV, check the suggested
   member for each standing order, then record them. Every bank credit is kept, matched or not (`/finance/bank/`).
+  **GoCardless and Stripe payouts** are imported nightly (`manage.py import_payouts`) with their real fees and
+  matched to bank lines (`/finance/payouts/`), and **money received** compares BBMS with the bank by source
+  (`/finance/received/`). Locally, `import_payouts --fake-payouts` pays out what the fakes have taken.
   Membership stats for every member at `/stats/`;
 - **proposals and voting**: trustees write proposals in the admin, current members vote at `/proposals/` (a secret
   ballot; votes can be changed while voting is open). An hourly job opens proposals (emails every voter, posts on

@@ -123,3 +123,64 @@ class BankMatch(models.Model):
 
     def __str__(self):
         return f"{self.text} → {self.member}"
+
+
+class Payout(models.Model):
+    """A lump sum GoCardless or Stripe paid into the bank: the payments inside it, less their fees (spec 04 §4.9).
+
+    Imported from the provider's API (`payouts.py`), so the real fees are known and each bank statement line from a
+    provider can be matched to the payments it is made of.
+    """
+
+    class Provider(models.TextChoices):
+        GOCARDLESS = "gocardless", "GoCardless"
+        STRIPE = "stripe", "Stripe"
+
+    provider = models.CharField(max_length=20, choices=Provider.choices)
+    provider_id = models.CharField(max_length=100, help_text="The provider's id for the payout.")
+    amount_pence = models.IntegerField(help_text="What reached the bank (after fees).")
+    fees_pence = models.IntegerField(default=0, help_text="The provider's fees taken from it.")
+    arrival_date = models.DateField(help_text="When the provider said it would reach the bank.")
+    status = models.CharField(max_length=30, help_text="As the provider says: paid, pending, bounced, failed…")
+    reference = models.CharField(max_length=100, blank=True, help_text="What the bank statement shows, if known.")
+    imported_at = models.DateTimeField(default=timezone.now)
+    bank_line = models.OneToOneField(
+        BankLine, on_delete=models.SET_NULL, null=True, blank=True, related_name="payout_match"
+    )
+
+    class Meta:
+        ordering = ["-arrival_date", "-pk"]
+        constraints = [models.UniqueConstraint(fields=["provider", "provider_id"], name="one_row_per_payout")]
+
+    def __str__(self):
+        return f"{self.get_provider_display()} payout {self.arrival_date:%d/%m/%Y} £{self.amount_pence / 100:.2f}"
+
+    @property
+    def gross_pence(self):
+        return self.amount_pence + self.fees_pence
+
+
+class PayoutItem(models.Model):
+    """One thing inside a payout: a member's payment (with its fee), a refund, or another adjustment."""
+
+    class Kind(models.TextChoices):
+        PAYMENT = "payment", "Payment"
+        REFUND = "refund", "Refund, failure or chargeback"
+        FEE = "fee", "Fee not tied to a payment"
+        OTHER = "other", "Other adjustment"
+
+    payout = models.ForeignKey(Payout, on_delete=models.CASCADE, related_name="items")
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    amount_pence = models.IntegerField(help_text="Before fees; negative for money taken back.")
+    fee_pence = models.IntegerField(default=0)
+    provider_payment_id = models.CharField(max_length=100, blank=True)
+    description = models.CharField(max_length=255, blank=True)
+    payment = models.ForeignKey(
+        "payments.Payment", on_delete=models.SET_NULL, null=True, blank=True, related_name="payout_items"
+    )
+
+    class Meta:
+        ordering = ["pk"]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} £{self.amount_pence / 100:.2f}"

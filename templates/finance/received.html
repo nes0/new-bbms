@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Money received · {{ SITE_NAME }}{% endblock %}
+{% block body_class %}wide{% endblock %}
+{% block content %}
+<h1>Money received: {{ label }}</h1>
+{% include "finance/_nav.html" %}
+{% include "finance/_period.html" %}
+<p>What reached the bank from each source, by the day it arrived, as BBMS knows it and as the imported bank
+  statements say. GoCardless and Stripe pay the bank in lump sums after their fees, so they're shown as
+  <a href="{% url 'finance:payouts' %}">payouts</a>, not member payments.</p>
+{% if not report.has_statement %}<p class="hint">No bank statement covering this period has been imported yet, so the bank column is empty.
+  {% if can_manage %}<a href="{% url 'finance:statements' %}">Import one</a>.{% endif %}</p>{% endif %}
+<div class="scroll"><table class="table">
+  <thead><tr><th>Source</th><th class="number">BBMS</th><th class="number">Bank statement</th><th class="number">Difference</th></tr></thead>
+  <tbody>
+    {% for row in report.rows %}
+      <tr>
+        <td>{{ row.label }}</td>
+        <td class="number">{% if row.bbms is not None %}{{ row.bbms|pounds }}{% else %}<span class="hint">not in BBMS</span>{% endif %}</td>
+        <td class="number">{% if row.bank is not None %}{{ row.bank|pounds }}{% else %}<span class="hint">not on the statement</span>{% endif %}</td>
+        <td class="number">{% if row.difference %}<strong class="error">{{ row.difference|pounds }}</strong>{% elif row.difference is not None and row.bank %}<span class="ok">matches</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot><tr><th>Into the bank</th><td></td><td class="number"><strong>{{ report.bank_total|pounds }}</strong></td><td></td></tr></tfoot>
+</table></div>
+<p class="hint">Cash is only what admins recorded in BBMS; whether and when it was paid in isn't known. A difference
+  on standing orders is usually a bank line not matched to a member yet.</p>
+
+<h2>To look at</h2>
+{% if report.unmatched_lines or report.payout_lines_alone or report.payouts_not_on_statement %}
+  {% if report.unmatched_lines %}
+    <h3>Bank lines not matched to a member</h3>
+    <ul class="plain">{% for line in report.unmatched_lines %}<li><a href="{% url 'finance:bank-line' line.pk %}">{{ line.date|date:"j M" }} {{ line.amount_pence|pounds }} {{ line.description }}</a></li>{% endfor %}</ul>
+  {% endif %}
+  {% if report.payout_lines_alone %}
+    <h3>GoCardless and Stripe lines with no payout found</h3>
+    <ul class="plain">{% for line in report.payout_lines_alone %}<li><a href="{% url 'finance:bank-line' line.pk %}">{{ line.date|date:"j M" }} {{ line.amount_pence|pounds }} {{ line.description }}</a></li>{% endfor %}</ul>
+    <p class="hint">Import payouts again, or check the line's amount against the provider's dashboard.</p>
+  {% endif %}
+  {% if report.payouts_not_on_statement %}
+    <h3>Payouts not on a bank statement</h3>
+    <ul class="plain">{% for payout in report.payouts_not_on_statement %}<li><a href="{% url 'finance:payout' payout.pk %}">{{ payout.arrival_date|date:"j M" }} {{ payout.get_provider_display }} {{ payout.amount_pence|pounds }}</a></li>{% endfor %}</ul>
+    <p class="hint">Often just a statement that ends before the payout arrived.</p>
+  {% endif %}
+{% else %}
+  <p>Nothing: everything that could be matched is.</p>
+{% endif %}
+{% endblock %}

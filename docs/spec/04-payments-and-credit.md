@@ -400,6 +400,32 @@ expenses are under spending, not "credit added".
 - **Key deposits** count as one-off income, as listed above, though they're refundable.
 - Income is dated when BBMS **recorded** the payment; for a standing order, the day it reached the bank.
 
+**Reconciliation built (2026-11-09)** (`apps/finance/payouts.py`; pages `/finance/payouts/` and `/finance/received/`):
+- **Payouts are imported** from GoCardless (payouts and payout items) and Stripe (payouts and their balance
+  transactions) every night by `manage.py import_payouts`, and by finance with "Import payouts now". The first
+  import looks back 120 days; later ones from two weeks before the newest payout already imported, so status changes
+  (pending → paid, or bounced) are picked up. `--since YYYY-MM-DD` imports further back, as far as the providers allow.
+- Each payout keeps what reached the bank, its fees, its arrival date, its status, its reference and its items: one per
+  member payment (GoCardless's separate fee items are folded into the payment they're for), plus refunds, failures,
+  chargebacks and other adjustments. A payment is found by the provider's id BBMS stored when it was taken (the
+  GoCardless payment id, the Stripe PaymentIntent).
+- **Real fees:** each payment's fee is set from its payout. This is the one change ever made to an existing payment:
+  the fee isn't money owed by or to the member, so credit and the ledger's amounts are untouched, and the income
+  summary's fees and net become exact. Payments in a payout that BBMS doesn't know (legacy ones without the provider's
+  id, or taken outside BBMS) are listed on the payout as "not in BBMS".
+- **Matching bank lines:** a recorded GoCardless or Stripe line is matched to the payout of the **same amount** arriving
+  **within 4 days** of it (weekends and bank holidays), not already matched; where two could fit, the one whose
+  reference the line mentions wins, then the nearest date. Matching runs after each import and each time a statement is
+  recorded, so the order doesn't matter. A bank line's page shows its payout; a payout's page shows its bank line.
+- **Money received** (`/finance/received/`, a month, a year or any dates): for each source, what BBMS knows and what
+  the bank statements say, dated by arrival at the bank, with the difference: GoCardless payouts, Stripe payouts,
+  standing orders and transfers, PayPal transfers and other money in (bank only), and cash (BBMS only). Below it:
+  bank lines not matched to a member, GoCardless and Stripe lines with no payout found, and paid payouts not on any
+  statement (only once a statement for the period has been imported).
+- PayPal isn't imported: there are no API credentials (4.4), and its transfers to the bank are shown from the
+  statement only.
+- Still optional and not built: recording the space's other spending (see "Expenditure" below).
+
 ### What each machine has made (requested by the trustees, 2026-11-08)
 
 "What each machine has made in induction costs + usage − expenses requested on them."

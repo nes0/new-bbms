@@ -79,9 +79,10 @@ def is_in(member, now=None) -> bool:
 
 def rgb565(image: Image.Image) -> bytes:
     """Width and height (2 bytes each, little-endian), then each pixel as RGB565, little-endian, row by row."""
-    pixels = image.convert("RGB").getdata()
+    rgb = image.convert("RGB").tobytes()  # 3 bytes a pixel (Pillow's getdata() is deprecated)
     packed = bytearray(struct.pack("<HH", image.width, image.height))
-    for red, green, blue in pixels:
+    for start in range(0, len(rgb), 3):
+        red, green, blue = rgb[start : start + 3]
         packed += struct.pack("<H", (red >> 3) << 11 | (green >> 2) << 5 | blue >> 3)
     return bytes(packed)
 

@@ -277,6 +277,8 @@ new Direct Debit before cutover (spec 08 §8.2).
    - Copy the **signing secret** (`whsec_…`) into `STRIPE_WEBHOOK_SECRET`.
 4. Check: no `payments.W001` or `payments.W002` from `check --deploy`.
 5. Refunds are done in Stripe's dashboard and recorded by an admin (04 §4.3).
+6. If you use a **restricted key** instead of the secret key, it needs write access to Checkout Sessions and read
+   access to Payouts and Balance (the nightly `import_payouts` reads payouts and what's inside them, 04 §4.9).
 
 ### 6.3 PayPal
 
@@ -457,6 +459,7 @@ after local midnight, and write the chosen times in the table. ❓ The order mat
 | hourly | `python manage.py update_proposals` | Opens proposals (emails voters, posts on Discord), counts closed ones, posts results |
 | daily | `python manage.py shred_stale_id_documents` | Deletes proofs of identity nobody checked in time |
 | nightly | `python manage.py sync_discord` | Puts members' Discord roles right |
+| nightly | `python manage.py import_payouts` | Imports GoCardless and Stripe payouts with their real fees, and matches them to bank statement lines |
 | 23:50 daily | `python manage.py snapshot_members` | Records the day's member totals for the stats page's trend (a missed day only leaves a gap; running it twice a day is harmless) |
 
 Notes:

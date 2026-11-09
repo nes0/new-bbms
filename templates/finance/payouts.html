@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Payouts · {{ SITE_NAME }}{% endblock %}
+{% block body_class %}wide{% endblock %}
+{% block content %}
+<h1>Payouts</h1>
+{% include "finance/_nav.html" %}
+<p>GoCardless and Stripe pay the bank in lump sums: the payments of a few days, less their fees. Each payout is
+  imported from the provider every night, with the payments inside it, so each member payment has its real fee and
+  each line on the bank statement can be matched to its payout.</p>
+{% if can_manage %}
+  <form method="post" class="actions">{% csrf_token %}<button type="submit">Import payouts now</button></form>
+{% endif %}
+<form method="get" class="filters">
+  <label>From <select name="provider"><option value="">Both</option>{% for value, name in providers %}<option value="{{ value }}"{% if filters.provider == value %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
+  <label>Bank statement <select name="bank"><option value="">—</option><option value="matched"{% if filters.bank == "matched" %} selected{% endif %}>Matched to a line</option><option value="not-matched"{% if filters.bank == "not-matched" %} selected{% endif %}>Not matched</option></select></label>
+  <button type="submit">Show</button>
+</form>
+{% if page.object_list %}
+<div class="scroll"><table class="table">
+  <thead><tr><th>Arrives</th><th>From</th><th class="number">Payments</th><th class="number">Fees</th><th class="number">Paid in</th><th>Status</th><th>Bank statement</th></tr></thead>
+  <tbody>
+    {% for payout in page %}
+      <tr>
+        <td class="nowrap"><a href="{% url 'finance:payout' payout.pk %}">{{ payout.arrival_date|date:"j M Y" }}</a></td>
+        <td>{{ payout.get_provider_display }}</td>
+        <td class="number">{{ payout.gross_pence|pounds }}</td>
+        <td class="number">{{ payout.fees_pence|pounds }}</td>
+        <td class="number">{{ payout.amount_pence|pounds }}</td>
+        <td>{{ payout.status }}{% if payout.unknown %} <span class="error">· {{ payout.unknown }} not in BBMS</span>{% endif %}</td>
+        <td>{% if payout.bank_line %}<a href="{% url 'finance:bank-line' payout.bank_line.pk %}">{{ payout.bank_line.date|date:"j M" }}</a>{% else %}<span class="hint">not matched</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table></div>
+{% include "finance/_pager.html" %}
+{% else %}
+<p>No payouts{% if filters.provider or filters.bank %} like that{% else %} imported yet{% endif %}.</p>
+{% endif %}
+{% endblock %}

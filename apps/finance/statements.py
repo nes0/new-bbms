@@ -459,6 +459,9 @@ def record(statement, decisions, by) -> dict:
         counts[line.outcome] = counts.get(line.outcome, 0) + 1
     statement.recorded_at, statement.recorded_by = timezone.now(), by
     statement.save(update_fields=["recorded_at", "recorded_by"])
+    from .payouts import match_bank_lines  # payouts imported earlier can now be matched to these lines (04 §4.9)
+
+    counts["payouts matched"] = match_bank_lines()
     logger.info("Statement %s recorded by member %s: %s", statement.pk, by.pk, counts)
     return counts
 

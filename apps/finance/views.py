@@ -25,9 +25,9 @@ from apps.payments import services
 from apps.payments.models import Payment
 from apps.profiles.views import is_member
 
-from . import figures, money, statements
+from . import figures, money, payouts, statements
 from .access import can_manage, can_see, require_manage, require_see
-from .models import BankLine, BankMatch, BankStatement
+from .models import BankLine, BankMatch, BankStatement, Payout
 
 PER_PAGE = 50
 
@@ -161,6 +161,66 @@ def machines(request):
         "years": range(timezone.localdate().year, (first or timezone.localdate()).year - 1, -1),
     }
     return render(request, "finance/machines.html", context)
+
+
+@login_required
+def received(request):
+    """Money received by source, as BBMS knows it and as the bank statement says (04 §4.9)."""
+    require_see(request.user)
+    start, end, label, choices = _period(request)
+    first = _first_payment_day()
+    context = {
+        "report": money.received(start, end),
+        "label": label,
+        "choices": choices,
+        "months": _months(first),
+        "years": range(timezone.localdate().year, (first or timezone.localdate()).year - 1, -1),
+        "can_manage": can_manage(request.user),
+    }
+    return render(request, "finance/received.html", context)
+
+
+# -- Payouts (04 §4.9) --------------------------------------------------------------------------------------------
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def payouts_page(request):
+    require_see(request.user)
+    if request.method == "POST":
+        require_manage(request.user)
+        summary = payouts.import_payouts()
+        for error in summary.errors:
+            messages.error(request, f"Couldn't import payouts from {error}")
+        messages.success(request, f"Payouts imported: {summary}.")
+        return redirect("finance:payouts")
+    rows = Payout.objects.select_related("bank_line").annotate(
+        unknown=Count("items", filter=Q(items__kind="payment", items__payment__isnull=True))
+    )
+    filters = {name: request.GET.get(name, "") for name in ("provider", "bank")}
+    if filters["provider"] in Payout.Provider.values:
+        rows = rows.filter(provider=filters["provider"])
+    if filters["bank"] == "matched":
+        rows = rows.filter(bank_line__isnull=False)
+    elif filters["bank"] == "not-matched":
+        rows = rows.filter(bank_line__isnull=True)
+    context = {
+        "page": Paginator(rows, PER_PAGE).get_page(request.GET.get("page")),
+        "filters": filters,
+        "providers": Payout.Provider.choices,
+        "can_manage": can_manage(request.user),
+        "query": _query(request),
+    }
+    return render(request, "finance/payouts.html", context)
+
+
+@login_required
+def payout(request, payout_id):
+    require_see(request.user)
+    found = get_object_or_404(Payout.objects.select_related("bank_line"), pk=payout_id)
+    items = found.items.select_related("payment", "payment__member")
+    context = {"payout": found, "items": items, "gross": sum(item.amount_pence for item in items)}
+    return render(request, "finance/payout.html", context)
 
 
 # -- Payments -----------------------------------------------------------------------------------------------------
