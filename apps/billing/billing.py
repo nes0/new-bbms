@@ -93,7 +93,9 @@ def amount_for(charge: Charge) -> int | None:
 
     if charge.kind == Charge.Kind.SUBSCRIPTION:
         return charge.member.monthly_subscription_pence
-    return storage.rental_rent_pence(charge.rental)
+    if charge.first_rent and charge.amount_pence:
+        return charge.amount_pence  # pro rata, worked out when the locker was rented
+    return storage.rental_rent_pence(charge.rental, charge.charge_date)
 
 
 def make_due(today: date) -> int:
@@ -349,3 +351,69 @@ def cancel_rent_charges(rental):
     return Charge.objects.filter(rental=rental, status__in=(Charge.Status.PENDING, Charge.Status.DUE)).update(
         status=Charge.Status.CANCELLED
     )
+
+
+# --- the first rent for a locker a member rents themselves (06 §6.2) ---
+
+MINIMUM_FIRST_RENT_PENCE = 100  # GoCardless can't take less than £1; a smaller first rent isn't charged
+
+
+def rent_payment_problem(member) -> str | None:
+    """Why this member can't pay locker rent monthly, or None. Rent is paid by Direct Debit or from credit (with or
+    without Direct Debit as a backup); other payers set one of those up first (06 §6.2)."""
+    method = member.payment_method
+    if method == Member.PaymentMethod.CREDIT:
+        return None
+    if method == Member.PaymentMethod.DIRECT_DEBIT:
+        return None if member.mandate_id else "Your Direct Debit isn't set up yet."
+    return "Locker rent is paid monthly by Direct Debit or from your member credit. Set one of those up first."
+
+
+@transaction.atomic
+def take_first_rent(rental, today: date) -> int:
+    """Take the first rent for a newly rented locker: from the rental's start to the member's next payment day, from
+    credit or by Direct Debit. From then on it's billed with everything else on their payment day. Returns what was
+    taken (0 if nothing was). Raises LockerError if it can't be paid; the caller's transaction then undoes the rental.
+    """
+    from apps.storage import rules as storage
+
+    member = Member.objects.select_for_update().get(pk=rental.member_id)
+    problem = rent_payment_problem(member)
+    if problem:
+        raise storage.LockerError(problem)
+    if member.payment_day is None:  # an honorary member, who pays no subscription: today becomes their payment day
+        member.payment_day = membership.payment_day_for(today)
+        member.save(update_fields=["payment_day"])
+    monthly = storage.rental_rent_pence(rental, today)
+    amount, _ = storage.first_rent(member, monthly or 0, today)
+    if amount < MINIMUM_FIRST_RENT_PENCE:
+        return 0
+    charge = Charge.objects.create(
+        member=member,
+        kind=Charge.Kind.LOCKER_RENT,
+        rental=rental,
+        charge_date=today,
+        amount_pence=amount,
+        status=Charge.Status.DUE,
+        first_rent=True,
+    )
+    if member.payment_method == Member.PaymentMethod.CREDIT:
+        try:
+            services.pay_from_credit(member, charge.reason, amount, charge=charge, reference=_ref(charge))
+        except services.InsufficientCredit as error:
+            if not member.mandate_id:
+                raise storage.LockerError(
+                    f"The first rent is £{_pounds(amount)} and you have £{_pounds(error.credit)} of credit. "
+                    "Top up your credit first."
+                ) from error
+        else:
+            membership.charge_paid(charge, today)
+            return amount
+    try:
+        _bill_by_direct_debit(member, [charge])
+    except gocardless.GoCardlessError as error:
+        logger.warning("Member %s: first rent not taken: %s", member.pk, error)
+        raise storage.LockerError(
+            "We couldn't set up the Direct Debit for the first rent just now. Please try again in a few minutes."
+        ) from error
+    return amount

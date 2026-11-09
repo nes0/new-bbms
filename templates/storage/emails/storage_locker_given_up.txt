@@ -1,0 +1,3 @@
+{% autoescape off %}{{ site_name }}: {{ locker }} given up
+{{ member }} (member {{ member.pk }}) has given up {{ locker }}. Please check it's empty; it's now available to rent.
+{% endautoescape %}

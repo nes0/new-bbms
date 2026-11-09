@@ -115,8 +115,7 @@ Boxes and lockers follow **different rules** (decided 2026-11-06).
     - So the price a renter pays = their rental's override if set, otherwise the default rent for the locker's size
       and location.
     - ❓ When an admin changes a default rent, should existing renters pay the new rent? Suggested: yes, from
-      the first charge at least 30 days after they've been emailed about it. (Built so far: renters without an
-      override simply follow the current default, and the admin warns when a change affects current renters.)
+      the first charge at least 30 days after they've been emailed about it. (Built 2026-11-08 as suggested: a lower default applies at once; a higher one is emailed and applies from the first charge 30 or more days later. Renters with an override aren't affected.)
 - **Renting (self-service):**
     1. The member picks an **available** locker, within their limit.
     2. They need a way to pay monthly: a Direct Debit mandate, or member credit (with or without Direct Debit as a
@@ -166,8 +165,27 @@ Built (`apps/storage`):
 
 Built with billing (03 §3.6): **monthly rent charges** with the subscription (one Direct Debit for both), unpaid
 rent (the storage team is emailed when a rent payment finally fails), rent charges not yet billed are cancelled when
-a rental ends, and rentals end when a member leaves. Still waiting: **self-service renting** with a Direct Debit or
-credit to pay from and the first (pro-rata) payment, and rent notice periods. Members ask the storage team to rent or give up a locker until then.
+a rental ends, and rentals end when a member leaves. Built 2026-11-08: **self-service renting** and **rent notice** (below).
+
+### Self-service renting: build status (2026-11-08)
+- On `/lockers/` a member who pays by **Direct Debit** or **member credit** (and is active or honorary, within their
+  limit, with a confirmed email address) picks an available locker, sees what they'll pay, and rents it. Other
+  payers are told to set one of those up first.
+- **First payment** (the suggested rule): the rent for the days from today to the member's next payment day
+  (rent × days ÷ days in that month's cycle, rounded to the penny); renting on the payment day itself pays a whole
+  month. It's taken at once: from credit, or by Direct Debit (also when a credit payer has too little and a mandate
+  as backup). Too little credit and no mandate, or GoCardless unreachable, and nothing is rented. A first payment
+  under **£1** (renting the day before the payment day) isn't taken, as GoCardless can't collect less. It's recorded
+  as a locker-rent charge marked "first rent", whose amount billing never recalculates; from the payment day the
+  full rent is billed with the subscription as before. An honorary member with no payment day gets today's.
+- A member can **give up** their own locker from the same page: rent stops that day, no refund.
+- The member is emailed when they rent; the storage team is emailed and notified when a locker is rented or given up.
+- Lockers given out by the storage team in the admin are still billed from the next payment day, with no first
+  payment.
+- **Rent notice:** each rental keeps the default rent the member agreed to. When an admin changes a default rent,
+  renters without an override are emailed; a lower rent applies at once and a higher one from the first charge 30
+  or more days after the email. Charges are billed at the rent for their date. The members' page and the admin show
+  an upcoming rise.
 
 **Box flag (built 2026-11-08):** members have a "box paid" date and the payment it came from. Recording a box fee
 payment in any way (card, Direct Debit, credit, cash or manual, in the admin or through the member's own pages)

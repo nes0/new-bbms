@@ -1,0 +1,7 @@
+{% autoescape off %}{{ site_name }}: you're renting {{ locker }}
+Hello {{ member.given_name }},
+
+You're now renting {{ locker }} for {{ rent }} a month.{% if first != "£0.00" %} We've taken {{ first }} for the days until your next payment day.{% endif %} From then on it is paid on your payment day (day {{ payment_day }} of each month), with your subscription.
+
+To give it up, go to {{ site_url }}/lockers/. Rent stops from that day.
+{% endautoescape %}

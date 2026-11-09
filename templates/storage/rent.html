@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load money %}
+
+{% block title %}Rent a locker · {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+  <h1>Rent {{ locker }}</h1>
+  <p>{{ locker.size }}{% if locker.size.description %} ({{ locker.size.description }}){% endif %},
+    {{ monthly|pounds }} a month.</p>
+
+  {% if problem %}
+    <p class="notice">{{ problem }}</p>
+    {% if top_up %}<p><a href="{% url 'payments:credit' %}">Top up your credit</a></p>
+    {% elif set_up_payment %}<p><a href="{% url 'billing:payment' %}">Set up your payment</a></p>{% endif %}
+  {% else %}
+    <p>
+      {% if first %}
+        You pay <strong>{{ first|pounds }}</strong> now, for the days until your next payment day
+        ({{ next_day|date:"j F Y" }}),
+        {% if by_credit %}from your credit ({{ credit|pounds }}){% if has_direct_debit %}, or by Direct Debit if
+          that's not enough{% endif %}{% else %}by Direct Debit{% endif %}.
+      {% else %}
+        There's nothing to pay until your next payment day ({{ next_day|date:"j F Y" }}).
+      {% endif %}
+      Then it's {{ monthly|pounds }} on each payment day, with your subscription, until you give it up.
+    </p>
+    <p class="hint">If you give it up, rent stops from that day. Rent already paid isn't refunded.</p>
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit">Rent it{% if first %} and pay {{ first|pounds }}{% endif %}</button>
+    </form>
+  {% endif %}
+  <p><a href="{% url 'storage:lockers' %}">Back to lockers</a></p>
+{% endblock %}

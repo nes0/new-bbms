@@ -35,6 +35,11 @@ class Charge(models.Model):
     )
     charge_date = models.DateField()
     amount_pence = models.PositiveIntegerField(null=True, blank=True, help_text="Set when the charge is billed.")
+    first_rent = models.BooleanField(
+        default=False,
+        help_text="The first rent for a locker rented by the member, for the days until their payment day. Its amount "
+        "was set when they rented it.",
+    )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     paid_on = models.DateField(null=True, blank=True)
     # Failed Direct Debits (03 §3.6).

@@ -1,0 +1,3 @@
+{% autoescape off %}{{ site_name }}: {{ locker }} rented
+{{ member }} (member {{ member.pk }}) has rented {{ locker }} at {{ rent }} a month.
+{% endautoescape %}

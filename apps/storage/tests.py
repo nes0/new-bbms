@@ -82,10 +82,14 @@ class PriceTests(LockerTestCase):
         with self.assertRaises(rules.LockerError):
             rules.set_rental_rent(rental, 300, "", self.trustee)
 
-    def test_renters_without_an_override_follow_the_default(self):
+    def test_renters_without_an_override_follow_a_lower_default_at_once(self):
         rental = rules.start_rental(self.locker(10), self.kim, self.trustee)
-        LockerRent.objects.filter(location=self.workshop, size=self.large).update(monthly_rent_pence=900)
-        self.assertEqual(rules.rental_rent_pence(rental), 900)
+        rent = LockerRent.objects.get(location=self.workshop, size=self.large)
+        rent.monthly_rent_pence = 700
+        rent.save()
+        rules.default_rent_changed(rent, 800, self.trustee)
+        rental.refresh_from_db()
+        self.assertEqual(rules.rental_rent_pence(rental), 700)  # a higher one waits for notice: test_renting.py
 
 
 class AvailabilityTests(LockerTestCase):

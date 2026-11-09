@@ -10,24 +10,31 @@
     <h2>Your lockers</h2>
     {% if mine %}
       <ul class="plain">
-        {% for rental, rent in mine %}
+        {% for rental, rent, upcoming in mine %}
           <li><strong>{{ rental.locker }}</strong> ({{ rental.locker.size }}): {{ rent|pounds }} a month, since
-            {{ rental.started_at|date:"j F Y" }}</li>
+            {{ rental.started_at|date:"j F Y" }}{% if upcoming %}; {{ upcoming.0|pounds }} a month from
+            {{ upcoming.1|date:"j F Y" }}{% endif %}.
+            <a href="{% url 'storage:give-up' rental.pk %}">Give it up</a></li>
         {% endfor %}
       </ul>
     {% else %}
       <p>You don't rent a locker.</p>
     {% endif %}
-    <p class="hint">You can rent up to {{ limit }} locker{{ limit|pluralize }}. To give one up, ask the storage team.</p>
+    <p class="hint">You can rent up to {{ limit }} locker{{ limit|pluralize }}. Rent is paid monthly on your payment
+      day, with your subscription.</p>
   </section>
 
   <section>
     <h2>Available to rent</h2>
+    {% if by_location and problem %}
+      <p class="notice">{{ problem }}{% if set_up_payment %}
+        <a href="{% url 'billing:payment' %}">Set up your payment</a>{% endif %}</p>
+    {% endif %}
     {% for location, sizes in by_location %}
       <h3>{{ location }}</h3>
       {% if location.description %}<p class="hint">{{ location.description }}</p>{% endif %}
       <table class="table">
-        <thead><tr><th>Locker</th><th>Size</th><th>Monthly rent</th></tr></thead>
+        <thead><tr><th>Locker</th><th>Size</th><th>Monthly rent</th><th></th></tr></thead>
         <tbody>
           {% for size, items in sizes %}
             {% for locker, rent in items %}
@@ -35,6 +42,7 @@
                 <td>{{ locker.number }}</td>
                 <td>{{ size }}{% if size.description %} <span class="hint">{{ size.description }}</span>{% endif %}</td>
                 <td>{{ rent|pounds }}</td>
+                <td>{% if not problem %}<a href="{% url 'storage:rent' locker.pk %}">Rent</a>{% endif %}</td>
               </tr>
             {% endfor %}
           {% endfor %}
@@ -43,9 +51,5 @@
     {% empty %}
       <p>No lockers are free at the moment.</p>
     {% endfor %}
-    {% if by_location %}
-      {# TODO(subscriptions app): rent one here, paid monthly by Direct Debit or credit, first payment pro rata (06 §6.2). #}
-      <p>To rent one, ask the storage team. Rent is paid monthly.</p>
-    {% endif %}
   </section>
 {% endblock %}
