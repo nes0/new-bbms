@@ -28,6 +28,8 @@ from urllib.parse import urlencode
 
 from django.conf import settings
 
+from apps.core import fakes
+
 logger = logging.getLogger(__name__)
 
 API = "https://discord.com/api/v10"
@@ -67,7 +69,7 @@ def configured() -> bool:
 
 
 def using_fake() -> bool:
-    return not configured() and (settings.DEBUG or getattr(settings, "TESTING", False))
+    return not configured() and (fakes.allowed() or getattr(settings, "TESTING", False))
 
 
 def enabled() -> bool:
@@ -319,8 +321,8 @@ def client():
 
 def fake() -> FakeDiscord:
     global _fake
-    if settings.DEBUG and not getattr(settings, "TESTING", False):
-        _fake = FakeDiscord(path=str(settings.BASE_DIR / ".fake-discord.json")).load()
+    if fakes.allowed() and not getattr(settings, "TESTING", False):
+        _fake = FakeDiscord(path=fakes.state_file(".fake-discord.json")).load()
     return _fake
 
 

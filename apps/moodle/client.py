@@ -23,6 +23,7 @@ from datetime import UTC, datetime
 
 from django.conf import settings
 
+from apps.core import fakes
 from apps.site_settings.models import SiteSettings
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ def configured() -> bool:
 
 
 def using_fake() -> bool:
-    return not configured() and (settings.DEBUG or getattr(settings, "TESTING", False))
+    return not configured() and (fakes.allowed() or getattr(settings, "TESTING", False))
 
 
 def enabled() -> bool:

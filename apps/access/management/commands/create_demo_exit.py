@@ -10,7 +10,6 @@ only (shown by name, without a photo). Safe to run again.
 import io
 from datetime import timedelta
 
-from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
@@ -18,6 +17,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from apps.access import tags
 from apps.access.models import AccessEvent, Device, KeyFob
+from apps.core import fakes
 from apps.equipment.models import Equipment, UsageSession
 from apps.members.models import Member, MemberPhoto
 from apps.profiles import photos
@@ -52,7 +52,7 @@ class Command(BaseCommand):
     help = "Create an exit reader, a front-door reader and demo members for the fake exit node page. DEBUG only."
 
     def handle(self, *args, **options):
-        if not settings.DEBUG:
+        if not fakes.allowed():
             raise CommandError("This is for local development only: run it with DEBUG=True.")
         now = timezone.now()
         keys = {}

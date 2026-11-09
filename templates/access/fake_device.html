@@ -37,8 +37,10 @@
     <h1>Fake machine reader</h1>
     <p class="hint">
       Talks to this server through the v2 device API (<code>/api/devices/v2/</code>), as new firmware would.
-      Create a demo machine, reader and fobs with
-      <code>DEBUG=True .venv/bin/python manage.py create_demo_device</code>, then paste the key it prints.
+      {% if DEMO_SITE %}Each machine's reader has its own key (see the demo instructions): paste one here to be that
+      machine, or open the link that carries it. Type a fob's card number and press Tap.
+      {% else %}Create a demo machine, reader and fobs with
+      <code>DEBUG=True .venv/bin/python manage.py create_demo_device</code>, then paste the key it prints.{% endif %}
     </p>
 
     <label class="field">Device API key

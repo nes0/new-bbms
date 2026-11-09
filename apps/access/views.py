@@ -1,9 +1,10 @@
 """Pages about devices, reached from the QR code on each device's screen, and the fake device for local testing."""
 
-from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+
+from apps.core import fakes
 
 from .models import Device
 
@@ -27,7 +28,7 @@ def fake_device(request):
     Only when DEBUG is on: it is a development tool, not part of the live site. The page itself holds no secrets;
     you paste a device key into it (see `manage.py create_demo_device`).
     """
-    if not settings.DEBUG:
+    if not fakes.allowed():
         raise Http404
     return render(request, "access/fake_device.html")
 
@@ -35,6 +36,6 @@ def fake_device(request):
 def fake_exit(request):
     """A pretend exit node by the door: a portrait screen listing who's in, and a fob reader (05 §5.4, "Occupancy
     screen"). Only when DEBUG is on; you paste a device key into it (see `manage.py create_demo_exit`)."""
-    if not settings.DEBUG:
+    if not fakes.allowed():
         raise Http404
     return render(request, "access/fake_exit.html")

@@ -11,6 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
+from apps.core import fakes
 from apps.members.decorators import email_confirmed_required
 from apps.members.models import Member
 from apps.payments.credit import credit_pence
@@ -230,7 +231,7 @@ def _ordinal(day):
 @require_http_methods(["GET", "POST"])
 def fake_gocardless(request, request_id):
     """Stands in for GoCardless's hosted page when there's no access token. DEBUG only."""
-    if not settings.DEBUG or settings.GOCARDLESS_ACCESS_TOKEN:
+    if not fakes.allowed() or settings.GOCARDLESS_ACCESS_TOKEN:
         raise Http404
     fake = gocardless.fake()
     if request_id not in fake.billing_requests:
@@ -245,7 +246,7 @@ def fake_gocardless(request, request_id):
 @require_http_methods(["GET", "POST"])
 def fake_gocardless_payments(request):
     """Play GoCardless when developing: send "confirmed", "failed" and other events for the fake's payments."""
-    if not settings.DEBUG or settings.GOCARDLESS_ACCESS_TOKEN:
+    if not fakes.allowed() or settings.GOCARDLESS_ACCESS_TOKEN:
         raise Http404
     from .webhooks import process_pending, store_events
 

@@ -621,6 +621,15 @@
   }
 
   // ---- Wiring the page up -------------------------------------------------------------------------------------
+  // A link can carry the key after a "#" (browsers never send that part to the server): …/fake-device/#key=…
+  const fromLink = new URLSearchParams(location.hash.slice(1));
+  if (fromLink.get("key") && fromLink.get("key") !== flash.get("apiKey", "")) {
+    flash.set("apiKey", fromLink.get("key"));
+    flash.set("qr", null);
+    flash.set("cacheVersion", null);
+    flash.set("meterQueue", []);
+  }
+  if (location.hash) history.replaceState(null, "", location.pathname);
   $("key").value = flash.get("apiKey", "");
   $("key").addEventListener("change", () => {
     flash.set("apiKey", $("key").value.trim());

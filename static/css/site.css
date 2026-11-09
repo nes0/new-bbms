@@ -117,3 +117,10 @@ body.wide main { max-width: 72rem; }
 /* Two-factor setup (06 §6.11) */
 .qr svg { display: block; width: 12rem; height: auto; margin: 0.5rem 0; border-radius: 4px; }
 .codes { display: grid; grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); gap: 0.25rem 1rem; }
+
+/* A demo site (DEMO_SITE) says so on every page. */
+.demo-banner { margin: 0; padding: 0.4rem 16px; background: #fff4c2; color: #4a3b00; border-bottom: 1px solid #e0cf7a;
+  font-size: 0.9rem; text-align: center; }
+@media (prefers-color-scheme: dark) {
+  .demo-banner { background: #3b3210; color: #f3e3a0; border-bottom-color: #5c4e1a; }
+}

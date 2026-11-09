@@ -7,13 +7,13 @@ trained, untrained, on the machine's team, and a former member. Safe to run agai
 
 from decimal import Decimal
 
-from django.conf import settings
 from django.contrib.auth.models import Group
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from apps.access import tags
 from apps.access.models import Device, KeyFob
+from apps.core import fakes
 from apps.equipment.models import Equipment, Induction
 from apps.members.models import Member
 
@@ -32,7 +32,7 @@ class Command(BaseCommand):
     help = "Create a demo machine, its reader and members with fobs, for the fake device page. DEBUG only."
 
     def handle(self, *args, **options):
-        if not settings.DEBUG:
+        if not fakes.allowed():
             raise CommandError("This is for local development only: run it with DEBUG=True.")
 
         team, _ = Group.objects.get_or_create(name=SLUG)

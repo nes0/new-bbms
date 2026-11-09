@@ -23,6 +23,8 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
 
+from apps.core import fakes
+
 logger = logging.getLogger(__name__)
 
 
@@ -359,7 +361,7 @@ def client():
         return override
     if settings.GOCARDLESS_ACCESS_TOKEN:
         return GoCardlessClient(settings.GOCARDLESS_ACCESS_TOKEN, settings.GOCARDLESS_ENVIRONMENT)
-    if settings.DEBUG or getattr(settings, "TESTING", False):
+    if fakes.allowed() or getattr(settings, "TESTING", False):
         return fake()
     return NotConfigured()
 
@@ -367,8 +369,8 @@ def client():
 def fake() -> FakeGoCardless:
     """The fake used when there's no token. When developing (not testing) it's read from a file each time."""
     global _fake
-    if settings.DEBUG and not getattr(settings, "TESTING", False):
-        _fake = FakeGoCardless(path=str(settings.BASE_DIR / ".fake-gocardless.json")).load()
+    if fakes.allowed() and not getattr(settings, "TESTING", False):
+        _fake = FakeGoCardless(path=fakes.state_file(".fake-gocardless.json")).load()
     return _fake
 
 

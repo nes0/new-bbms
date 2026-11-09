@@ -59,8 +59,10 @@
     <p class="hint">
       A screen by the door showing who's in the space, as an embedded Linux device would, through the v2 device API
       (<code>occupancy</code>, <code>photos/{id}</code>, <code>access</code>). No touchscreen: the fob reader is the
-      only input. Set up demo readers and members with
-      <code>DEBUG=True .venv/bin/python manage.py create_demo_exit</code>, then paste the keys it prints.
+      only input. {% if DEMO_SITE %}The keys are in the demo instructions (or open the link that carries them). Tap
+      a fob at the front door to come in, and on the exit node to leave.
+      {% else %}Set up demo readers and members with
+      <code>DEBUG=True .venv/bin/python manage.py create_demo_exit</code>, then paste the keys it prints.{% endif %}
     </p>
 
     <label class="field">Exit node API key
