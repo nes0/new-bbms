@@ -146,6 +146,8 @@ now, with photos. It's the same best estimate as the "Who's in" page (06 §6.7).
   member who chose **"only members see my photo"** is listed by name without a photo. Only approved photos are used.
   Names are `display_name`, like everything else a device shows; the open question on what devices may show (above)
   applies here too.
+- **Trying it:** `/dev/fake-exit/` is a pretend exit node with a portrait screen that uses these endpoints, with
+  demo data from `manage.py create_demo_exit` (09 §9.8).
 
 ## 5.3 Who may use a machine
 

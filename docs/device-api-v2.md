@@ -156,6 +156,9 @@ little-endian 16-bit RGB565 value, row by row from the top left (as an ESP32 hol
 `If-None-Match` to get `304`. `404 {"error": "no_photo"}` when the member isn't in the space now or has no photo that
 may be shown; `400 bad_field` for a bad size or format.
 
+A working example of a screen using `occupancy` and `photos/{id}` is the fake exit node, `/dev/fake-exit/` on a
+development server (spec 09 §9.8).
+
 ## Open questions
 - **Offline machine use:** may trained members start sessions while BBMS is unreachable, given credit can't be
   checked? The API supports either; the firmware decides whether to start sessions offline.

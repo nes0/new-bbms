@@ -36,4 +36,5 @@ urlpatterns = [
     path("devices/<slug:device_id>/", views.device_page, name="device-page"),
     # Local development only (404 unless DEBUG): a pretend machine reader using the v2 API
     path("dev/fake-device/", views.fake_device, name="fake-device"),
+    path("dev/fake-exit/", views.fake_exit, name="fake-exit"),
 ]
