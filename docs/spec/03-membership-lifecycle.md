@@ -194,6 +194,7 @@ All times Europe/London. Each must be **idempotent** and must **alert on failure
 | 07:00 (new) | `retry_direct_debits` | In "BBMS retries" mode, asks GoCardless to retry failed Direct Debits whose retry day has come. **Built** |
 | every 15 min (new) | `process_gocardless_events` | Backstop for webhook events that were stored but not handled. **Built** |
 | daily (new) | `shred_stale_id_documents` | Delete proofs of identity nobody has checked within the time limit (§3.1, "Proof of identity"). |
+| nightly (new) | `import_payouts` | Import GoCardless and Stripe payouts with their real fees, and match them to bank statement lines (04 §4.9). **Built** |
 | nightly (new) | `sync_discord` | Put each linked member's Discord member / former-member role right, and post welcome messages that failed (06 §6.14). |
 | hourly | `fix-equipment-log` | Close stale sessions; merge sessions with gaps ≤ 60 s; mark sessions ≤ 60 s as removed. |
 | hourly | `calculate-proposal-votes` | Tally proposals whose end date has passed. New: `update_proposals` also opens proposals whose voting has started (emails voters, posts on Discord) and posts results (06 §6.3). |

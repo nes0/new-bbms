@@ -12,6 +12,7 @@
   <dt>Outcome</dt><dd>{{ line.get_outcome_display }}{% if line.note %}: {{ line.note }}{% endif %}</dd>
   {% if line.member %}<dt>Member</dt><dd>{{ line.member.full_name }}</dd>{% endif %}
   {% if line.payment %}<dt>Payment</dt><dd><a href="{% url 'finance:payment' line.payment.pk %}">{{ line.payment }}</a></dd>{% endif %}
+  {% if line.kind == "gocardless" or line.kind == "stripe" %}<dt>Payout</dt><dd>{% if line.payout_match %}<a href="{% url 'finance:payout' line.payout_match.pk %}">{{ line.payout_match.items.count }} item{{ line.payout_match.items.count|pluralize }}, fees {{ line.payout_match.fees_pence|pounds }}</a>{% else %}None found yet: payouts are imported nightly{% endif %}</dd>{% endif %}
   {% if line.handled_by %}<dt>By</dt><dd>{{ line.handled_by.full_name }}, {{ line.handled_at|date:"j M Y" }}</dd>{% endif %}
 </dl>
 {% if can_match %}

@@ -15,6 +15,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
+from datetime import UTC, date, datetime, time
 
 from django.conf import settings
 
@@ -100,6 +101,67 @@ class StripeCards:
             fee = balance.fee
         return Result(paid=True, payment_id=intent.id, amount_pence=session.amount_total, fee_pence=fee)
 
+    def _all(self, what, listing):
+        try:
+            return list(listing.auto_paging_iter())
+        except self._stripe.StripeError as error:
+            logger.warning("Stripe refused to %s: %s", what, error)
+            raise CardError(f"Stripe couldn't {what}. Please try again later.") from error
+
+    def payouts(self, since: date) -> list[dict]:
+        """Payouts created since `since`, each with what's inside it (spec 04 §4.9). The shape is the same as
+        `apps.billing.gocardless.payout_dict`."""
+        created = int(datetime.combine(since, time.min, tzinfo=UTC).timestamp())
+        listing = self._call(
+            "list payouts", self._api.v1.payouts.list, params={"created": {"gte": created}, "limit": 100}
+        )
+        found = []
+        for payout in self._all("list payouts", listing):
+            if payout.currency != "gbp":
+                continue
+            transactions = self._call(
+                "list a payout's payments",
+                self._api.v1.balance_transactions.list,
+                params={"payout": payout.id, "limit": 100, "expand": ["data.source"]},
+            )
+            items = [stripe_item(t) for t in self._all("list a payout's payments", transactions) if t.type != "payout"]
+            found.append(
+                {
+                    "id": payout.id,
+                    "amount_pence": payout.amount,
+                    "fees_pence": sum(item["fee_pence"] for item in items),
+                    "arrival_date": datetime.fromtimestamp(payout.arrival_date, UTC).date(),
+                    "status": payout.status,
+                    "reference": payout.statement_descriptor or "",
+                    "items": items,
+                }
+            )
+        return found
+
+
+def stripe_item(transaction) -> dict:
+    """One balance transaction inside a payout, as an item. A card payment's id is its PaymentIntent, which is what
+    BBMS stored when the member paid."""
+    payment_id = ""
+    if transaction.type in ("charge", "payment"):
+        source = transaction.source
+        intent = getattr(source, "payment_intent", "") if source is not None and not isinstance(source, str) else ""
+        payment_id = intent if isinstance(intent, str) else getattr(intent, "id", "")
+        kind = "payment"
+    elif transaction.type in ("refund", "payment_refund", "payment_failure_refund", "adjustment"):
+        kind = "refund"
+    elif transaction.type == "stripe_fee":
+        kind = "fee"
+    else:
+        kind = "other"
+    return {
+        "kind": kind,
+        "amount_pence": transaction.amount,
+        "fee_pence": transaction.fee,
+        "payment_id": payment_id or "",
+        "description": transaction.description or transaction.type,
+    }
+
 
 @dataclass
 class FakeCards:
@@ -107,10 +169,11 @@ class FakeCards:
 
     path: str | None = None
     sessions: dict = field(default_factory=dict)  # id -> {"amount", "description", "success_url", "cancel_url", ...}
+    payouts_made: list = field(default_factory=list)  # payout dicts, with the date as text
     next_id: int = 1
     fail_next: str = ""
 
-    STATE = ("sessions", "next_id")
+    STATE = ("sessions", "payouts_made", "next_id")
     FEE_PERCENT, FEE_FIXED = 1.5, 20  # a typical UK card fee, so pages show something realistic
 
     def load(self):
@@ -164,8 +227,58 @@ class FakeCards:
             paid=True,
             payment_id=f"pi_fake_{session_id[-6:]}",
             amount_pence=amount,
-            fee_pence=round(amount * self.FEE_PERCENT / 100) + self.FEE_FIXED,
+            fee_pence=self._fee(amount),
         )
+
+    def _fee(self, amount):
+        return round(amount * self.FEE_PERCENT / 100) + self.FEE_FIXED
+
+    def add_payout(self, arrival_date: date, items, *, status="paid", reference="BUILD BRIGHTON") -> dict:
+        """Tests and development: `items` are (amount pence, fee pence, PaymentIntent id or "")."""
+        listed = [
+            {
+                "kind": "payment" if amount > 0 else "refund",
+                "amount_pence": amount,
+                "fee_pence": fee,
+                "payment_id": payment_id,
+                "description": "",
+            }
+            for amount, fee, payment_id in items
+        ]
+        payout = {
+            "id": f"po_fake{self.next_id:06d}",
+            "amount_pence": sum(i["amount_pence"] - i["fee_pence"] for i in listed),
+            "fees_pence": sum(i["fee_pence"] for i in listed),
+            "arrival_date": arrival_date.isoformat(),
+            "status": status,
+            "reference": reference,
+            "items": listed,
+        }
+        self.next_id += 1
+        self.payouts_made.append(payout)
+        self._save()
+        return {**payout, "arrival_date": arrival_date}
+
+    def pay_out(self, arrival_date: date) -> dict | None:
+        """Development: one payout of every paid checkout not yet paid out."""
+        done = {item["payment_id"] for payout in self.payouts_made for item in payout["items"]}
+        items = []
+        for session_id, session in self.sessions.items():
+            payment_id = f"pi_fake_{session_id[-6:]}"
+            if session["status"] == "paid" and payment_id not in done:
+                items.append((session["amount"], self._fee(session["amount"]), payment_id))
+        return self.add_payout(arrival_date, items) if items else None
+
+    def payouts(self, since: date) -> list[dict]:
+        if self.fail_next:
+            message, self.fail_next = self.fail_next, ""
+            raise CardError(message)
+        found = []
+        for payout in self.payouts_made:
+            arrival = date.fromisoformat(payout["arrival_date"])
+            if arrival >= since:
+                found.append({**payout, "arrival_date": arrival})
+        return found
 
 
 class NotConfigured:

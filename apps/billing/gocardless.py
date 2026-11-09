@@ -18,6 +18,8 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
+from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
 
@@ -104,6 +106,80 @@ class GoCardlessClient:
     def cancel_mandate(self, mandate_id):
         self._call("cancel a Direct Debit", self._api.mandates.cancel, mandate_id)
 
+    def payouts(self, since: date) -> list[dict]:
+        """Payouts created since `since`, each with its items (spec 04 §4.9). See `payout_dict` for the shape."""
+        listed = self._call(
+            "list payouts",
+            lambda: list(self._api.payouts.all(params={"created_at[gte]": f"{since.isoformat()}T00:00:00.000Z"})),
+        )
+        found = []
+        for payout in listed:
+            if payout.currency != "GBP":
+                continue
+            items = self._call(
+                "list a payout's items", lambda p=payout: list(self._api.payout_items.all(params={"payout": p.id}))
+            )
+            found.append(
+                payout_dict(
+                    payout.id,
+                    payout.amount,
+                    payout.deducted_fees,
+                    payout.arrival_date,
+                    payout.status,
+                    payout.reference or "",
+                    [(item.type, item.amount, item.links.payment or "") for item in items],
+                )
+            )
+        return found
+
+
+# GoCardless payout item types (https://developer.gocardless.com/api-reference/#payouts-payout-items).
+PAID_OUT = "payment_paid_out"
+FEE_TYPES = ("gocardless_fee", "app_fee", "surcharge_fee", "revenue_share")
+TAKEN_BACK = ("payment_failed", "payment_charged_back", "payment_refunded", "refund", "refund_funds_returned")
+
+
+def _pence(value) -> int:
+    """A payout item's amount: pence, as a string to one decimal place (e.g. "1250.0", "-20.4")."""
+    return int(Decimal(str(value)).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+
+
+def payout_dict(payout_id, amount, deducted_fees, arrival_date, status, reference, raw_items) -> dict:
+    """A payout as the finance app wants it, whichever provider it came from:
+
+    {"id", "amount_pence" (what reached the bank), "fees_pence", "arrival_date" (a date), "status", "reference",
+     "items": [{"kind": "payment" | "refund" | "fee" | "other", "amount_pence", "fee_pence", "payment_id",
+                "description"}]}
+
+    GoCardless lists a payment and its fee as separate items; here they are one item per payment.
+    """
+    by_payment, others = {}, []
+    for kind, item_amount, payment_id in raw_items:
+        pence = _pence(item_amount)
+        if kind == PAID_OUT or (kind in FEE_TYPES and payment_id):
+            item = by_payment.setdefault(
+                payment_id,
+                {"kind": "payment", "amount_pence": 0, "fee_pence": 0, "payment_id": payment_id, "description": ""},
+            )
+            if kind == PAID_OUT:
+                item["amount_pence"] += pence
+            else:
+                item["fee_pence"] += -pence
+        else:
+            group = "refund" if kind in TAKEN_BACK else "fee" if kind in FEE_TYPES else "other"
+            others.append(
+                {"kind": group, "amount_pence": pence, "fee_pence": 0, "payment_id": payment_id, "description": kind}
+            )
+    return {
+        "id": payout_id,
+        "amount_pence": int(amount),
+        "fees_pence": int(deducted_fees or 0),
+        "arrival_date": arrival_date if isinstance(arrival_date, date) else date.fromisoformat(str(arrival_date)),
+        "status": status,
+        "reference": reference,
+        "items": [*by_payment.values(), *others],
+    }
+
 
 @dataclass
 class FakeGoCardless:
@@ -118,10 +194,11 @@ class FakeGoCardless:
     cancelled_mandates: list = field(default_factory=list)
     retried: list = field(default_factory=list)
     idempotency: dict = field(default_factory=dict)
+    payouts_made: list = field(default_factory=list)  # payout_dict()s, with the date as text
     next_id: int = 1
     fail_next: str = ""  # tests: make the next call raise GoCardlessError with this message
 
-    STATE = ("billing_requests", "payments", "cancelled_mandates", "retried", "idempotency", "next_id")
+    STATE = ("billing_requests", "payments", "cancelled_mandates", "retried", "idempotency", "payouts_made", "next_id")
 
     def load(self):
         if self.path and os.path.exists(self.path):
@@ -203,6 +280,36 @@ class FakeGoCardless:
     def set_status(self, payment_id, status):
         self.payments[payment_id]["status"] = status
         self._save()
+
+    def add_payout(self, arrival_date: date, raw_items, *, status="paid", reference="") -> dict:
+        """Tests and development: a payout made of (type, pence, payment id) items, as GoCardless lists them."""
+        paid = sum(_pence(amount) for _, amount, _ in raw_items)
+        fees = -sum(_pence(amount) for kind, amount, _ in raw_items if kind in FEE_TYPES)
+        payout = payout_dict(self._new_id("PO"), paid, fees, arrival_date, status, reference, raw_items)
+        self.payouts_made.append({**payout, "arrival_date": arrival_date.isoformat()})
+        self._save()
+        return payout
+
+    def pay_out(self, arrival_date: date) -> dict | None:
+        """Development: put every confirmed payment not yet paid out into one payout, with GoCardless's usual fee
+        (1% + 20p, at most £4)."""
+        done = {item["payment_id"] for payout in self.payouts_made for item in payout["items"]}
+        raw = []
+        for payment_id, payment in self.payments.items():
+            if payment["status"] in ("confirmed", "paid_out") and payment_id not in done:
+                raw.append((PAID_OUT, payment["amount"], payment_id))
+                raw.append(("gocardless_fee", -min(400, round(payment["amount"] / 100) + 20), payment_id))
+                payment["status"] = "paid_out"
+        return self.add_payout(arrival_date, raw, reference="BUILDBRIGHTON-FAKE") if raw else None
+
+    def payouts(self, since: date) -> list[dict]:
+        self._maybe_fail()
+        found = []
+        for payout in self.payouts_made:
+            arrival = date.fromisoformat(payout["arrival_date"])
+            if arrival >= since:
+                found.append({**payout, "arrival_date": arrival})
+        return found
 
 
 class DryRunGoCardless:
