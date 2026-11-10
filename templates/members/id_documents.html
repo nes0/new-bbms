@@ -3,6 +3,7 @@
 {% block title %}Proof of identity · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
+  {% include "core/_camera.html" %}
   <h1>Proof of identity</h1>
   <p>We ask every new member for two documents:</p>
   <ul>
@@ -42,7 +43,7 @@
       {% if form.non_field_errors %}<div class="error">{{ form.non_field_errors|join:" " }}</div>{% endif %}
       {% for field in form %}
         <label for="{{ field.auto_id }}">{{ field.label }}</label>
-        <input type="file" name="{{ field.html_name }}" id="{{ field.auto_id }}" accept="{{ form.ACCEPT }}"
+        <input type="file" name="{{ field.html_name }}" id="{{ field.auto_id }}" accept="{{ form.ACCEPT }}" data-camera="environment"
                {% if field.errors %}aria-invalid="true" aria-describedby="{{ field.auto_id }}_errors"{% endif %}>
         {% if field.help_text %}<span class="hint">{{ field.help_text }}</span>{% endif %}
         {% if field.errors %}<span class="error" id="{{ field.auto_id }}_errors">{{ field.errors|join:" " }}</span>{% endif %}

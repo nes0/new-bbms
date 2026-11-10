@@ -223,3 +223,11 @@ class DecisionTests(ExpenseTestCase):
         page = self.client.get(f"/admin/expenses/expense/{expense.pk}/change/")
         self.assertContains(page, f"/expenses/{expense.pk}/")
         self.assertEqual(self.client.get("/admin/expenses/expense/add/").status_code, 403)
+
+
+class ReceiptCameraTests(TestCase):
+    def test_the_receipt_box_offers_the_rear_camera(self):
+        self.client.force_login(make_member())
+        page = self.client.get("/expenses/claim/")
+        self.assertContains(page, 'data-camera="environment"')
+        self.assertContains(page, "js/camera")

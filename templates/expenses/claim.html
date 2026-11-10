@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Claim an expense · {{ SITE_NAME }}{% endblock %}
 {% block content %}
+{% include "core/_camera.html" %}
 <p><a href="{% url 'expenses:index' %}">← Expenses</a></p>
 <h1>Claim an expense</h1>
 <p>For something you bought for the space. A trustee checks it against the receipt; once it's approved, the amount is
@@ -12,7 +13,7 @@
     {% for field in form %}
       <label for="{{ field.auto_id }}">{{ field.label }}</label>
       {% if field.name == "receipt" %}
-        <input type="file" name="receipt" id="{{ field.auto_id }}" accept="image/jpeg,image/png,application/pdf"{% if field.errors %} aria-invalid="true"{% endif %}>
+        <input type="file" name="receipt" id="{{ field.auto_id }}" accept="image/jpeg,image/png,application/pdf" data-camera="environment"{% if field.errors %} aria-invalid="true"{% endif %}>
       {% else %}{{ field }}{% endif %}
       {% if field.help_text %}<span class="hint">{{ field.help_text }}</span>{% endif %}
       {% if field.errors %}<span class="error">{{ field.errors|join:" " }}</span>{% endif %}

@@ -90,3 +90,12 @@ class EquipmentPhotoTests(TestCase):
         with self.captureOnCommitCallbacks(execute=True):
             photo.delete()
         self.assertFalse(any(storage.exists(name) for name in names))
+
+
+class CameraTests(TestCase):
+    def test_admin_photo_rows_offer_the_camera(self):
+        admin = Member.objects.create_superuser("cam@example.com", "a-good-password", given_name="A", family_name="D")
+        self.client.force_login(admin)
+        page = self.client.get(reverse("admin:equipment_equipment_add"))
+        self.assertContains(page, 'data-camera="environment"')
+        self.assertContains(page, "js/camera")
