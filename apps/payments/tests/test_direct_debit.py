@@ -7,7 +7,7 @@ from apps.billing.models import Charge
 from apps.billing.tests.helpers import payer
 from apps.billing.tests.test_webhooks import WebhookTestCase, event
 from apps.equipment.models import Equipment, Induction
-from apps.members.models import Member
+from apps.members.models import IdCheck, Member
 from apps.payments import checkout
 from apps.payments.credit import credit_pence
 from apps.payments.models import Payment
@@ -17,6 +17,7 @@ class DirectDebitPayTests(WebhookTestCase):
     def setUp(self):
         super().setUp()
         self.member = payer(trusted=True, induction_completed=True, inducted_at=timezone.now())
+        IdCheck.objects.create(member=self.member, result=IdCheck.Result.APPROVED, documents_seen="photo ID")
         self.client.force_login(self.member)
 
     def pay(self, item, **data):

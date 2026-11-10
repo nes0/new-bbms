@@ -1,6 +1,7 @@
 """The legacy import (spec 08 §8.2), using made-up legacy rows shaped like the real tables."""
 
 import hashlib
+import io
 import tempfile
 import urllib.error
 from datetime import datetime
@@ -8,10 +9,11 @@ from datetime import datetime
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import Group
 from django.test import TestCase, override_settings
+from PIL import Image
 
 from apps.access import tags
 from apps.access.models import AccessEvent, Device, KeyFob
-from apps.equipment.models import Equipment, Induction, UsageSession
+from apps.equipment.models import Equipment, EquipmentPhoto, Induction, UsageSession
 from apps.legacy.importer import Importer
 from apps.legacy.photos import PNG_SIGNATURE, PhotoSource
 from apps.legacy.source import ListSource
@@ -286,6 +288,7 @@ def legacy_tables():
                 obtained_at="0000-00-00",
                 removed_at="0000-00-00",
                 ppe='["eye-protection"]',
+                photos='[{"path": "AbCdEf123.jpg"}, {"path": "../secrets.png"}, {"path": "Gone456.png"}]',
                 updated_at=T,
             ),
             dict(
@@ -617,6 +620,7 @@ class ImportTests(TestCase):
     def test_photos_are_only_copied_when_asked(self):
         self.assertFalse(MemberPhoto.objects.exists())
         self.assertIn("photos not copied (2 to copy): run with --photos-from", self.output)
+        self.assertIn("equipment photos not copied (3 to copy): run with --photos-from", self.output)
 
     def test_box_paid_flags(self):
         self.assertEqual(self.importer.box_paid_user_ids, [1])
@@ -695,11 +699,17 @@ class ImportedDataWorksTests(TestCase):
 PHOTO_FOLDER = "https://photos.example.com/bucket/production"
 
 
+def made_up_jpeg(width, height):
+    out = io.BytesIO()
+    Image.new("RGB", (width, height), (200, 40, 40)).save(out, "JPEG")
+    return out.getvalue()
+
+
 def fake_s3(files):
     """Stands in for legacy's public S3 folder: {name: bytes}."""
 
     def opener(url):
-        name = url.removeprefix(PHOTO_FOLDER + "/user-photo/")
+        name = url.removeprefix(PHOTO_FOLDER + "/").removeprefix("user-photo/")
         if name not in files:
             raise urllib.error.HTTPError(url, 404, "Not Found", None, None)
         return files[name]
@@ -717,6 +727,7 @@ class ImportOptionsTests(TestCase):
             f"{kim}-thumb.png": PNG_SIGNATURE + b"kim-200",
             f"{sam}-new.png": PNG_SIGNATURE + b"sam-500",
             f"{sam}-thumb-new.png": b"<html>not a photo</html>",
+            "equipment-images/AbCdEf123.jpg": made_up_jpeg(1200, 900),
         }
 
     def run_import(self, save=True, **options):
@@ -738,6 +749,22 @@ class ImportOptionsTests(TestCase):
         output = self.run_import(save=False)
         self.assertFalse(MemberPhoto.objects.exists())
         self.assertIn("photos found (dry run: not copied): 1 approved", output)
+
+    def test_equipment_photos_are_copied_as_squares(self):
+        output = self.run_import()
+        photo = EquipmentPhoto.objects.get()
+        self.assertEqual((photo.equipment.slug, photo.position), ("laser", 0))
+        self.assertEqual(Image.open(photo.image).size, (1000, 1000))
+        self.assertEqual(Image.open(photo.thumbnail).size, (300, 300))
+        self.assertNotIn("AbCdEf123", photo.image.name)
+        self.assertIn("equipment photos copied: 1 of 3", output)
+        # A name that isn't a plain file name is never fetched; a missing file is reported.
+        self.assertIn("2 equipment photo(s) couldn't be fetched or read (equipment laser)", output)
+
+    def test_a_dry_run_only_checks_the_equipment_photos(self):
+        output = self.run_import(save=False)
+        self.assertFalse(EquipmentPhoto.objects.exists())
+        self.assertIn("equipment photos found (dry run: not copied): 1 of 3", output)
 
     def test_photos_must_come_over_https(self):
         with self.assertRaises(ValueError):

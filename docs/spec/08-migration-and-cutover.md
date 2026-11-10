@@ -17,7 +17,7 @@
 | `payments` | Ledger | `amount`, `fee` → pence (round half-up, then **reconcile totals per member and per reason** against legacy). |
 | `subscription_charge` | Charges | As is. |
 | `cash_balance` | (not stored) | Credit is calculated from the ledger. Check that the calculated balance equals legacy `cash_balance` for **every** member before cutover, and investigate any difference. |
-| `inductions`, `equipment`, `equipment_log`, `access_log` | Same (legacy main-door 402 "Not a keyholder" entries become **check-ins**, giving historical attendance; 05 §5.2) | Equipment photos and money fields converted. Consider archiving old logs (retention ❓). |
+| `inductions`, `equipment`, `equipment_log`, `access_log` | Same (legacy main-door 402 "Not a keyholder" entries become **check-ins**, giving historical attendance; 05 §5.2) | Equipment photos copied (with `--photos-from`) and money fields converted. Consider archiving old logs (retention ❓). |
 | `storage_boxes` | (not migrated) | Boxes are no longer tracked individually. |
 | "Member Box" equipment item and its inductions | Members' **box paid** flag | Decided 2026-11-07. A member gets the flag if they have an induction with key `Box` (the "Member Box" item: equipment id 41, slug `19l-box`, confirmed 2026-11-07) that is marked paid **and** whose linked payment has status `paid`. The legacy system creates a paid induction as soon as the payment is created, even when a Direct Debit is still pending, so a failed Direct Debit can leave a "paid" induction behind. The flag's date and payment come from that payment. Members whose induction looks paid but whose payment isn't are listed for the storage team to check, and the storage team ticks members who paid outside BBMS (all box payments before 4 September 2024, the first one recorded). Production check on 2026-11-07: 15 members flagged, none with a failed payment. The equipment item and those inductions are **not** migrated; the payments stay in the ledger. The box fee setting starts from the item's access fee. |
 | Legacy £5 box deposits | Payment history | Obsolete (hidden from members); kept as history, not converted to credit. |
@@ -145,9 +145,14 @@ Choices made in the script (change them there if the trustees decide otherwise):
   §4.6), in capitals with spaces tidied. One shared by two members is left out and counted in the report. The
   `finance` role is given "see finance" and "manage finance".
 
-Not imported yet: equipment photos. Tested on the legacy clone's data
-inside the Docker image
-(`tools/clone_test/`).
+- **Equipment photos** (added 2026-11-10): with `--photos-from`, each name in legacy's `equipment.photos` is fetched
+  from `<folder>/equipment-images/<name>` (only plain file names ending .jpg, .jpeg or .png; JPEG or PNG content),
+  cropped to the new square sizes and stored privately under a new random name, in legacy's order. Without the
+  option the report says how many are waiting; in a dry run they're only checked. Ones that can't be fetched or read
+  are counted, with their equipment's slug.
+
+Everything legacy holds that the new system uses is now imported. Tested on the legacy clone's data inside the Docker
+image (`tools/clone_test/`).
 
 ## 8.3 Testing before cutover, and phases
 

@@ -96,7 +96,7 @@ These legacy features will **not** be rebuilt:
 - Scheduled jobs are plain management commands (e.g. `python manage.py bill_members`), each idempotent.
 - Device API: JSON views (Django REST Framework or plain views), API-key auth per device, OpenAPI docs.
 
-**Database: PostgreSQL** (recommended; ❓ confirm). At DigitalOcean, managed PostgreSQL and managed MySQL cost the
+**Database: PostgreSQL** (confirmed 2026-11-10). At DigitalOcean, managed PostgreSQL and managed MySQL cost the
 same, so MySQL saves nothing. Django is also built and tested primarily against PostgreSQL, which matters here:
 - **Migrations are transactional** on PostgreSQL: a failed schema change rolls back cleanly. On MySQL a failed
   migration can leave the database half-changed, which is hard for a novice to fix.
@@ -118,15 +118,18 @@ same, so MySQL saves nothing. Django is also built and tested primarily against 
 9. ~~Group email for every equipment team, not just laser~~: decided 2026-11-09: who may email which groups is an admin setting (06 §6.6). Built.
 10. Policies as Markdown in the repo, or editable by admins (06 §6.8)? (Built as Markdown in the repo, 2026-11-09.)
 11. Retention period for access and usage logs (08).
-12. Database: confirm PostgreSQL (§1.6).
+12. ~~Database: confirm PostgreSQL~~: decided 2026-11-10: PostgreSQL (§1.6).
 13. Fobs and keys (05 §5.1–5.2): ~~who may issue fobs~~ (decided: trustees, as a permission a role can be given); ~~free replacement for a lost fob~~ (decided: free); key deposit refunded when the key is returned (suggested yes, kept if lost).
-14. Attendance threshold for the trusted-status review list (05 §5.10; suggested 8 visits over at least 4 weeks). Built
-    with the suggestion as two settings, so the trustees can change it; still open: should anything else count?
+14. ~~Attendance threshold for the trusted-status review list~~: decided 2026-11-10: **no threshold**. Trust and a key
+    are an admin's decision once the checks are met; to help, admins see each member's visits, hours in and the
+    trusted members who were in at the same time (who will have seen them at work). Nothing else counts (05 §5.10).
+    Built.
 15. Moodle (06 §6.12): who may log in to Moodle (built as: any non-banned account with a confirmed email address, 03 §3.1); online training expiry (suggested none); members already signed off when a course is added (suggested they keep access).
 16. Reports (04 §4.9, 06 §6.13): who sees membership statistics (suggested all members; money figures finance and admins only); whether to build expenditure tracking later. (Built with the suggestion, 2026-11-09.)
-17. Proof of identity (03 §3.1): whether an unchecked ID blocks anything (today it doesn't); who checks (suggested
-    trustees); how long unchecked uploads are kept (suggested 30 days); whether members who emailed documents before
-    need re-checking (suggested no, but the emails are deleted).
+17. Proof of identity (03 §3.1): ~~whether an unchecked ID blocks anything~~ (decided 2026-11-10: a checked ID is
+    needed **before a key is given**; existing key holders keep theirs. Built); who checks (suggested trustees); how
+    long unchecked uploads are kept (suggested 30 days); whether members who emailed documents before need
+    re-checking (suggested no, but the emails are deleted).
 
 ## 1.8 Deployment (decided 2026-11-05: managed platform on DigitalOcean)
 

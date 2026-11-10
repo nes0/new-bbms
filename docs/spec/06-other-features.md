@@ -311,8 +311,8 @@ superusers and the `admin` role). Choices made while building:
 | Group notification | See below |
 
 **Group email** (`/notification_email/create`): admins can email **all active members**; `laser` role holders can email
-**all laser-trained members**; anyone with a role can send a test to themselves. ❓ Generalise to "any equipment team can
-email its trained members"? **Decided 2026-11-09: who may email which groups is an admin setting.**
+**all laser-trained members**; anyone with a role can send a test to themselves. Generalising this to every equipment team was **decided
+2026-11-09: who may email which groups is an admin setting** (built, below).
 
 ### Group email: build status (2026-11-09)
 
@@ -411,8 +411,9 @@ emailed the original developer rather than the trustees.
 - **Key fobs** (admin today; a permission a role can be given): issue free to an active member, mark lost, found
   again.
 - **Physical keys** (admin): record the key deposit and the key issued and returned.
-- **Trusted-status review list** (admin): members who meet the attendance threshold but aren't trusted (05 §5.10).
-  **Built** (2026-11-09).
+- **Trust and key review** (admin): members without a key, with their visits, hours in, the trusted members who
+  were in at the same time and the checks a key needs; no threshold (05 §5.10). **Built** (2026-11-09; reworked
+  2026-11-10).
 - **Log viewer**: dropped; replaced by hosted logging and error tracking (01 §1.8).
 - **Settings** (admin only): prices, limits, grace periods and names listed in 02 §2.8.
 

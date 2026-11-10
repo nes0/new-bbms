@@ -9,7 +9,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from . import changes, induction
-from .models import Address, Member, MemberChange
+from .models import Address, IdCheck, Member, MemberChange
 
 _count = 0
 
@@ -246,9 +246,21 @@ class AdminMemberControlsTests(TestCase):
         induction.complete(self.member)
         self.assertContains(self.save_admin_page(key_holder=True), "general induction must be confirmed first")
         induction.confirm(self.member, self.admin)
+        IdCheck.objects.create(member=self.member, result=IdCheck.Result.APPROVED, documents_seen="photo ID")
         self.assertEqual(self.save_admin_page(key_holder=True).status_code, 302)
         self.member.refresh_from_db()
         self.assertTrue(self.member.key_holder)
+
+    def test_a_key_holder_must_have_had_their_proof_of_identity_checked(self):
+        self.member.trusted = True
+        self.member.save()
+        induction.complete(self.member)
+        induction.confirm(self.member, self.admin)
+        self.assertContains(self.save_admin_page(key_holder=True), "check their proof of identity first")
+        IdCheck.objects.create(member=self.member, result=IdCheck.Result.REJECTED, documents_seen="photo ID")
+        self.assertContains(self.save_admin_page(key_holder=True), "check their proof of identity first")
+        IdCheck.objects.create(member=self.member, result=IdCheck.Result.APPROVED, documents_seen="photo ID")
+        self.assertEqual(self.save_admin_page(key_holder=True).status_code, 302)
 
     def test_an_existing_key_holder_can_still_be_edited(self):
         # e.g. imported from legacy, which didn't need a confirmed induction

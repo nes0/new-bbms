@@ -124,3 +124,7 @@ body.wide main { max-width: 72rem; }
 @media (prefers-color-scheme: dark) {
   .demo-banner { background: #3b3210; color: #f3e3a0; border-bottom-color: #5c4e1a; }
 }
+
+/* Photos of a machine (05 §5.7): square thumbnails that wrap. */
+.equipment-photos { list-style: none; padding: 0; margin: 0 0 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.equipment-photos img { display: block; width: 150px; height: 150px; max-width: 40vw; max-height: 40vw; border-radius: 4px; object-fit: cover; }

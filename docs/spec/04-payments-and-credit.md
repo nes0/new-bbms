@@ -87,7 +87,7 @@ credit", plus top-ups by card or Direct Debit on the credit page. A one-off Dire
 Built since (2026-11-08): the bank statement import (4.6) and the finance pages (4.8), in `apps/finance`; see the
 build notes under those sections.
 
-Built since (2026-11-08): the income summary and what each machine has made (4.9). Still to build: reconciliation
+Built since (2026-11-08): the income summary and what each machine has made (4.9); and (2026-11-09) reconciliation
 with GoCardless and Stripe payouts (4.9). The key deposit and box fee are admin settings (02 §2.8, built 2026-11-07), read through
 `apps/payments/prices.py`.
 

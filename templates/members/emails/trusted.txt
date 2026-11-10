@@ -3,8 +3,9 @@ Hello {{ member.given_name }},
 
 You have been made a trusted member of {{ site_name }}.
 
-This means you can now become a key holder and use the space at any time. To get a key, pay the key deposit from
-your account, then arrange to collect a key from a trustee.
+This means you can now become a key holder and use the space at any time. A key also needs your general induction
+confirmed and your proof of identity checked by a trustee; your account page shows where you are with both. Then pay
+the key deposit and arrange to collect a key from a trustee.
 
 Pay the key deposit: {{ site_url }}/pay/
 {% endautoescape %}

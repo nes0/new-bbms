@@ -4,12 +4,15 @@ Equipment, inductions and usage sessions (spec 02 §2.6, 05 §5.3, §5.6–5.8).
 All money is in pence.
 """
 
+import uuid
 from decimal import Decimal
 
 from django.conf import settings
 from django.contrib.auth.models import Group
-from django.db import models
+from django.db import models, transaction
 from django.db.models import F
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.utils import timezone
 
 
@@ -150,6 +153,36 @@ def _same_config_value(stored, new) -> bool:
     if isinstance(stored, Decimal):
         return stored == Decimal(str(new))
     return stored == new
+
+
+def _photo_path(photo, filename):
+    return f"equipment-photos/{uuid.uuid4().hex}.jpg"
+
+
+class EquipmentPhoto(models.Model):
+    """A photo of a machine (05 §5.7): a 1000 px square and a 300 px thumbnail, as JPEGs, in private file storage,
+    served to members through BBMS. Made by `apps.equipment.photos`; legacy's are copied by the import (08 §8.2)."""
+
+    equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name="photos")
+    image = models.FileField(upload_to=_photo_path, editable=False)
+    thumbnail = models.FileField(upload_to=_photo_path, editable=False)
+    position = models.PositiveSmallIntegerField(default=0, help_text="Lower comes first; the first is the main photo.")
+    uploaded_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        ordering = ["position", "pk"]
+        verbose_name = "photo"
+
+    def __str__(self):
+        return f"{self.equipment} · photo {self.pk}"
+
+
+@receiver(post_delete, sender=EquipmentPhoto)
+def _delete_equipment_photo_files(sender, instance, **kwargs):
+    """Deleting a photo (or its machine) deletes its files, once the deletion is committed."""
+    names = [f.name for f in (instance.image, instance.thumbnail) if f]
+    storage = instance.image.storage
+    transaction.on_commit(lambda: [storage.delete(name) for name in names])
 
 
 class Induction(models.Model):

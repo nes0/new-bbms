@@ -28,6 +28,14 @@
       {{ equipment.status_note }}{% endif %}</p>
   {% endif %}
 
+  {% if photos %}
+    <ul class="equipment-photos">
+      {% for photo in photos %}
+        <li><a href="{% url 'equipment:photo' equipment.slug photo.pk 'full' %}"><img src="{% url 'equipment:photo' equipment.slug photo.pk 'thumb' %}" alt="Photo {{ forloop.counter }} of {{ equipment.name }}" width="150" height="150" loading="lazy"></a></li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
   <dl class="details">
     {% if equipment.manufacturer or equipment.model_number %}<dt>Make</dt><dd>{{ equipment.manufacturer }} {{ equipment.model_number }}</dd>{% endif %}
     {% if equipment.room %}<dt>Where</dt><dd>{{ equipment.room }}</dd>{% endif %}
