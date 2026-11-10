@@ -11,6 +11,7 @@ from PIL import Image
 
 from apps.equipment.tests.helpers import member as make_member
 from apps.members.models import Member, MemberChange, MemberPhoto
+from apps.notifications.models import Notification
 from apps.profiles import photos
 from apps.profiles.models import Profile, RoleInfo
 from apps.site_settings.models import SiteSettings
@@ -137,6 +138,30 @@ class PhotoTests(ProfileTestCase):
         self.client.post("/admin/members/memberphoto/", {"action": "decline", "_selected_action": [waiting.pk]})
         self.assertFalse(MemberPhoto.objects.exists())
         self.assertIn("wasn't approved", mail.outbox[0].subject)
+
+    def test_dealing_with_a_photo_clears_every_admins_notification(self):
+        other_admin = Member.objects.create_superuser(
+            "b@example.com", "b-good-password", given_name="B", family_name="E"
+        )
+        waiting = lambda: Notification.objects.filter(kind="photo_waiting", unread=True)  # noqa: E731
+        photos.upload(self.kim, picture())
+        self.assertEqual(set(waiting().values_list("member", flat=True)), {self.admin.pk, other_admin.pk})
+        second = photos.upload(self.kim, picture())  # replaces the first: its notifications are done with
+        self.assertEqual(set(waiting().values_list("key", flat=True)), {f"photo-waiting-{second.pk}"})
+        photos.approve(second, self.admin)
+        self.assertFalse(waiting().exists())
+        third = photos.upload(self.kim, picture())
+        photos.decline(third, self.admin)
+        photos.upload(self.kim, picture())
+        photos.remove(self.kim, MemberPhoto.Kind.PENDING, self.kim)
+        self.assertFalse(waiting().exists())
+        self.assertEqual(Notification.objects.filter(kind="photo_waiting").count(), 8)  # 4 uploads, 2 admins each
+
+    def test_empty_queue_says_so(self):
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get("/admin/members/memberphoto/"), "No photos are waiting for approval")
+        photos.upload(self.kim, picture())
+        self.assertNotContains(self.client.get("/admin/members/memberphoto/"), "No photos are waiting for approval")
 
     def test_member_deletes_their_photo(self):
         self.approved_photo(self.kim)

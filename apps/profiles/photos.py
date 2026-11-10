@@ -18,7 +18,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 from apps.members import changes
 from apps.members.models import Member, MemberPhoto
-from apps.notifications.notify import notify_role
+from apps.notifications.notify import notify_role, settle
 
 logger = logging.getLogger(__name__)
 
@@ -67,17 +67,24 @@ def _store(member, kind, full, thumb) -> MemberPhoto:
     return photo
 
 
+def _waiting_key(photo_pk) -> str:
+    """The key of the admins' "needs approving" notifications, which are marked read once someone deals with it."""
+    return f"photo-waiting-{photo_pk}"
+
+
 @transaction.atomic
 def upload(member, file) -> MemberPhoto:
     """A new photo waiting for approval, replacing one already waiting. Raises BadPhoto."""
     full, thumb = process(file)
-    MemberPhoto.objects.filter(member=member, kind=MemberPhoto.Kind.PENDING).delete()  # files go once committed
+    replaced = MemberPhoto.objects.filter(member=member, kind=MemberPhoto.Kind.PENDING)
+    settle(*(_waiting_key(pk) for pk in replaced.values_list("pk", flat=True)))
+    replaced.delete()  # files go once committed
     stored = _store(member, MemberPhoto.Kind.PENDING, full, thumb)
     notify_role(
         admins=True,
         message=f"{member.get_short_name()} has uploaded a photo. It needs approving.",
         kind="photo_waiting",
-        key=f"photo-waiting-{stored.pk}",
+        key=_waiting_key(stored.pk),
         url=reverse("admin:members_memberphoto_changelist") + "?kind__exact=pending",
     )
     return stored
@@ -93,6 +100,7 @@ def approve(photo: MemberPhoto, by) -> MemberPhoto:
     MemberPhoto.objects.filter(member=member, kind=MemberPhoto.Kind.CURRENT).delete()
     photo.kind = MemberPhoto.Kind.CURRENT
     photo.save(update_fields=["kind"])
+    settle(_waiting_key(photo.pk))
     _set_approved(member, True, by)
     return photo
 
@@ -105,13 +113,17 @@ def decline(photo: MemberPhoto, by, reason=""):
     member = photo.member
     deleted, _ = MemberPhoto.objects.filter(pk=photo.pk, kind=MemberPhoto.Kind.PENDING).delete()
     if deleted:
+        settle(_waiting_key(photo.pk))
         emails.send(member, "profiles/emails/photo_declined", reason=reason.strip())
 
 
 @transaction.atomic
 def remove(member, kind, by):
     """The member (or an admin) deletes a photo. Without an approved photo, a key holder can't open the door."""
-    deleted, _ = MemberPhoto.objects.filter(member=member, kind=kind).delete()
+    photo_pks = list(MemberPhoto.objects.filter(member=member, kind=kind).values_list("pk", flat=True))
+    deleted, _ = MemberPhoto.objects.filter(pk__in=photo_pks).delete()
+    if deleted and kind == MemberPhoto.Kind.PENDING:
+        settle(*(_waiting_key(pk) for pk in photo_pks))
     if deleted and kind == MemberPhoto.Kind.CURRENT:
         _set_approved(Member.objects.select_for_update().get(pk=member.pk), False, by)
 
