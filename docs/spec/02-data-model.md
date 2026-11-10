@@ -174,7 +174,7 @@ row a new field whose default is the starting value.
 | How long a reader waits for a new fob to be tapped | new; 60 seconds (05 §5.1), 15 seconds–10 minutes. **Built** |
 | Occupancy timeout (no tap-out) | new; default 4 hours after last fob activity (1–24), everyone cleared at 4am (the hour is a setting too). **Built** |
 | Public occupancy count on the website | new; on/off, off to start with. **Built** |
-| Attendance threshold for the trusted-status review list | new; ❓ suggested 8 visits, a member for at least 4 weeks (05 §5.10): two settings, "visits before review" (8) and "weeks a member before review" (4). **Built** |
+| ~~Attendance threshold for the trusted-status review list~~ | Removed 2026-11-10: there's no threshold (05 §5.10, 01 §1.7 Q14). The two settings built on 2026-11-09 were taken out. |
 | Box fee (one-off, non-refundable) | £15 (charged outside BBMS today). **Built** |
 | Lockers allowed per member (admins can override per member) | new; ❓ suggested 1, so it starts at 1 (0–20). **Built** |
 | Locker rents | a default per **size and location**, in Storage → Default rents (06 §6.2), not on this page. **Built** |
@@ -196,7 +196,9 @@ row a new field whose default is the starting value.
 
 Stored on S3 (bucket per environment):
 - Member photos: `<env>/user-photo/<md5(hash)>.png` + thumbnail (500px / 200px square crops), pending ones under a `new` prefix until approved.
-- Equipment photos: under `equipment.getPhotoBasePath()`.
+- Equipment photos: `<env>/equipment-images/<random>.<jpg|png>` (1000 px square crops), listed in `equipment.photos`.
+  New: `equipment-photos/<random>.jpg` (1000 px and a 300 px thumbnail), private, served through BBMS to members
+  (05 §5.7); the import copies legacy's (08 §8.2).
 - Expense receipts: `<env>/expenses/<random>.<ext>`. New: `expense-receipts/<random>.<ext>`, private.
 
 **New:** a private DigitalOcean Spaces bucket; serve through signed URLs or through the app with permission checks.

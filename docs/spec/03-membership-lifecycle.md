@@ -115,8 +115,10 @@ them, and BBMS deletes them. Members are told not to email them.
   - "Deleted" still means gone from the live database at once, and gone from backups within their retention period
     (DigitalOcean's backups: 7 days), but a backup copy can't be read without the key. Say so in the privacy
     notice.
-- ❓ **For the trustees:** whether an unchecked or not-accepted ID **blocks** anything (today it doesn't: it's a
-  step on the account page and the trustees decide what follows); who checks (suggested: trustees); how long
+- **Decided 2026-11-10:** a member's proof of identity must have been checked and accepted **before they're given
+  a key** (05 §5.2): the admin won't tick key holder without it, and the key deposit isn't offered until then. Their
+  latest check counts. Nothing else is blocked, and existing key holders keep their keys. **Built.**
+- ❓ **For the trustees:** who checks (suggested: trustees); how long
   unchecked uploads are kept (suggested 30 days); whether existing members who emailed documents need re-checking
   (suggested no, but delete the emails).
 

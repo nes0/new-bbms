@@ -12,7 +12,7 @@ from apps.billing.membership import add_month
 from apps.billing.models import Charge
 from apps.equipment.models import Equipment, Induction
 from apps.equipment.tests.helpers import member
-from apps.members.models import Member
+from apps.members.models import IdCheck, Member
 from apps.payments import cards, checkout
 from apps.payments.credit import credit_pence
 from apps.payments.models import CardCheckout, Payment, StripeEvent
@@ -28,6 +28,7 @@ class CardTestCase(TestCase):
         self.member = member(
             trusted=True, induction_completed=True, inducted_at=timezone.now(), monthly_subscription_pence=2500
         )
+        IdCheck.objects.create(member=self.member, result=IdCheck.Result.APPROVED, documents_seen="photo ID")
         self.client.force_login(self.member)
 
     def start(self, item, **data):
@@ -74,6 +75,12 @@ class PayablesTests(CardTestCase):
     def test_no_key_deposit_until_the_general_induction_is_confirmed(self):
         self.member.inducted_at = None
         self.member.save()
+        self.assertNotIn("key-deposit", [item.key for item in checkout.payables(self.member)])
+
+    def test_no_key_deposit_until_the_proof_of_identity_is_checked(self):
+        self.member.id_checks.all().delete()
+        self.assertNotIn("key-deposit", [item.key for item in checkout.payables(self.member)])
+        IdCheck.objects.create(member=self.member, result=IdCheck.Result.REJECTED, documents_seen="photo ID")
         self.assertNotIn("key-deposit", [item.key for item in checkout.payables(self.member)])
 
     def test_paid_things_and_untrusted_members(self):

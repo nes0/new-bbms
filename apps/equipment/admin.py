@@ -6,8 +6,82 @@ from django.utils.html import format_html
 
 from apps.payments import services
 
-from . import lifetime, notices, rules
-from .models import Equipment, Induction, MachineStatusChange, ServiceRecord, TrainingCompletion, UsageSession
+from . import lifetime, notices, photos, rules
+from .models import (
+    Equipment,
+    EquipmentPhoto,
+    Induction,
+    MachineStatusChange,
+    ServiceRecord,
+    TrainingCompletion,
+    UsageSession,
+)
+
+
+class _StoredPhoto(forms.Widget):
+    """In place of the file chooser on a photo already stored, which can only be moved or deleted."""
+
+    needs_multipart_form = True  # the admin checks the first row's widgets to decide whether files can be sent
+
+    def render(self, name, value, attrs=None, renderer=None):
+        return "Stored. To replace it, delete it and add another."
+
+    def value_from_datadict(self, data, files, name):
+        return None
+
+
+class EquipmentPhotoForm(forms.ModelForm):
+    """A photo is added by uploading a file, which is cropped to a square (05 §5.7); after that only its position
+    changes. To replace one, delete it and add another."""
+
+    upload = forms.FileField(
+        label="Photo",
+        required=False,
+        help_text="JPEG, PNG or WebP. It's cropped to a square from the middle, so centre the machine.",
+    )
+
+    class Meta:
+        model = EquipmentPhoto
+        fields = ("position",)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk is not None:
+            self.fields["upload"].widget = _StoredPhoto()
+
+    def clean(self):
+        cleaned = super().clean()
+        upload = cleaned.get("upload")
+        if self.instance.pk is None and not upload:
+            if self.has_changed():
+                self.add_error("upload", "Choose a photo to upload.")
+            return cleaned
+        if upload and self.instance.pk is None:
+            try:
+                self._images = photos.process(upload)
+            except photos.BadPhoto as error:
+                self.add_error("upload", str(error))
+        return cleaned
+
+    def save(self, commit=True):
+        if getattr(self, "_images", None):
+            photos.fill(self.instance, *self._images)
+        return super().save(commit)
+
+
+class EquipmentPhotoInline(admin.TabularInline):
+    model = EquipmentPhoto
+    form = EquipmentPhotoForm
+    extra = 1
+    fields = ("preview", "upload", "position")
+    readonly_fields = ("preview",)
+
+    @admin.display(description="")
+    def preview(self, photo):
+        if not photo.pk:
+            return ""
+        url = reverse("equipment:photo", args=[photo.equipment.slug, photo.pk, "thumb"])
+        return format_html('<img src="{}" alt="" width="100" height="100">', url)
 
 
 class ServiceRecordInline(admin.TabularInline):
@@ -38,7 +112,7 @@ class EquipmentAdmin(admin.ModelAdmin):
     search_fields = ("name", "slug", "asset_tag_id")
     prepopulated_fields = {"slug": ("name",)}
     autocomplete_fields = ("permaloan_member",)
-    inlines = [ServiceRecordInline, MachineStatusChangeInline]
+    inlines = [EquipmentPhotoInline, ServiceRecordInline, MachineStatusChangeInline]
     fieldsets = (
         (None, {"fields": ("name", "slug", "team", "room", "description", "help_text", "ppe")}),
         ("Status", {"fields": ("status", "status_note", "status_since")}),

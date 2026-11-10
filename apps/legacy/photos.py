@@ -1,22 +1,25 @@
 """
-Fetching members' photos from the legacy system's S3 bucket (spec 08 §8.2, "S3 photos").
+Fetching members' and equipment photos from the legacy system's S3 bucket (spec 08 §8.2, "S3 photos").
 
 Legacy keeps each member's photo as public PNGs named after the md5 of their `users.hash` (a random string, not the
-id), under
-`<bucket>/<environment>/user-photo/`: `<md5>.png` (500 px) and `<md5>-thumb.png` (200 px) for the approved photo,
-and `-new.png` / `-thumb-new.png` for one waiting for approval. The import is given that folder's address, e.g.
-`https://s3-eu-west-1.amazonaws.com/<bucket>/production`, and copies what it finds into private storage under random
-names.
+id), under `<bucket>/<environment>/user-photo/`: `<md5>.png` (500 px) and `<md5>-thumb.png` (200 px) for the
+approved photo, and `-new.png` / `-thumb-new.png` for one waiting for approval. Equipment photos are beside them,
+under `<environment>/equipment-images/<random>.<jpg|png>` (legacy's `equipment.photos` lists the names). The import
+is given that folder's address, e.g. `https://s3-eu-west-1.amazonaws.com/<bucket>/production`, and copies what it
+finds into private storage under random names.
 """
 
 import hashlib
+import re
 import urllib.error
 import urllib.request
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 MAX_BYTES = 5 * 1024 * 1024  # legacy photos are at most 500 x 500 px
 RECEIPT_MAX_BYTES = 15 * 1024 * 1024
-RECEIPT_SIGNATURES = (b"%PDF-", PNG_SIGNATURE, b"\xff\xd8\xff")
+JPEG_SIGNATURE = b"\xff\xd8\xff"
+RECEIPT_SIGNATURES = (b"%PDF-", PNG_SIGNATURE, JPEG_SIGNATURE)
+EQUIPMENT_PHOTO_NAME = re.compile(r"^[A-Za-z0-9_-]{1,64}\.(?:jpe?g|png)$", re.IGNORECASE)  # legacy: str_random() + ext
 TIMEOUT_SECONDS = 20
 
 # kind -> (photo suffix, thumbnail suffix)
@@ -66,5 +69,17 @@ class PhotoSource:
         except (urllib.error.URLError, TimeoutError, OSError):
             return None
         if not data or len(data) > RECEIPT_MAX_BYTES or not data.startswith(RECEIPT_SIGNATURES):
+            return None
+        return data
+
+    def fetch_equipment_photo(self, name):
+        """An equipment photo (JPEG or PNG bytes), or None. `name` is one of legacy's `equipment.photos` paths."""
+        if not name or not EQUIPMENT_PHOTO_NAME.match(name):
+            return None
+        try:
+            data = self._open(f"{self.base_url}/equipment-images/{name}")
+        except (urllib.error.URLError, TimeoutError, OSError):
+            return None
+        if not data or len(data) > RECEIPT_MAX_BYTES or not data.startswith((PNG_SIGNATURE, JPEG_SIGNATURE)):
             return None
         return data

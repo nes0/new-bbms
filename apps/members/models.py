@@ -257,6 +257,13 @@ class Member(AbstractBaseUser, PermissionsMixin):
         return "waiting" if self.induction_completed else "to-do"
 
     @property
+    def id_checked(self):
+        """A trustee accepted their proof of identity: needed before they're given a key (03 §3.1, decided
+        2026-11-10). Their latest check counts, so one not accepted after an earlier approval needs sending again."""
+        latest = next(iter(self.id_checks.all()), None)  # newest first; uses a prefetch when there is one
+        return latest is not None and latest.result == IdCheck.Result.APPROVED
+
+    @property
     def induction_confirmed(self):
         """Needed before a member can be a key holder and open the door (05 §5.2, §5.9)."""
         return self.general_induction_status == "confirmed"

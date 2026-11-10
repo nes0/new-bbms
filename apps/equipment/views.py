@@ -4,11 +4,11 @@ from datetime import date
 
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.http import Http404
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from apps.core.markup import to_html
 from apps.group_email import audiences as group_email
@@ -63,6 +63,7 @@ def detail(request, slug):
     sessions = Paginator(pages.recent_sessions(equipment), SESSIONS_PER_PAGE).get_page(request.GET.get("page"))
     context = {
         "equipment": equipment,
+        "photos": list(equipment.photos.all()),
         "help_html": to_html(equipment.help_text),
         "ppe": [item.strip() for item in equipment.ppe.split(",") if item.strip()],
         "team_listed": team is not None and getattr(getattr(team, "info", None), "listed", True),
@@ -95,6 +96,22 @@ def detail(request, slug):
             if f"{kind}:{equipment.induction_key}" in allowed
         }
     return render(request, "equipment/detail.html", context)
+
+
+@require_GET
+def photo(request, slug, photo_id, size):
+    """A photo of a machine, for those who may see its page (05 §5.7). `size` is "full" or "thumb"."""
+    if (response := _members_only(request)) is not None:
+        return response
+    machines = Equipment.objects.all() if can_review(request.user) else pages.visible_equipment()
+    equipment = get_object_or_404(machines, slug=slug)
+    found = get_object_or_404(equipment.photos, pk=photo_id)
+    if size not in ("full", "thumb"):
+        raise Http404
+    file = found.image if size == "full" else found.thumbnail
+    response = FileResponse(file.open("rb"), content_type="image/jpeg")
+    response["Cache-Control"] = "private, max-age=3600"
+    return response
 
 
 def retired(request):

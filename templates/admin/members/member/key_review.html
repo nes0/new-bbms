@@ -1,0 +1,68 @@
+{% extends "admin/base_site.html" %}
+{# Members without a key: their attendance, who has seen them at work and the checks a key needs (05 §5.10). #}
+{% block extrastyle %}{{ block.super }}
+  <style>
+    .key-review-scroll { overflow-x: auto; max-width: 100%; }
+    .key-review { min-width: 760px; }
+    .key-review td { vertical-align: top; }
+    .key-review td.checks { white-space: nowrap; }
+    .key-review ul { margin: 0; padding: 0; list-style: none; }
+    .key-review li { padding: 0; list-style: none; }
+    .key-review .done { color: var(--message-success-fg, #2a7a2a); }
+    .key-review .to-do { color: var(--error-fg, #ba2121); }
+  </style>
+{% endblock %}
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Home</a> ›
+    <a href="{% url 'admin:app_list' opts.app_label %}">{{ opts.app_config.verbose_name }}</a> ›
+    <a href="{% url 'admin:members_member_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a> ›
+    {{ title }}
+  </div>
+{% endblock %}
+{% block content %}
+  <p>Active and honorary members without a key who have come in at least once, most hours in first. There's no
+    threshold: once the checks are done, whether to trust someone and give them a key is your decision. Tick
+    <em>Trusted</em> on the member's page (it emails them), and <em>Key holder</em> when they collect their key.</p>
+  <p>A visit is a day their fob was used at the door or on a machine. Hours in are the same estimate as
+    <em>Who's in</em>: from their first tap until they tap out, or {{ config.occupancy_timeout_hours }}
+    hour{{ config.occupancy_timeout_hours|pluralize }} after their last fob use if they don't. <em>Trusted members in
+    at the same time</em> are those whose estimated time in the space overlapped theirs, so they will have seen them
+    at work.</p>
+  {% if candidates %}
+    <div class="key-review-scroll">
+    <table class="key-review">
+      <thead><tr><th>Member</th><th>Joined</th><th>Visits</th><th>Hours in</th><th>Trusted members in at the same time</th><th>Checks for a key</th></tr></thead>
+      <tbody>
+        {% for candidate in candidates %}
+          {% with member=candidate.member record=candidate.attendance %}
+            <tr>
+              <td><a href="{% url 'admin:members_member_change' member.pk %}">{{ member.full_name|default:member.email }}</a><br>{{ member.get_status_display }}</td>
+              <td>{{ member.date_joined|date:"j M Y" }}</td>
+              <td>{{ record.visits }}<br><span class="help">{{ candidate.last_four_weeks }} in the last 4 weeks; last {{ record.last|date:"j M Y" }}</span></td>
+              <td>{{ candidate.hours|floatformat:0 }}</td>
+              <td>
+                {% if candidate.seen_with %}
+                  {{ candidate.trusted_count }}:
+                  {% for seen in candidate.shown_trusted %}{{ seen.member.display_name }} ({{ seen.hours|floatformat:0 }} h){% if not forloop.last %}, {% endif %}{% endfor %}{% if candidate.more_trusted %} and {{ candidate.more_trusted }} more{% endif %}
+                {% else %}
+                  None yet
+                {% endif %}
+              </td>
+              <td class="checks">
+                <ul>
+                  {% for what, done in candidate.checks %}
+                    <li class="{{ done|yesno:'done,to-do' }}">{{ done|yesno:"✓,✗" }} {{ what }}</li>
+                  {% endfor %}
+                </ul>
+              </td>
+            </tr>
+          {% endwith %}
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  {% else %}
+    <p>Nobody at the moment.</p>
+  {% endif %}
+{% endblock %}

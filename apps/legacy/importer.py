@@ -7,13 +7,14 @@ again against fresh copies of production before the real cutover, so it never tr
 What is imported so far (the apps that exist): members (with how they pay, what they've paid up to and who confirmed
 their general induction), their addresses, photos (with --photos-from), audit log and roles, subscription charges,
 the payments ledger (linked to charges, sessions and inductions, with credit checked against legacy), key fobs,
-devices (keeping their API keys, so today's door and laser keep working), equipment, inductions, machine usage
-sessions and the door log.
+devices (keeping their API keys, so today's door and laser keep working), equipment (and its photos, with
+--photos-from), inductions, machine usage sessions and the door log.
 Everything else is counted and listed as "not imported yet".
 
 The report only ever shows legacy **ids** and counts, never names or email addresses, so it's safe to share.
 """
 
+import io
 import json
 from collections import Counter, defaultdict
 from datetime import UTC, date, datetime
@@ -28,8 +29,9 @@ from django.utils.text import slugify
 from apps.access import tags
 from apps.access.models import AccessEvent, Device, KeyFob
 from apps.billing.models import Charge
+from apps.equipment import photos as equipment_photos
 from apps.equipment import rules
-from apps.equipment.models import Equipment, Induction, UsageSession
+from apps.equipment.models import Equipment, EquipmentPhoto, Induction, UsageSession
 from apps.members.hashers import from_legacy_hash
 from apps.members.models import Address, Member, MemberChange, MemberPhoto
 from apps.notifications.models import Notification
@@ -821,6 +823,7 @@ class Importer:
 
     def import_equipment(self):
         table, report = "equipment", self.report
+        photo_names = {}  # slug -> legacy photo file names, in legacy's order
         for row in self.source.rows(table):
             report.read[table] += 1
             category = text(row.get("induction_category"), 64)
@@ -864,8 +867,50 @@ class Importer:
                 removed_at=day(row.get("removed_at")),
                 legacy_id=row["id"],
             )
+            photo_names[slug] = self._photo_names(row.get("photos"))
             report.imported[table] += 1
-        report.note("equipment photos aren't copied yet (S3 → Spaces)")
+        self.import_equipment_photos(photo_names)
+
+    @staticmethod
+    def _photo_names(value):
+        """Legacy's `equipment.photos`: a JSON list of {"path": "<random>.jpg"}."""
+        try:
+            items = json.loads(text(value) or "[]")
+        except ValueError:
+            return []
+        if not isinstance(items, list):
+            return []
+        return [text(item.get("path")) for item in items if isinstance(item, dict) and text(item.get("path"))]
+
+    def import_equipment_photos(self, photo_names):
+        """Copy equipment photos from legacy's S3 bucket to private storage (08 §8.2), with --photos-from."""
+        wanted = sum(len(names) for names in photo_names.values())
+        if not wanted:
+            return
+        if self.photos is None:
+            self.report.note(f"equipment photos not copied ({wanted} to copy): run with --photos-from to copy them")
+            return
+        copied, missing = 0, []
+        for slug, names in photo_names.items():
+            for position, name in enumerate(names):
+                data = self.photos.fetch_equipment_photo(name)
+                if data is None:
+                    missing.append(slug)
+                    continue
+                try:
+                    images = equipment_photos.process(io.BytesIO(data))
+                except equipment_photos.BadPhoto:
+                    missing.append(slug)
+                    continue
+                if self.photos.save:
+                    photo = EquipmentPhoto(equipment=self.equipment[slug], position=position, uploaded_at=self.now)
+                    equipment_photos.fill(photo, *images).save()
+                copied += 1
+        verb = "copied" if self.photos.save else "found (dry run: not copied)"
+        self.report.note(f"equipment photos {verb}: {copied} of {wanted}")
+        if missing:
+            sample = ", ".join(sorted(set(missing))[:10])
+            self.report.note(f"{len(missing)} equipment photo(s) couldn't be fetched or read (equipment {sample})")
 
     @staticmethod
     def _ppe(value):

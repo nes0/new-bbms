@@ -57,8 +57,14 @@ def payables(member) -> list[Payable]:
             items.append(Payable(Purpose.CHARGE, label, amount, f"charge:{charge.pk}", charge=charge))
     if not member.has_space_access:
         return items
-    # The deposit is for a key, which needs a confirmed general induction as well as trusted status (05 §5.9).
-    if member.trusted and member.induction_confirmed and not services.has_paid(member, Payment.Reason.KEY_DEPOSIT):
+    # The deposit is for a key, which needs a confirmed general induction and a checked proof of identity as well as
+    # trusted status (05 §5.2, §5.9; 03 §3.1).
+    if (
+        member.trusted
+        and member.induction_confirmed
+        and member.id_checked
+        and not services.has_paid(member, Payment.Reason.KEY_DEPOSIT)
+    ):
         items.append(Payable(Purpose.KEY_DEPOSIT, "Key deposit", prices.key_deposit_pence(), "key-deposit"))
     if not member.box_paid:
         items.append(Payable(Purpose.STORAGE_BOX, "Box fee", prices.box_fee_pence(), "storage-box"))

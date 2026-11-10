@@ -76,8 +76,9 @@ A fob opens the main door only if its member is **all** of:
 5. has an **approved online photo** *or* a **photo on the wall**.
 
 **Becoming a keyholder** (24-hour, unsupervised access): an admin grants key holder to a member who is trusted, has
-had their general induction confirmed, has an approved photo (or photo on the wall), has a fob, and has paid the
-**£15 key deposit**, and records the physical
+had their general induction confirmed, has had their **proof of identity checked** (03 §3.1, decided 2026-11-10),
+has an approved photo (or photo on the wall), has a fob, and has paid the **£15 key deposit**, and records the
+physical
 key issued to them (date, and key number if keys are numbered; returned date when it comes back).
 ❓ Is the key deposit refunded (to credit) when the key is returned? Suggested: yes; it's kept if the key is lost.
 
@@ -90,6 +91,11 @@ are done; and the door doesn't open for a key holder without a confirmed inducti
 is recorded as a check-in, and the account page tells them why). ⚠️ **Before cutover:** key holders whose induction
 legacy never confirmed lose 24-hour access; the legacy import lists how many. Trustees to decide: confirm them in
 bulk, or ask each to do the induction.
+
+**Built (2026-11-10):** the admin also won't tick key holder until a trustee has accepted the member's proof of
+identity (their latest ID check), and the key deposit is offered on the Pay page only then. The door doesn't check
+it, so existing key holders (including those imported from legacy) keep their access. The "you're now trusted"
+email says what a key still needs.
 
 **Non-keyholders tap in at the door** (decided 2026-11-07). The door doesn't open for them, but BBMS records the tap
 as a **visit**, so the space can track footfall and members build up attendance towards trusted status (5.10).
@@ -425,6 +431,13 @@ as `training` or `testing` once. If it was already billed, the matching fee paym
 - The `managing_role_id` links equipment to a role (the "team" who looks after it).
 - **Permaloan**: equipment on long-term loan from a member (`permaloan_user_id`), with a permaloan policy.
 
+**Photos: built (2026-11-10)** (`apps/equipment/photos.py`, model `EquipmentPhoto`): uploaded on the equipment's
+admin page (one or more; an order field puts the main one first; to replace one, delete it and add another). As in
+legacy, each is cropped to a square from the middle: 1000 px plus a 300 px thumbnail, as JPEGs with the camera's
+metadata dropped. They're in private storage and served through BBMS (`/equipment/<slug>/photos/<id>/full|thumb/`)
+to members who can see the machine's page; the page shows the thumbnails, each linking to the full photo. Legacy's
+photos are copied by the import (08 §8.2).
+
 **Built (2026-11-09):** `/equipment/` and `/equipment/<slug>/` (in `apps/equipment`, `pages.py` and `views.py`).
 Creating and editing equipment stays in the admin. Choices made while building:
 - **Members only**, as legacy (its equipment pages needed the member role), the same people who see the member
@@ -509,26 +522,37 @@ inductions": admins, and the `comms` role (given it by the legacy import and by 
 who and when (`inducted_by`, `inducted_at`, new). Both steps are in the members' audit log. The policies are markdown
 files in `apps/core/policies/` (06 §6.8), copied from legacy with links to pages not built yet removed.
 
-## 5.10 Attendance (counts towards trusted status)
+## 5.10 Attendance, and deciding on trust and a key
 
 Added 2026-11-07. A **visit** is a calendar day (Europe/London) on which a member's fob was used: tapping in at the
 door (keyholder entry or non-keyholder check-in) or starting a session on a machine. Several taps on one day count once.
 
 - **Members** see their own attendance: number of visits, first and last visit, and recent visit dates.
-- **Admins** see each member's attendance on their admin page, and a **trusted-status review list** of members who
-  aren't trusted yet but meet the attendance threshold, for an admin to consider. Granting trusted status stays a
-  manual admin decision.
-- ❓ The threshold: suggested, a setting for "at least N visits over at least M weeks since joining" (e.g. 8 visits
-  over 4 weeks). Should anything else count (inductions completed, training)?
+- **Admins** see each member's attendance on their admin page, and a **trust and key review** of members without a
+  key, to help them decide. Granting trusted status and a key stays a manual admin decision.
+- **Decided 2026-11-10 (01 §1.7 Q14): no threshold.** Nothing but the admin's judgement decides; once the checks for
+  a key are met (5.2), it's discretionary. Trusted members must have seen the member at work, so the review shows,
+  for each member, their **total hours in**, their **visits**, and the **trusted members who were in the space at
+  the same time** (and for how long). There's no vouching button: the overlap is worked out from fob activity.
 - Attendance is derived from the access log and usage sessions; nothing extra is stored.
 
 **Built (2026-11-09)** in `apps/access/attendance.py`:
 - A visit is a UK calendar day with a keyholder entry, a check-in, a tap on the exit reader, or the start of a
   machine session. Refused taps don't count. (Corrected 2026-11-09: exit taps were left out at first.)
 - Members see their visits on their account page (how many, since when, the last one, and the ten most recent).
-- Admins see "N visits from … to …; M in the last 4 weeks" in the Access part of the member's admin page.
-- **Trusted-status review** (Members → "Trusted-status review", for those who can change members): active and
-  honorary members who aren't trusted or banned, joined at least "weeks a member before review" ago (4), with at
-  least "visits before review" visits (8), most visits first. It shows their visits, the last four weeks, first and
-  last visit and whether their general induction is confirmed. Leaving and suspended members aren't listed. Both
-  numbers are settings (Settings → Trusted status).
+- Admins see "N visits from … to …; M in the last 4 weeks; about H hours in" in the Access part of the member's
+  admin page.
+
+**Trust and key review: built (2026-11-10)**, replacing the trusted-status review list and its two threshold settings
+(Members → "Trust and key review", for those who can change members):
+- Lists active and honorary members who aren't key holders or banned and have visited at least once, **most hours in
+  first**. Trusted members who haven't collected a key yet are listed too. Leaving and suspended members aren't.
+- **Hours in** use the same estimate as "Who's in" (06 §6.7): a stay runs from a member's first fob activity (door
+  tap or machine use) until they tap out, or until the "count a member as gone" timeout (4 hours) after their last
+  activity if they don't, and never past the daily reset (4am). A tap out ends the stay whenever it comes before the
+  reset, since it shows they were still there. Machine sessions count as activity throughout.
+- **Trusted members in at the same time:** every currently trusted member whose estimated stays overlapped the
+  member's, with the hours of overlap, most first (the first five named, the rest counted).
+- **Checks for a key**, each ticked or crossed: email confirmed, ID checked, general induction confirmed, photo
+  (approved or on the wall), an active fob, trusted, key deposit paid (or a pending Direct Debit).
+- It's worked out when the page is opened; nothing extra is stored.

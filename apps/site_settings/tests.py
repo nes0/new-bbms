@@ -30,8 +30,6 @@ DEFAULTS = {
     "session_heartbeat_seconds": "60",
     "id_document_max_age_days": "30",
     "lockers_per_member": "1",
-    "trusted_review_visits": "8",
-    "trusted_review_weeks": "4",
     "admin_minimum_subscription_pounds": "5",
     "grace_direct_debit_days": "10",
     "grace_standing_order_days": "183",

@@ -57,8 +57,9 @@ class MemberChangeForm(UserChangeForm):
         cleaned = super().clean()
         if "box_paid" in self.changed_data and not cleaned.get("box_reason"):
             self.add_error("box_reason", "Say why: how the fee was paid, or why the flag is being cleared.")
-        # A key holder must be trusted and have had their general induction confirmed (02 §2.2, 05 §5.9); the door
-        # also needs a photo (05 §5.2). Checked when key holder is ticked, so existing key holders can still be edited.
+        # A key holder must be trusted, have had their general induction confirmed (02 §2.2, 05 §5.9) and their proof
+        # of identity checked (03 §3.1, decided 2026-11-10); the door also needs a photo (05 §5.2). Checked when key
+        # holder is ticked, so existing key holders can still be edited.
         if cleaned.get("key_holder") and "key_holder" in self.changed_data:
             if not cleaned.get("trusted"):
                 self.add_error("key_holder", "Only a trusted member can be a key holder: tick Trusted first.")
@@ -66,6 +67,11 @@ class MemberChangeForm(UserChangeForm):
                 self.add_error(
                     "key_holder",
                     "Their general induction must be confirmed first (Inductions page) before they get a key.",
+                )
+            elif self.instance.pk and not self.instance.id_checked:
+                self.add_error(
+                    "key_holder",
+                    "A trustee must check their proof of identity first (ID checks page) before they get a key.",
                 )
         return cleaned
 
@@ -302,7 +308,7 @@ class MemberAdmin(UserAdmin):
 
     @admin.display(description="Attendance")
     def attendance(self, member):
-        """Visits (days the member's fob was used), to help decide on trusted status (05 §5.10)."""
+        """Visits (days the member's fob was used) and hours in, to help decide on trust and a key (05 §5.10)."""
         from apps.access import attendance  # not at the top: apps.access uses this app's models
 
         if member.pk is None:
@@ -311,23 +317,23 @@ class MemberAdmin(UserAdmin):
         if not record.visits:
             return "No visits yet"
         four_weeks = record.since(timezone.localdate() - timedelta(weeks=4))
+        hours = attendance.hours_in(attendance.stays([member.pk]).get(member.pk, []))
         return format_html(
-            "{} visit{} from {} to {}; {} in the last 4 weeks",
+            "{} visit{} from {} to {}; {} in the last 4 weeks; about {} hours in",
             record.visits,
             "" if record.visits == 1 else "s",
             f"{record.first:%-d %b %Y}",
             f"{record.last:%-d %b %Y}",
             four_weeks,
+            f"{hours:.0f}",
         )
 
     def get_urls(self):
-        review = path(
-            "trusted-review/", self.admin_site.admin_view(self.trusted_review), name="members_member_trusted_review"
-        )
+        review = path("key-review/", self.admin_site.admin_view(self.key_review), name="members_member_key_review")
         return [review, *super().get_urls()]
 
-    def trusted_review(self, request):
-        """Members who aren't trusted but come in often enough to be considered (05 §5.10, 06 §6.10)."""
+    def key_review(self, request):
+        """Members without a key, with their attendance and the checks a key needs (05 §5.10, 06 §6.10)."""
         from apps.access import attendance
         from apps.site_settings.models import SiteSettings
 
@@ -336,11 +342,11 @@ class MemberAdmin(UserAdmin):
         context = {
             **self.admin_site.each_context(request),
             "opts": self.model._meta,
-            "title": "Trusted-status review",
+            "title": "Trust and key review",
             "candidates": attendance.review_list(),
             "config": SiteSettings.load(),
         }
-        return TemplateResponse(request, "admin/members/member/trusted_review.html", context)
+        return TemplateResponse(request, "admin/members/member/key_review.html", context)
 
     def get_inlines(self, request, obj):
         return [*super().get_inlines(request, obj), *([MemberChangeInline] if obj else [])]

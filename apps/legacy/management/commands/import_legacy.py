@@ -7,7 +7,7 @@ Copy the legacy system's data into this (empty) database. See apps/legacy/import
 Options for cutover (spec 08 §8.2):
     --mark-inducted     everyone who has been a member counts as having had their general induction confirmed (05
                         §5.2: the door needs it, and legacy didn't check it). Logged in each member's audit log.
-    --photos-from URL   copy members' photos from legacy's S3 folder, e.g.
+    --photos-from URL   copy members' and equipment photos from legacy's S3 folder, e.g.
                         https://s3-eu-west-1.amazonaws.com/<bucket>/production (the photos are public there). Needs
                         internet access; in a dry run they're only checked, not copied.
 
@@ -45,7 +45,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--photos-from",
             metavar="URL",
-            help="Copy members' photos from this legacy S3 folder (https://.../<bucket>/production).",
+            help="Copy members' and equipment photos from this legacy S3 folder (https://.../<bucket>/production).",
         )
 
     def handle(self, *args, **options):
