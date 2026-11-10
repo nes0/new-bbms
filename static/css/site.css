@@ -56,7 +56,7 @@ body.backdrop main { background: var(--bg); max-width: 34rem; margin: 2rem auto;
 /* Member directory and profiles (06 §6.1). */
 .member-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: 1rem; padding: 0; list-style: none; }
 .member-grid a { display: block; text-align: center; text-decoration: none; color: var(--text); }
-.avatar { display: block; width: 100%; aspect-ratio: 1; border-radius: 8px; object-fit: cover; }
+.avatar { display: block; width: 100%; height: auto; aspect-ratio: 1; border-radius: 8px; object-fit: contain; }
 .avatar.blank { display: flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--muted);
   border: 1px solid var(--border); background: color-mix(in srgb, var(--border) 30%, transparent); }
 .avatar.small { width: 3rem; display: inline-flex; font-size: 1rem; vertical-align: middle; margin-right: 0.5rem; }
