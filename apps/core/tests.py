@@ -74,3 +74,41 @@ class MarkupTests(SimpleTestCase):
             ("[x](//evil.example/)", "evil"),
         ):
             self.assertNotIn(banned, markup.to_html(text).lower(), text)
+
+
+class HeaderLinkTests(TestCase):
+    """Every link in the header and footer opens for whoever is shown it (no "Not found" for someone setting up)."""
+
+    def links(self, member):
+        import re
+
+        self.client.force_login(member)
+        html = self.client.get(reverse("home")).content.decode()
+        nav = re.search(r"<nav>(.*?)</nav>", html, re.S).group(1) + re.search(r"<footer.*?</footer>", html, re.S)[0]
+        return re.findall(r'href="([^"]+)"', nav)
+
+    def test_links_work_for_each_kind_of_member(self):
+        from apps.equipment.tests.helpers import member as make_member
+
+        for status, members_pages in (
+            (Member.Status.SETTING_UP, False),
+            (Member.Status.ACTIVE, True),
+            (Member.Status.SUSPENDED, True),  # as legacy: suspended members still see the members' pages
+        ):
+            with self.subTest(status=status):
+                links = self.links(make_member(status=status))
+                self.assertEqual(reverse("equipment:index") in links, members_pages)
+                self.assertEqual(reverse("feedback") in links, members_pages)
+                for link in links:
+                    self.assertLess(self.client.get(link).status_code, 400, link)
+
+    def test_public_directory_is_offered_to_someone_setting_up(self):
+        from apps.equipment.tests.helpers import member as make_member
+        from apps.site_settings.models import SiteSettings
+
+        config = SiteSettings.load()
+        config.public_member_directory = True
+        config.save()
+        links = self.links(make_member(status=Member.Status.SETTING_UP))
+        self.assertIn(reverse("profiles:directory"), links)
+        self.assertNotIn(reverse("proposals:index"), links)

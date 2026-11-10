@@ -19,10 +19,10 @@
     <a class="site-name" href="{% url 'home' %}"><img class="logo" src="{% static 'img/logo.png' %}" alt="{{ SITE_NAME }}" width="40" height="40"></a>
     <nav>
       {% if user.is_authenticated %}
-        <a href="{% url 'profiles:directory' %}">Members</a>
-        <a href="{% url 'access:activity' %}">Who's in</a>
+        {% if SHOW_DIRECTORY %}<a href="{% url 'profiles:directory' %}">Members</a>{% endif %}
+        {% if IS_MEMBER %}<a href="{% url 'access:activity' %}">Who's in</a>
         <a href="{% url 'equipment:index' %}">Equipment</a>
-        <a href="{% url 'proposals:index' %}">Proposals</a>
+        <a href="{% url 'proposals:index' %}">Proposals</a>{% endif %}
         {% if perms.finance.see_finance or perms.finance.manage_finance %}<a href="{% url 'finance:overview' %}">Finance</a>{% endif %}
         {% if perms.expenses.approve_expense or perms.expenses.see_all_expenses %}<a href="{% url 'expenses:index' %}?status=waiting">Expenses</a>{% endif %}
         <a href="{% url 'members:account' %}">{{ user.get_short_name }}</a>
@@ -52,7 +52,7 @@
 
   <footer class="site-footer">
     <a href="{% url 'resources' %}">Rules and policies</a>
-    {% if user.is_authenticated %}<a href="{% url 'finance:stats' %}">Membership stats</a>
+    {% if IS_MEMBER %}<a href="{% url 'finance:stats' %}">Membership stats</a>
       <a href="{% url 'feedback' %}">Feedback</a>{% endif %}
   </footer>
 </body>
