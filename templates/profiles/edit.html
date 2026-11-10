@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Your profile · {{ SITE_NAME }}{% endblock %}
 {% block content %}
+{% include "core/_camera.html" %}
 <h1>Your profile</h1>
 <p class="hint">Other members see this in the <a href="{% url 'profiles:directory' %}">member list</a>.</p>
 <form method="post" enctype="multipart/form-data" class="stack form" novalidate>
@@ -11,7 +12,7 @@
     {% if current %}<p><img class="avatar small" src="{% url 'profiles:photo' member.pk 'thumb' %}" alt=""> Your photo.</p>{% endif %}
     {% if pending %}<p><img class="avatar small" src="{% url 'profiles:photo' member.pk 'thumb' %}?waiting=1" alt=""> Waiting for a trustee to check it.</p>{% endif %}
     <label for="{{ form.photo.auto_id }}">{{ form.photo.label }} <span class="hint">(optional)</span></label>
-    <input type="file" name="photo" id="{{ form.photo.auto_id }}" accept="image/jpeg,image/png,image/webp"{% if form.photo.errors %} aria-invalid="true"{% endif %}>
+    <input type="file" name="photo" id="{{ form.photo.auto_id }}" accept="image/jpeg,image/png,image/webp" data-camera="user" data-camera-square{% if form.photo.errors %} aria-invalid="true"{% endif %}>
     <span class="hint">{{ form.photo.help_text }}</span>
     {% if form.photo.errors %}<span class="error">{{ form.photo.errors|join:" " }}</span>{% endif %}
     {% include "members/_field.html" with field=form.photo_private %}

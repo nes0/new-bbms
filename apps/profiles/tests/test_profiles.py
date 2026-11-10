@@ -280,3 +280,16 @@ class GroupTests(ProfileTestCase):
         self.client.force_login(staff)
         self.assertEqual(self.client.get(f"/members/{self.kim.pk}/photo/thumb/?waiting=1").status_code, 200)
         self.assertTrue(waiting.pk)
+
+
+class CameraTests(ProfileTestCase):
+    """The photo boxes offer the camera (static/js/camera.js): the front one for a selfie, the rear one for ID."""
+
+    def test_boxes_ask_for_the_camera(self):
+        self.client.force_login(self.kim)
+        profile = self.client.get("/account/profile/")
+        self.assertContains(profile, 'data-camera="user"')
+        self.assertContains(profile, "js/camera")
+        documents = self.client.get("/account/id-documents/")
+        self.assertContains(documents, 'data-camera="environment"', count=2)
+        self.assertContains(documents, "js/camera")

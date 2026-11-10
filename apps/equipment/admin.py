@@ -38,6 +38,10 @@ class EquipmentPhotoForm(forms.ModelForm):
         label="Photo",
         required=False,
         help_text="JPEG, PNG or WebP. It's cropped to a square from the middle, so centre the machine.",
+        # On a phone, "Take a photo of it" opens the rear camera (static/js/camera.js).
+        widget=forms.ClearableFileInput(
+            attrs={"accept": "image/jpeg,image/png,image/webp", "data-camera": "environment"}
+        ),
     )
 
     class Meta:
@@ -75,6 +79,10 @@ class EquipmentPhotoInline(admin.TabularInline):
     extra = 1
     fields = ("preview", "upload", "position")
     readonly_fields = ("preview",)
+
+    class Media:
+        css = {"all": ["css/camera.css"]}
+        js = ["js/camera.js"]
 
     @admin.display(description="")
     def preview(self, photo):

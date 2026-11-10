@@ -1,0 +1,17 @@
+/* Taking a photo with the camera (static/js/camera.js). Falls back to the admin's colours there. */
+.camera-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.camera-row:empty { display: none; }
+.camera-button, dialog.camera button:not(.link) { font: inherit; padding: 0.4rem 0.9rem; border: 1px solid var(--accent, var(--link-fg, #1a56db));
+  border-radius: 6px; background: var(--bg, var(--body-bg, #fff)); color: var(--accent, var(--link-fg, #1a56db)); cursor: pointer; }
+dialog.camera button[data-do="use"] { background: var(--accent, var(--link-fg, #1a56db)); color: #fff; }
+.camera-button:disabled, dialog.camera button:disabled { opacity: 0.5; cursor: default; }
+.camera-preview { display: block; max-width: 10rem; max-height: 10rem; border-radius: 6px; border: 1px solid var(--border, var(--border-color, #d0d4da)); }
+dialog.camera { width: min(40rem, calc(100vw - 2rem)); padding: 1rem; border: 1px solid var(--border, var(--border-color, #d0d4da)); border-radius: 10px;
+  background: var(--bg, var(--body-bg, #fff)); color: var(--text, var(--body-fg, #1d1d1f)); }
+dialog.camera::backdrop { background: rgb(0 0 0 / 0.6); }
+.camera-frame { position: relative; background: #000; border-radius: 6px; overflow: hidden; line-height: 0; }
+.camera-frame video, .camera-frame canvas { width: 100%; height: auto; }
+.camera-frame video.mirror { transform: scaleX(-1); }
+/* The middle square: what a profile photo is cropped to. */
+.camera-frame.square::after { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
+  aspect-ratio: 1; border: 2px dashed rgb(255 255 255 / 0.8); pointer-events: none; }
