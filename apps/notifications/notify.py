@@ -56,5 +56,11 @@ def notify_role(*roles: str, message: str, admins: bool = False, **options) -> i
     return notify_many(members, message, **options)
 
 
+def settle(*keys: str) -> int:
+    """What these notifications asked for has been done (by anyone): mark them read for everyone. Returns how many."""
+    keys = [key[:150] for key in keys if key]
+    return Notification.objects.filter(key__in=keys, unread=True).update(unread=False) if keys else 0
+
+
 def unread_count(member) -> int:
     return Notification.objects.filter(member=member, unread=True).count()

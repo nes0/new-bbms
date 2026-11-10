@@ -92,6 +92,10 @@ class MemberPhotoAdmin(admin.ModelAdmin):
             query["kind__exact"] = MemberPhoto.Kind.PENDING
             request.GET = query
             request.META["QUERY_STRING"] = query.urlencode()
+        queue = request.GET.get("kind__exact") == MemberPhoto.Kind.PENDING and not request.GET.get("q")
+        if queue and request.method == "GET" and not MemberPhoto.objects.filter(kind=MemberPhoto.Kind.PENDING).exists():
+            # Usually because someone followed a notification after another admin had already dealt with the photo.
+            messages.info(request, "No photos are waiting for approval: another admin may already have dealt with it.")
         return super().changelist_view(request, extra_context)
 
 
