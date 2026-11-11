@@ -40,8 +40,7 @@ class LegacyCloneBackend:
         self.ssh = shlex.split(
             os.environ.get(
                 "BBMS_CLONE_SSH",
-                "ssh -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 "
-                "-i ~/.ssh/<ssh-key> root@<droplet-ip>",
+                "ssh -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 -i ~/.ssh/<ssh-key> root@<droplet-ip>",
             )
         )
         self.ssh = [os.path.expanduser(part) for part in self.ssh]
