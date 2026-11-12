@@ -6,14 +6,31 @@ from django.views.decorators.cache import never_cache
 
 
 def home(request):
-    """The home page. Visitors see how many people are in the space, if the trustees turned that on (06 §6.7)."""
-    from apps.access import activity
+    """The public welcome page and the signed-in member dashboard."""
+    from django.urls import reverse
+
+    from apps.access import activity, attendance
+    from apps.members.models import MemberPhoto
+    from apps.profiles import photos
     from apps.site_settings.models import SiteSettings
 
     in_space = None
     if not request.user.is_authenticated and SiteSettings.load().public_occupancy_count:
         in_space = activity.count()
-    return render(request, "core/home.html", {"in_space": in_space})
+    context = {"in_space": in_space}
+    if request.user.is_authenticated:
+        current_photo = MemberPhoto.objects.filter(
+            member=request.user, kind=MemberPhoto.Kind.CURRENT
+        ).exists()
+        visits = attendance.attendance(request.user)
+        context.update({
+            "member_photo_url": (
+                reverse("profiles:photo", args=[request.user.pk, "thumb"])
+                if current_photo and photos.can_see(request.user, request.user) else ""
+            ),
+            "last_visit": visits.last,
+        })
+    return render(request, "core/home.html", context)
 
 
 @never_cache
