@@ -19,17 +19,18 @@ def home(request):
         in_space = activity.count()
     context = {"in_space": in_space}
     if request.user.is_authenticated:
-        current_photo = MemberPhoto.objects.filter(
-            member=request.user, kind=MemberPhoto.Kind.CURRENT
-        ).exists()
+        current_photo = MemberPhoto.objects.filter(member=request.user, kind=MemberPhoto.Kind.CURRENT).exists()
         visits = attendance.attendance(request.user)
-        context.update({
-            "member_photo_url": (
-                reverse("profiles:photo", args=[request.user.pk, "thumb"])
-                if current_photo and photos.can_see(request.user, request.user) else ""
-            ),
-            "last_visit": visits.last,
-        })
+        context.update(
+            {
+                "member_photo_url": (
+                    reverse("profiles:photo", args=[request.user.pk, "thumb"])
+                    if current_photo and photos.can_see(request.user, request.user)
+                    else ""
+                ),
+                "last_visit": visits.last,
+            }
+        )
     return render(request, "core/home.html", context)
 
 
