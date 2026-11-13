@@ -1,30 +1,60 @@
 {% extends "base.html" %}
 {% block title %}Members · {{ SITE_NAME }}{% endblock %}
 {% block content %}
-<h1>Members</h1>
-<form method="get" class="filters" role="search">
-  <label for="q" class="hint">Name</label> <input id="q" name="q" value="{{ q }}" type="search">
-  <label for="skill" class="hint">Skill</label>
-  <select id="skill" name="skill">
-    <option value="">Any</option>
-    {% for s in skills %}<option value="{{ s.key }}"{% if s.key == skill %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
-  </select>
-  <button type="submit">Find</button>
-  {% if q or skill %}<a href="{% url 'profiles:directory' %}">Show everyone</a>{% endif %}
+<section class="page-heading">
+  <p class="eyebrow">Our community</p>
+  <h1>Members</h1>
+  <p class="welcome-lead">Meet the people who make Build Brighton.</p>
+</section>
+<form method="get" class="filters directory-filters" role="search">
+  <div class="filter-field">
+    <label for="q">Name</label>
+    <input id="q" name="q" value="{{ q }}" type="search" placeholder="Search members">
+  </div>
+  <div class="filter-field">
+    <label for="skill">Skill</label>
+    <select id="skill" name="skill">
+      <option value="">Any skill</option>
+      {% for s in skills %}<option value="{{ s.key }}"{% if s.key == skill %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
+    </select>
+  </div>
+  {% if is_member %}
+    <div class="filter-field">
+      <label for="role">People</label>
+      <select id="role" name="role">
+        <option value="all"{% if role == "all" %} selected{% endif %}>Everyone</option>
+        <option value="members"{% if role == "members" %} selected{% endif %}>Members</option>
+        <option value="trustees"{% if role == "trustees" %} selected{% endif %}>Trustees</option>
+      </select>
+    </div>
+    <div class="filter-field">
+      <label for="sort">Sort by</label>
+      <select id="sort" name="sort">
+        <option value="alphabetical"{% if sort == "alphabetical" %} selected{% endif %}>Alphabetical</option>
+        <option value="last-in"{% if sort == "last-in" %} selected{% endif %}>Last in</option>
+      </select>
+    </div>
+  {% endif %}
+  <button type="submit">Apply filters</button>
+  {% if q or skill or role != "all" or sort != "alphabetical" %}<a href="{% url 'profiles:directory' %}">Clear filters</a>{% endif %}
 </form>
 {% if cards %}
   <p class="hint">{{ cards|length }} member{{ cards|length|pluralize }}.{% if not is_member %} Members who keep their profile private aren't shown.{% endif %}</p>
   <ul class="member-grid">
     {% for card in cards %}
-      <li><a href="{% url 'profiles:member' card.member.pk %}">
+      <li class="member-card"><a href="{% url 'profiles:member' card.member.pk %}">
         {% include "profiles/_avatar.html" %}
-        <strong>{{ card.member.full_name }}</strong>
-        <div class="badges">{% if card.member.key_holder %}Key holder{% endif %}{% if card.member.key_holder and card.trustee %} · {% endif %}{% if card.trustee %}Trustee{% endif %}</div>
+        <strong class="member-card__name">{{ card.member.full_name }}</strong>
+        <div class="badges">
+          {% if card.trustee %}<span class="role-badge role-badge--trustee">Trustee</span>{% endif %}
+          {% if card.member.key_holder %}<span class="role-badge">Key holder</span>{% endif %}
+        </div>
+        {% if is_member %}<p class="member-card__last-in">{% if card.last_in %}<span class="hint">Last in</span><time datetime="{{ card.last_in|date:'c' }}">{{ card.last_in|date:"j M Y" }}</time>{% else %}<span class="hint">No visit recorded</span>{% endif %}</p>{% endif %}
       </a></li>
     {% endfor %}
   </ul>
 {% else %}
-  <p>Nobody found.</p>
+  <p>Nobody found. Try changing the filters.</p>
 {% endif %}
 {% if is_member %}<p><a href="{% url 'profiles:groups' %}">Groups and who to contact</a>{% if user.is_authenticated %} · <a href="{% url 'profiles:edit' %}">Edit your profile</a>{% endif %}</p>{% endif %}
 {% endblock %}
