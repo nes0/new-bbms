@@ -8,94 +8,52 @@
   <link rel="icon" href="{% static 'img/favicon.ico' %}" sizes="32x32">
   <link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
   <link rel="stylesheet" href="{% static 'css/site.css' %}">
+  {# HTMX 2.0.4, kept in static/js so the site has no external dependencies. #}
   <script src="{% static 'js/htmx.min.js' %}" defer></script>
 </head>
+{# Every HTMX request sends the CSRF token, so forms and buttons using hx-post just work. #}
 <body class="{% block body_class %}{% endblock %}" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-  {% if DEMO_SITE %}<p class="demo-banner" role="note"><strong>Demo site.</strong> Everyone here is made up, payments are pretend and no emails are sent. Try anything.</p>{% endif %}
-  {% if user.is_authenticated %}
-    <div class="portal-shell">
-      <aside class="portal-sidebar" id="portal-sidebar" aria-label="Main navigation">
-        <a class="portal-brand" href="{% url 'home' %}">
-          <img class="logo" src="{% static 'img/logo.png' %}" alt="" width="40" height="40">
-          <span>{{ SITE_NAME }}</span>
-        </a>
-        <nav class="portal-nav">
-          <div class="portal-nav__group">
-            <p class="portal-nav__label">Your space</p>
-            <a class="portal-nav__link" href="{% url 'home' %}"><span aria-hidden="true">⌂</span>Home</a>
-            {% if SHOW_DIRECTORY %}<a class="portal-nav__link" href="{% url 'profiles:directory' %}"><span aria-hidden="true">◎</span>Members</a>{% endif %}
-            {% if IS_MEMBER %}<a class="portal-nav__link" href="{% url 'access:activity' %}"><span aria-hidden="true">↗</span>Who's in</a>
-            <a class="portal-nav__link" href="{% url 'equipment:index' %}"><span aria-hidden="true">⚙</span>Equipment</a>
-            <a class="portal-nav__link" href="{% url 'proposals:index' %}"><span aria-hidden="true">✳</span>Proposals</a>{% endif %}
-          </div>
-          {% if perms.finance.see_finance or perms.finance.manage_finance or perms.expenses.approve_expense or perms.expenses.see_all_expenses or perms.members.review_id_documents or perms.members.confirm_general_inductions %}
-            <div class="portal-nav__group">
-              <p class="portal-nav__label">Money &amp; reviews</p>
-              {% if perms.finance.see_finance or perms.finance.manage_finance %}<a class="portal-nav__link" href="{% url 'finance:overview' %}"><span aria-hidden="true">£</span>Finance</a>{% endif %}
-              {% if perms.expenses.approve_expense or perms.expenses.see_all_expenses %}<a class="portal-nav__link" href="{% url 'expenses:index' %}?status=waiting"><span aria-hidden="true">▤</span>Expenses</a>{% endif %}
-              {% if perms.members.review_id_documents %}<a class="portal-nav__link" href="{% url 'members:id-checks' %}"><span aria-hidden="true">✓</span>ID checks</a>{% endif %}
-              {% if perms.members.confirm_general_inductions %}<a class="portal-nav__link" href="{% url 'members:general-inductions' %}"><span aria-hidden="true">⌁</span>Inductions</a>{% endif %}
-            </div>
-          {% endif %}
-          <div class="portal-nav__group">
-            <p class="portal-nav__label">Account</p>
-            <a class="portal-nav__link" href="{% url 'notifications:list' %}"><span aria-hidden="true">♧</span>Notifications{% if unread_notifications %}<span class="portal-nav__badge">{{ unread_notifications }}</span>{% endif %}</a>
-            <a class="portal-nav__link" href="{% url 'members:account' %}"><span aria-hidden="true">◉</span>Your account</a>
-            {% if user.is_staff %}<a class="portal-nav__link" href="{% url 'admin:index' %}"><span aria-hidden="true">⚒</span>Admin</a>{% endif %}
-          </div>
-        </nav>
-        <div class="portal-sidebar__bottom">
-          <a class="portal-nav__link" href="{% url 'resources' %}"><span aria-hidden="true">▧</span>Rules and policies</a>
-          {% if IS_MEMBER %}<a class="portal-nav__link" href="{% url 'finance:stats' %}"><span aria-hidden="true">▥</span>Membership stats</a>
-          <a class="portal-nav__link" href="{% url 'feedback' %}"><span aria-hidden="true">✉</span>Feedback</a>{% endif %}
-          <form method="post" action="{% url 'logout' %}" class="inline portal-logout">
-            {% csrf_token %}<button type="submit" class="portal-nav__link"><span aria-hidden="true">↪</span>Log out</button>
-          </form>
-        </div>
-      </aside>
-      <button class="portal-scrim" type="button" aria-label="Close navigation" hidden></button>
-      <div class="portal-content">
-        <header class="portal-topbar">
-          <button class="portal-menu" type="button" aria-controls="portal-sidebar" aria-expanded="false"><span aria-hidden="true">☰</span><span class="visually-hidden">Open navigation</span></button>
-          <div class="portal-topbar__crumb"><a href="{% url 'home' %}">Your space</a><span aria-hidden="true">/</span><strong>{% block page_name %}Member home{% endblock %}</strong></div>
-          <a class="portal-account" href="{% url 'members:account' %}">
-            <span class="portal-account__avatar" aria-hidden="true">{{ user.get_short_name|slice:":1" }}</span>
-            <span>{{ user.get_short_name }}</span>
-          </a>
-        </header>
-        {% if messages %}<ul class="messages">{% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}</ul>{% endif %}
-        <main class="portal-main">{% block content %}{% endblock %}</main>
-        <footer class="portal-footer"><span>{{ SITE_NAME }} member system</span></footer>
-      </div>
-    </div>
-    <script>
-      (() => {
-        const sidebar = document.querySelector("#portal-sidebar");
-        const menu = document.querySelector(".portal-menu");
-        const scrim = document.querySelector(".portal-scrim");
-        if (!sidebar || !menu || !scrim) return;
-        const close = () => {
-          sidebar.classList.remove("is-open");
-          scrim.hidden = true;
-          menu.setAttribute("aria-expanded", "false");
-        };
-        menu.addEventListener("click", () => {
-          const open = sidebar.classList.toggle("is-open");
-          scrim.hidden = !open;
-          menu.setAttribute("aria-expanded", String(open));
-        });
-        scrim.addEventListener("click", close);
-        document.addEventListener("keydown", event => { if (event.key === "Escape") close(); });
-      })();
-    </script>
-  {% else %}
-    <header class="site-header">
-      <a class="site-name" href="{% url 'home' %}"><img class="logo" src="{% static 'img/logo.png' %}" alt="{{ SITE_NAME }}" width="40" height="40"></a>
-      <nav><a href="{% url 'members:register' %}">Join</a><a href="{% url 'login' %}">Log in</a></nav>
-    </header>
-    {% if messages %}<ul class="messages">{% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}</ul>{% endif %}
-    <main>{% block content %}{% endblock %}</main>
-    <footer class="site-footer"><a href="{% url 'resources' %}">Rules and policies</a></footer>
-  {% endif %}
+  {% if DEMO_SITE %}<p class="demo-banner" role="note"><strong>Demo site.</strong> Everyone here is made up, payments are
+    pretend and no emails are sent. Try anything.</p>{% endif %}
+  <header class="site-header">
+    <a class="site-name" href="{% url 'home' %}"><img class="logo" src="{% static 'img/logo.png' %}" alt="{{ SITE_NAME }}" width="40" height="40"></a>
+    <nav>
+      {% if user.is_authenticated %}
+        {% if SHOW_DIRECTORY %}<a href="{% url 'profiles:directory' %}">Members</a>{% endif %}
+        {% if IS_MEMBER %}<a href="{% url 'access:activity' %}">Who's in</a>
+        <a href="{% url 'equipment:index' %}">Equipment</a>
+        <a href="{% url 'proposals:index' %}">Proposals</a>{% endif %}
+        {% if perms.finance.see_finance or perms.finance.manage_finance %}<a href="{% url 'finance:overview' %}">Finance</a>{% endif %}
+        {% if perms.expenses.approve_expense or perms.expenses.see_all_expenses %}<a href="{% url 'expenses:index' %}?status=waiting">Expenses</a>{% endif %}
+        <a href="{% url 'members:account' %}">{{ user.get_short_name }}</a>
+        <a href="{% url 'notifications:list' %}">Notifications{% if unread_notifications %} <span class="badge" title="Unread">{{ unread_notifications }}</span>{% endif %}</a>
+        {% if perms.members.review_id_documents %}<a href="{% url 'members:id-checks' %}">ID checks</a>{% endif %}
+        {% if perms.members.confirm_general_inductions %}<a href="{% url 'members:general-inductions' %}">Inductions</a>{% endif %}
+        {% if user.is_staff %}<a href="{% url 'admin:index' %}">Admin</a>{% endif %}
+        <form method="post" action="{% url 'logout' %}" class="inline">
+          {% csrf_token %}
+          <button type="submit" class="link">Log out</button>
+        </form>
+      {% else %}
+        <a href="{% url 'members:register' %}">Join</a>
+        <a href="{% url 'login' %}">Log in</a>
+      {% endif %}
+    </nav>
+  </header>
+
+  <main>
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <a href="{% url 'resources' %}">Rules and policies</a>
+    {% if IS_MEMBER %}<a href="{% url 'finance:stats' %}">Membership stats</a>
+      <a href="{% url 'feedback' %}">Feedback</a>{% endif %}
+  </footer>
 </body>
 </html>
