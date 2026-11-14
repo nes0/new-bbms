@@ -1,0 +1,88 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+{# A machine's live current: switch reporting on, watch the readings and choose the threshold (05 §5.4). #}
+{% block extrastyle %}{{ block.super }}
+  <style>
+    .live-current { max-width: 760px; }
+    .live-current .controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 12px 0; }
+    .live-current .controls form { margin: 0; }
+    .live-current .stats { display: flex; flex-wrap: wrap; gap: 8px 32px; margin: 12px 0; }
+    .live-current .stat-value { font-size: 1.6rem; font-variant-numeric: tabular-nums; color: var(--body-fg); }
+    .live-current .stat-label { color: var(--body-quiet-color); font-size: 0.8125rem; }
+    .live-current .chart { width: 100%; height: auto; display: block; touch-action: none; }
+    .live-current .chart .grid { stroke: var(--hairline-color); stroke-width: 1; }
+    .live-current .chart .axis-label { fill: var(--body-quiet-color); font-size: 11px; }
+    .live-current .chart .line { fill: none; stroke: var(--primary); stroke-width: 2; stroke-linejoin: round; }
+    .live-current .chart .threshold { stroke: var(--error-fg); stroke-width: 1.5; stroke-dasharray: 6 4; }
+    .live-current .chart .threshold-label { fill: var(--error-fg); font-size: 11px; }
+    .live-current .chart .cursor { stroke: var(--body-quiet-color); stroke-width: 1; }
+    .live-current .chart .dot { fill: var(--primary); stroke: var(--body-bg); stroke-width: 2; }
+    .live-current .readout { min-height: 1.4em; color: var(--body-quiet-color); font-variant-numeric: tabular-nums; }
+    .live-current .threshold-form input { width: 7em; }
+  </style>
+{% endblock %}
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Home</a> ›
+    <a href="{% url 'admin:app_list' opts.app_label %}">{{ opts.app_config.verbose_name }}</a> ›
+    <a href="{% url 'admin:equipment_equipment_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a> ›
+    <a href="{% url 'admin:equipment_equipment_change' equipment.pk %}">{{ equipment.name }}</a> ›
+    Live current
+  </div>
+{% endblock %}
+{% block content %}
+<div class="live-current">
+  <p>While this is on, the machine's reader sends the current it measures, once a second, so you can see what the
+    machine draws when it's idle and when it's working. Choose a threshold between the two: time above it counts as
+    running on the hour meter{% if equipment.meter_mode != "current" %}, once the machine is metered by
+    <em>current draw</em> (it's metered by tapped-in time now: change <em>Meter mode</em> on the
+    <a href="{% url 'admin:equipment_equipment_change' equipment.pk %}">machine's page</a>){% endif %}.
+    The reader reads 0 A while the machine is switched off, so tap in to try it.</p>
+
+  {% if not reader %}
+    <p class="errornote">This machine has no fob reader: add a device with the device id
+      <code>{{ equipment.slug }}</code>.</p>
+  {% endif %}
+
+  <div class="controls">
+    <form method="post">{% csrf_token %}
+      {% if reporting %}
+        <button type="submit" name="action" value="start" class="button">Keep going for {{ report_minutes }} minutes</button>
+        <button type="submit" name="action" value="stop" class="button">Stop</button>
+      {% else %}
+        <button type="submit" name="action" value="start" class="button default">Start reporting for {{ report_minutes }} minutes</button>
+      {% endif %}
+    </form>
+    <span id="status" aria-live="polite">
+      {% if reporting %}Reporting until {{ equipment.report_current_until|time:"H:i" }}.{% else %}Not reporting.{% endif %}
+    </span>
+  </div>
+  {% if reporting %}
+    <p class="help">The reader starts at its next check-in (within {{ check_in_minutes }}
+      minute{{ check_in_minutes|pluralize }}{% if reader.last_heartbeat %}; last heard from
+      {{ reader.last_heartbeat|timesince }} ago{% endif %}), or as soon as someone taps a fob on it.</p>
+  {% endif %}
+
+  <div class="stats">
+    <div><div class="stat-value" id="latest">–</div><div class="stat-label">Latest</div></div>
+    <div><div class="stat-value" id="low">–</div><div class="stat-label">Lowest, last minute</div></div>
+    <div><div class="stat-value" id="high">–</div><div class="stat-label">Highest, last minute</div></div>
+  </div>
+
+  <svg class="chart" id="chart" viewBox="0 0 720 260" role="img" aria-labelledby="chart-title">
+    <title id="chart-title">Current over the last 5 minutes, in amps</title>
+  </svg>
+  <p class="readout" id="readout"></p>
+
+  <form method="post" class="threshold-form">{% csrf_token %}
+    <input type="hidden" name="action" value="threshold">
+    <label for="threshold">Threshold (amps)</label>
+    <input type="number" id="threshold" name="threshold" min="0" step="0.01"
+           value="{{ equipment.current_threshold_amps|default_if_none:'' }}">
+    <button type="submit" class="button">Save threshold</button>
+    <p class="help">Saving sends it to the reader at its next check-in. Empty means no threshold.</p>
+  </form>
+</div>
+{{ readings_url|json_script:"readings-url" }}
+<script src="{% static 'js/live_current.js' %}"></script>
+{% endblock %}

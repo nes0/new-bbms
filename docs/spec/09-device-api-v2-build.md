@@ -180,11 +180,14 @@ Response (every role):
   "status_since": 1793900000,
   "in_use_by": "Kim K.",          // or null
   "session_id": 1234,             // the open session, or null
-  "meter": {"mode": "current", "current_threshold_amps": "2.50"}   // threshold null in session mode
+  "meter": {"mode": "current", "current_threshold_amps": "2.50",   // threshold null in session mode
+            "report_current": false}                                  // live current (added 2026-11-14)
 }
 ```
 
-Send the threshold as a decimal **string** so no precision is lost; the firmware parses it.
+Send the threshold as a decimal **string** so no precision is lost; the firmware parses it. `report_current` and
+`POST current` (live current readings while an admin chooses a threshold, 05 §5.4) are described in
+`docs/device-api-v2.md`.
 
 ### `POST /api/devices/v2/access`
 

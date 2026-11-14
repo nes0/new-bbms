@@ -113,7 +113,9 @@ AcsNode (devices)   Settings (key/value)   AuditLog
 - **New** (05 §5.4, equipment readers): equipment status history (status, note, reported by, when); `meter_readings`
   (equipment, seq, active seconds, session, received at; unique per equipment + seq); `equipment_services` (date, note,
   by); per-equipment admin settings `meter_mode` (`current` or `session`), `current_threshold_amps` (current mode only),
-  `idle_auto_end_minutes` (empty = off; current mode only) and `service_interval_hours` (empty = no reminders); sessions gain `ended_by`
+  `idle_auto_end_minutes` (empty = off; current mode only), `service_interval_hours` (empty = no reminders) and
+  `report_current_until` (live current, below); `current_samples` (equipment, device, amps, measured at; kept a day:
+  live current readings for choosing the threshold, 05 §5.4); sessions gain `ended_by`
   (`tap`, `button`, `idle`, `tidy-up`, `admin`), `original_started` / `original_finished`, `adjusted_by`, `adjusted_reason`, `motor_on_seconds`, `charged_at`, and reason `maintenance`.
 - **New** (06 §6.12): `equipment.moodle_course_id` (optional), `equipment.course_required_for_existing` (flag),
   `moodle_accounts` (member, Moodle user id, found at: **built** as its own table, not a member field), and
