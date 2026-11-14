@@ -78,9 +78,20 @@ class Device(models.Model):
     reported_cache_version = models.CharField(max_length=20, blank=True, help_text="What the device says it holds.")
     enabled = models.BooleanField(default=True, help_text="Untick to make the device refuse everyone (v2 firmware).")
     pending_commands = models.JSONField(default=list, blank=True, help_text="Sent once at the next check-in.")
+    # Firmware updates over the network (apps/access/firmware.py).
+    target_firmware = models.ForeignKey(
+        "FirmwareRelease",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="devices",
+        help_text="The reader updates itself to this at a check-in when nobody is using it. Blank: leave it alone.",
+    )
+    firmware_update_error = models.CharField(max_length=250, blank=True, help_text="Why the reader says it failed.")
+    firmware_update_error_at = models.DateTimeField(null=True, blank=True)
     legacy_id = models.PositiveIntegerField(null=True, blank=True, unique=True)
 
-    COMMANDS = ("refresh_cache", "purge_cache", "reboot")
+    COMMANDS = ("refresh_cache", "purge_cache", "reboot", "retry_firmware")
 
     def __str__(self):
         return f"{self.name} ({self.device_id})"
@@ -106,6 +117,40 @@ class Device(models.Model):
         if not raw_key:
             return None
         return cls.objects.filter(api_key_hash=_hash_api_key(raw_key)).first()
+
+
+class FirmwareRelease(models.Model):
+    """A version of the readers' firmware, uploaded by an admin (apps/access/firmware.py)."""
+
+    version = models.CharField(max_length=50, unique=True, help_text="What a reader running it reports at check-in.")
+    notes = models.TextField(blank=True, help_text="What changed. Only shown here.")
+    uploaded_at = models.DateTimeField(default=timezone.now)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+
+    class Meta:
+        ordering = ["-uploaded_at"]
+
+    def __str__(self):
+        return self.version
+
+
+class FirmwareFile(models.Model):
+    """One file of a firmware release. Kept in the database: a release is about 150 KB in all."""
+
+    release = models.ForeignKey(FirmwareRelease, on_delete=models.CASCADE, related_name="files")
+    path = models.CharField(max_length=200)
+    sha256 = models.CharField(max_length=64)
+    size = models.PositiveIntegerField()
+    content = models.BinaryField()
+
+    class Meta:
+        ordering = ["path"]
+        constraints = [models.UniqueConstraint(fields=["release", "path"], name="firmware_file_once_per_release")]
+
+    def __str__(self):
+        return self.path
 
 
 class AccessEvent(models.Model):

@@ -13,7 +13,16 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from apps.access.api_v2 import ApiError, device_api_v2, equipment_or_error, int_field, json_body, resolve_card, unix
+from apps.access.api_v2 import (
+    ApiError,
+    device_api_v2,
+    equipment_or_error,
+    event_time,
+    int_field,
+    json_body,
+    resolve_card,
+    unix,
+)
 
 from . import live_current, rules
 from .models import Equipment, MachineStatusChange, MeterReading, UsageSession
@@ -153,6 +162,12 @@ def session_end(request, session_id):
     fob = reason = None
     if has_card:
         fob, reason = resolve_card(data)
+    # A reader that couldn't reach BBMS when the session ended says when that was.
+    ended_at = None
+    if data.get("ended_at") is not None:
+        ended_at = event_time(data, "ended_at")
+        if ended_at is None:
+            raise ApiError(400, "bad_field", "ended_at must be a time in unix seconds.")
 
     with transaction.atomic():
         equipment = _locked_equipment(equipment)
@@ -167,7 +182,9 @@ def session_end(request, session_id):
             ended_by = UsageSession.EndedBy.TAP
         else:
             ended_by = UsageSession.EndedBy.BUTTON
-        rules.end_session(session, ended_by=ended_by)
+        # Only a time within the session is believed: a reader's clock can be wrong.
+        when = ended_at if ended_at and session.started_at < ended_at < timezone.now() else None
+        rules.end_session(session, when=when, ended_by=ended_by)
     return JsonResponse(_end_summary(session, equipment, already_ended=False))
 
 
@@ -279,8 +296,6 @@ def current(request):
 
 def record_offline_session(device, fob, event) -> str:
     """A finished session the reader ran while BBMS was unreachable (spec 09 §9.7). Returns the result code."""
-    from apps.access.api_v2 import event_time
-
     equipment = equipment_or_error(device)
     started, ended = event_time(event, "started_at"), event_time(event, "ended_at")
     motor = event.get("motor_on_seconds", 0)

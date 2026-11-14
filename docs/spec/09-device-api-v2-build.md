@@ -365,11 +365,26 @@ Request: `{"events": [ ... ]}`, up to 500 per call (else `400`). Each event:
 (05 §5.4)? This API supports it either way; the firmware decides whether to start sessions offline. Note it in
 `docs/device-api-v2.md`.
 
+**Added 2026-11-14:** the ESP32 machine reader now does this (its `offline_use` setting, on unless switched off),
+so the question is no longer hypothetical. For it, `POST sessions/{id}/end` takes an optional `ended_at` (unix
+seconds): a reader that couldn't reach BBMS when a session ended sends the end later with the time it happened, and
+the session is ended and charged to then. A time outside the session is ignored.
+
 ### Device commands
 
 Admin actions on the device list: **Queue "refresh cache"**, **Queue "purge cache"**, **Queue "reboot"**, and
 **Disable/Enable** (the `enabled` field). Show `firmware_version`, `last_boot`, `last_heartbeat`,
 `reported_cache_version` and whether it matches the current one.
+
+### Firmware updates (added after this brief was built)
+
+Readers can be sent new firmware over the network: `apps/access/firmware.py`, with the device's side in
+`docs/device-api-v2.md` ("Firmware updates"). An admin uploads a release (**Access > Firmware releases > Add**: the
+zip the firmware repository's `make_release.py` makes), then ticks the readers to run it. `Device.target_firmware`
+is the choice; check-in tells the reader, which fetches `firmware/manifest` and `firmware/files/{sha256}`. The
+device list shows each reader's running version and "up to date", "waiting to update to X" or "update to X failed:
+why". **Try a failed firmware update again** queues the `retry_firmware` command. Files are kept in the database
+(`FirmwareFile.content`), so nothing depends on file storage. Choosing readers needs "Can change device".
 
 ## 9.8 Trying it by hand: the fake device
 

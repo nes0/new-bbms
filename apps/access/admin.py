@@ -6,16 +6,18 @@ the rules), never by editing a fob's number. Who may do this is a permission: "a
 (give it to a role's group, e.g. comms). Marking lost needs "Can change key fob".
 """
 
+from django import forms
 from django.contrib import admin, messages
+from django.db.models import Count, Sum
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 
 from apps.members.admin import MemberAdmin
 
-from . import fobs, tags
+from . import firmware, fobs, tags
 from .forms import IssueFobForm, OpenEnrolmentForm
-from .models import AccessEvent, Device, FobEnrolment, KeyFob
+from .models import AccessEvent, Device, FirmwareRelease, FobEnrolment, KeyFob
 
 
 def _card_label(fob):
@@ -203,18 +205,43 @@ class FobEnrolmentAdmin(admin.ModelAdmin):
 
 @admin.register(Device)
 class DeviceAdmin(admin.ModelAdmin):
-    list_display = ("name", "device_id", "role", "enabled", "firmware_version", "last_heartbeat", "cache_status")
-    list_filter = ("role", "monitor_heartbeat", "enabled")
+    list_display = (
+        "name",
+        "device_id",
+        "role",
+        "enabled",
+        "firmware_version",
+        "firmware_status",
+        "last_heartbeat",
+        "cache_status",
+    )
+    list_filter = ("role", "monitor_heartbeat", "enabled", "target_firmware")
+    list_select_related = ("target_firmware",)
     readonly_fields = (
         "last_boot",
         "last_heartbeat",
         "firmware_version",
+        "firmware_status",
+        "firmware_update_error",
+        "firmware_update_error_at",
         "reported_cache_version",
         "cache_status",
         "pending_commands",
         "legacy_id",
     )
-    actions = ["new_api_key", "queue_refresh_cache", "queue_purge_cache", "queue_reboot", "disable", "enable"]
+    actions = [
+        "new_api_key",
+        "queue_refresh_cache",
+        "queue_purge_cache",
+        "queue_reboot",
+        "retry_firmware",
+        "disable",
+        "enable",
+    ]
+
+    @admin.display(description="Firmware update")
+    def firmware_status(self, device):
+        return firmware.status(device) or "—"
 
     @admin.display(description="Cache")
     def cache_status(self, device):
@@ -245,6 +272,11 @@ class DeviceAdmin(admin.ModelAdmin):
     def queue_reboot(self, request, queryset):
         self._queue(request, queryset, "reboot")
 
+    @admin.action(description="Try a failed firmware update again")
+    def retry_firmware(self, request, queryset):
+        # A reader won't try again by itself a firmware it has had to take off: this tells it to.
+        self._queue(request, queryset, "retry_firmware")
+
     @admin.action(description="Disable (v2 readers refuse everyone)")
     def disable(self, request, queryset):
         queryset.update(enabled=False)
@@ -266,7 +298,170 @@ class DeviceAdmin(admin.ModelAdmin):
             key = obj.generate_api_key()
             message = f"API key for {obj.device_id} (shown once, copy it now): {key}"
             self.message_user(request, message, messages.WARNING)
+        if "target_firmware" in form.changed_data:  # a new target: the last one's failure no longer applies
+            obj.firmware_update_error, obj.firmware_update_error_at = "", None
         super().save_model(request, obj, form, change)
+
+
+class FirmwareUploadForm(forms.ModelForm):
+    bundle = forms.FileField(
+        label="Release file",
+        help_text="The zip that make_release.py makes in the firmware repository (dist/reader-<version>.zip). "
+        "The version comes from it.",
+    )
+
+    class Meta:
+        model = FirmwareRelease
+        fields = ("bundle", "notes")
+
+    def clean_bundle(self):
+        try:
+            self.version, self.contents = firmware.read_bundle(self.cleaned_data["bundle"])
+        except firmware.FirmwareError as error:
+            raise forms.ValidationError(str(error)) from None
+        if FirmwareRelease.objects.filter(version=self.version).exists():
+            raise forms.ValidationError(
+                f"Version {self.version} has been uploaded already. Change VERSION in the firmware's version.py "
+                "and build the release again: readers tell versions apart by that name."
+            )
+        return self.cleaned_data["bundle"]
+
+
+@admin.register(FirmwareRelease)
+class FirmwareReleaseAdmin(admin.ModelAdmin):
+    """
+    Firmware for the readers (apps/access/firmware.py). Upload a release, then choose the readers to run it:
+    each updates itself at its next check-in when nobody is using it, and goes back to its old firmware by itself
+    if the new one doesn't work. Choosing readers needs "Can change device", since it changes what they run.
+    """
+
+    list_display = ("version", "uploaded_at", "uploaded_by", "size", "running", "chosen", "install_link")
+    readonly_fields = ("version", "uploaded_at", "uploaded_by", "file_list", "readers", "install_link")
+    fields = ("version", "notes", "uploaded_at", "uploaded_by", "install_link", "readers", "file_list")
+
+    def get_form(self, request, obj=None, change=False, **kwargs):
+        if obj is None:
+            kwargs["form"] = FirmwareUploadForm
+        return super().get_form(request, obj, change=change, **kwargs)
+
+    def get_fields(self, request, obj=None):
+        return self.fields if obj else ("bundle", "notes")
+
+    def get_readonly_fields(self, request, obj=None):
+        return self.readonly_fields if obj else ()
+
+    def save_model(self, request, obj, form, change):
+        if change:
+            return super().save_model(request, obj, form, change)
+        release = firmware.create_release(
+            form.version, form.contents, notes=form.cleaned_data["notes"], uploaded_by=request.user
+        )
+        obj.pk, obj.version, obj.uploaded_at, obj.uploaded_by = (
+            release.pk,
+            release.version,
+            release.uploaded_at,
+            release.uploaded_by,
+        )
+        obj._state.adding = False
+
+    def response_add(self, request, obj, post_url_continue=None):
+        # Straight on to choosing readers: an uploaded release does nothing until some are chosen.
+        self.message_user(request, f"Firmware {obj.version} uploaded. No reader runs it until you choose some.")
+        return redirect("admin:access_firmwarerelease_install", obj.pk)
+
+    def has_delete_permission(self, request, obj=None):
+        # Not while a reader is meant to be running it.
+        return super().has_delete_permission(request, obj) and not (obj and obj.devices.exists())
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(total_size=Sum("files__size"), file_count=Count("files"))
+
+    @admin.display(description="Size")
+    def size(self, release):
+        return f"{release.file_count} files, {(release.total_size or 0) / 1024:.0f} KB"
+
+    @admin.display(description="Running it")
+    def running(self, release):
+        return Device.objects.filter(firmware_version=release.version).count()
+
+    @admin.display(description="Chosen for")
+    def chosen(self, release):
+        return release.devices.count()
+
+    @admin.display(description="Readers")
+    def install_link(self, release):
+        from django.utils.html import format_html
+
+        if not release.pk:
+            return "—"
+        url = reverse("admin:access_firmwarerelease_install", args=[release.pk])
+        return format_html('<a class="button" href="{}">Choose readers</a>', url)
+
+    @admin.display(description="Chosen for")
+    def readers(self, release):
+        rows = [f"{device.name}: {firmware.status(device)}" for device in release.devices.order_by("name")]
+        return "\n".join(rows) or "No readers yet."
+
+    @admin.display(description="Files")
+    def file_list(self, release):
+        return "\n".join(f"{file.path} ({file.size} bytes)" for file in release.files.all())
+
+    def get_urls(self):
+        view = self.admin_site.admin_view
+        return [
+            path("<int:pk>/install/", view(self.install_view), name="access_firmwarerelease_install"),
+            *super().get_urls(),
+        ]
+
+    def install_view(self, request, pk):
+        """Tick the readers that should run this release."""
+        release = get_object_or_404(FirmwareRelease, pk=pk)
+        if not request.user.has_perm("access.change_device"):
+            self.message_user(request, "Choosing readers' firmware needs permission to change devices.", messages.ERROR)
+            return redirect("admin:access_firmwarerelease_changelist")
+        # Only readers that have checked in with v2 firmware can update themselves.
+        devices = list(Device.objects.exclude(firmware_version="").select_related("target_firmware").order_by("name"))
+        if request.method == "POST":
+            ticked = set(request.POST.getlist("devices"))
+            started = stopped = 0
+            for device in devices:
+                if str(device.pk) in ticked and device.target_firmware_id != release.pk:
+                    firmware.set_target(device, release)
+                    started += 1
+                elif str(device.pk) not in ticked and device.target_firmware_id == release.pk:
+                    firmware.set_target(device, None)
+                    stopped += 1
+            if started:
+                self.message_user(
+                    request,
+                    f"{started} reader{'s' if started != 1 else ''} will update to {release.version} at "
+                    "the next check-in when nobody is using the machine.",
+                    messages.SUCCESS,
+                )
+            if stopped:
+                self.message_user(
+                    request,
+                    f"{stopped} reader{'s' if stopped != 1 else ''} no longer chosen: "
+                    "left on whatever firmware they run now.",
+                )
+            return redirect("admin:access_firmwarerelease_install", release.pk)
+        rows = [
+            {
+                "device": device,
+                "ticked": device.target_firmware_id == release.pk,
+                "status": firmware.status(device) if device.target_firmware_id == release.pk else "",
+                "other": device.target_firmware if device.target_firmware_id not in (None, release.pk) else None,
+            }
+            for device in devices
+        ]
+        context = {
+            **self.admin_site.each_context(request),
+            "title": f"Readers to run firmware {release.version}",
+            "opts": self.model._meta,
+            "release": release,
+            "rows": rows,
+        }
+        return TemplateResponse(request, "admin/access/firmwarerelease/install.html", context)
 
 
 @admin.register(AccessEvent)
