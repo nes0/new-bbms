@@ -56,7 +56,7 @@
       <div class="portal-content">
         <header class="portal-topbar">
           <button class="portal-menu" type="button" aria-controls="portal-sidebar" aria-expanded="false"><span aria-hidden="true">☰</span><span class="visually-hidden">Open navigation</span></button>
-          <div class="portal-breadcrumb"><a href="{% url 'home' %}">{{ SITE_NAME }}</a><span aria-hidden="true">/</span><strong>{% block page_name %}Your space{% endblock %}</strong></div>
+          <div class="portal-breadcrumb"><a href="{% url 'home' %}">{{ SITE_NAME }}</a><span aria-hidden="true">/</span><strong>{% block page_name %}{{ request.resolver_match.url_name|default:'Your space'|capfirst }}{% endblock %}</strong></div>
           <div class="portal-topbar__actions">
             <a class="portal-notifications" href="{% url 'notifications:list' %}" aria-label="Notifications{% if unread_notifications %}, {{ unread_notifications }} unread{% endif %}">
               <span aria-hidden="true">♧</span>{% if unread_notifications %}<span class="portal-notifications__dot" aria-hidden="true"></span>{% endif %}
