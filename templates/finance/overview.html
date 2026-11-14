@@ -23,12 +23,12 @@
       </div>
       <div class="finance-task-grid">
         {% if figures.unmatched_payments %}
-          <a class="finance-task" href="{% url 'finance:payments' %}?unmatched=1">
+          <a class="finance-task" href="{% url 'finance:payments' %}?unmatched=1" aria-label="{{ figures.unmatched_payments }} payment{{ figures.unmatched_payments|pluralize }} nobody could match to a member">
             <strong>{{ figures.unmatched_payments }} unmatched payment{{ figures.unmatched_payments|pluralize }}</strong><span>Review <span aria-hidden="true">→</span></span>
           </a>
         {% endif %}
         {% if figures.unmatched_lines %}
-          <a class="finance-task" href="{% url 'finance:bank-lines' %}?outcome=unmatched">
+          <a class="finance-task" href="{% url 'finance:bank-lines' %}?outcome=unmatched" aria-label="{{ figures.unmatched_lines }} bank line{{ figures.unmatched_lines|pluralize }} not matched yet">
             <strong>{{ figures.unmatched_lines }} unmatched bank line{{ figures.unmatched_lines|pluralize }}</strong><span>Match <span aria-hidden="true">→</span></span>
           </a>
         {% endif %}
