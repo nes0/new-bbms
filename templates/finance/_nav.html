@@ -1,14 +1,14 @@
-<p class="actions">
-  <a href="{% url 'finance:overview' %}">Overview</a> ·
-  <a href="{% url 'finance:income' %}">Income and spending</a> ·
-  <a href="{% url 'finance:machines' %}">Machines</a> ·
-  <a href="{% url 'finance:received' %}">Money received</a> ·
-  <a href="{% url 'finance:payouts' %}">Payouts</a> ·
-  <a href="{% url 'finance:payments' %}">Payments</a> ·
-  <a href="{% url 'finance:charges' %}">Charges</a> ·
-  <a href="{% url 'finance:statements' %}">Bank statements</a> ·
-  <a href="{% url 'finance:bank-lines' %}">Bank lines</a> ·
-  <a href="{% url 'finance:matches' %}">Bank matches</a> ·
-  <a href="{% url 'expenses:index' %}">Expenses</a> ·
-  <a href="{% url 'finance:stats' %}">Stats</a>
-</p>
+<nav class="finance-tabs" aria-label="Finance sections">
+  <a class="finance-tab{% if request.resolver_match.url_name == 'overview' %} is-active{% endif %}" href="{% url 'finance:overview' %}"{% if request.resolver_match.url_name == 'overview' %} aria-current="page"{% endif %}>Overview</a>
+  <a class="finance-tab{% if request.resolver_match.url_name == 'income' %} is-active{% endif %}" href="{% url 'finance:income' %}"{% if request.resolver_match.url_name == 'income' %} aria-current="page"{% endif %}>Income &amp; spending</a>
+  <a class="finance-tab{% if request.resolver_match.url_name == 'machines' %} is-active{% endif %}" href="{% url 'finance:machines' %}"{% if request.resolver_match.url_name == 'machines' %} aria-current="page"{% endif %}>Machines</a>
+  <a class="finance-tab{% if request.resolver_match.url_name == 'received' %} is-active{% endif %}" href="{% url 'finance:received' %}"{% if request.resolver_match.url_name == 'received' %} aria-current="page"{% endif %}>Money received</a>
+  <a class="finance-tab{% if request.resolver_match.url_name == 'payouts' %} is-active{% endif %}" href="{% url 'finance:payouts' %}"{% if request.resolver_match.url_name == 'payouts' %} aria-current="page"{% endif %}>Payouts</a>
+  <a class="finance-tab{% if request.resolver_match.url_name == 'payments' %} is-active{% endif %}" href="{% url 'finance:payments' %}"{% if request.resolver_match.url_name == 'payments' %} aria-current="page"{% endif %}>Payments</a>
+  <a class="finance-tab{% if request.resolver_match.url_name == 'charges' %} is-active{% endif %}" href="{% url 'finance:charges' %}"{% if request.resolver_match.url_name == 'charges' %} aria-current="page"{% endif %}>Charges</a>
+  <a class="finance-tab{% if request.resolver_match.url_name == 'statements' %} is-active{% endif %}" href="{% url 'finance:statements' %}"{% if request.resolver_match.url_name == 'statements' %} aria-current="page"{% endif %}>Bank statements</a>
+  <a class="finance-tab{% if request.resolver_match.url_name == 'bank-lines' %} is-active{% endif %}" href="{% url 'finance:bank-lines' %}"{% if request.resolver_match.url_name == 'bank-lines' %} aria-current="page"{% endif %}>Bank lines</a>
+  <a class="finance-tab{% if request.resolver_match.url_name == 'matches' %} is-active{% endif %}" href="{% url 'finance:matches' %}"{% if request.resolver_match.url_name == 'matches' %} aria-current="page"{% endif %}>Bank matches</a>
+  <a class="finance-tab{% if request.resolver_match.namespace == 'expenses' %} is-active{% endif %}" href="{% url 'expenses:index' %}"{% if request.resolver_match.namespace == 'expenses' %} aria-current="page"{% endif %}>Expenses</a>
+  <a class="finance-tab{% if request.resolver_match.url_name == 'stats' %} is-active{% endif %}" href="{% url 'finance:stats' %}"{% if request.resolver_match.url_name == 'stats' %} aria-current="page"{% endif %}>Stats</a>
+</nav>
