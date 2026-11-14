@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ SITE_NAME }} members{% endblock %}</title>
-  <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+  <link rel="icon" href="/static/img/favicon.svg">
   <link rel="icon" href="{% static 'img/favicon.ico' %}" sizes="32x32">
   <link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
   <link rel="stylesheet" href="{% static 'css/site.css' %}">
@@ -15,11 +15,8 @@
   {% if user.is_authenticated %}
     <div class="portal">
       <aside class="portal-sidebar" id="portal-sidebar" aria-label="Main navigation">
-        <a class="portal-brand" href="{% url 'home' %}">
-          <span class="portal-brand__mark" aria-hidden="true">BB</span>
-          <span>{{ SITE_NAME }}</span>
-        </a>
-        <nav class="portal-nav">
+        <a class="portal-brand" href="{% url 'home' %}"><img class="logo" src="/static/img/logo.png" alt="{{ SITE_NAME }}" width="40" height="40"><span>{{ SITE_NAME }}</span></a>
+        <div class="portal-nav"><nav>
           <section class="portal-nav__group" aria-label="Your space">
             <h2 class="portal-nav__label">Your space</h2>
             <a class="portal-nav__link{% if request.path == '/' %} is-active{% endif %}" href="{% url 'home' %}"><span aria-hidden="true">⌂</span>Home</a>
@@ -41,11 +38,11 @@
           {% endif %}
           <section class="portal-nav__group" aria-label="Account">
             <h2 class="portal-nav__label">Account</h2>
-            <a class="portal-nav__link" href="{% url 'notifications:list' %}"><span aria-hidden="true">♧</span>Notifications{% if unread_notifications %}<span class="portal-badge">{{ unread_notifications }}</span>{% endif %}</a>
+            <a class="portal-nav__link" href="{% url 'notifications:list' %}"><span aria-hidden="true">♧</span>Notifications{% if unread_notifications %}<span class="badge" title="Unread">{{ unread_notifications }}</span>{% endif %}</a>
             <a class="portal-nav__link" href="{% url 'members:account' %}"><span aria-hidden="true">●</span>{{ user.get_short_name }}'s account</a>
             {% if user.is_staff %}<a class="portal-nav__link" href="{% url 'admin:index' %}"><span aria-hidden="true">⚙</span>Admin</a>{% endif %}
           </section>
-        </nav>
+          </nav></div>
         <div class="portal-sidebar__bottom">
           <a class="portal-nav__link" href="{% url 'resources' %}"><span aria-hidden="true">▤</span>Rules and policies</a>
           {% if IS_MEMBER %}<a class="portal-nav__link" href="{% url 'finance:stats' %}"><span aria-hidden="true">▥</span>Membership stats</a>
