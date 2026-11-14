@@ -83,6 +83,7 @@
       <nav><a href="{% url 'members:register' %}">Join</a><a href="{% url 'login' %}">Log in</a></nav>
     </header>
     {% if messages %}<ul class="messages">{% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}</ul>{% endif %}
+  {% endif %}
   <main class="{% if user.is_authenticated %}portal-main{% endif %}">{% block content %}{% endblock %}</main>
   {% if user.is_authenticated %}
     <footer class="portal-footer"><a href="{% url 'resources' %}">Rules and policies</a>{% if IS_MEMBER %}<a href="{% url 'feedback' %}">Feedback</a>{% endif %}</footer>
