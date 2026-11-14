@@ -1,33 +1,47 @@
 {% extends "base.html" %}
-
 {% block page_name %}Home{% endblock %}
 {% block title %}{% if user.is_authenticated %}Your member home{% else %}Welcome · {{ SITE_NAME }}{% endif %}{% endblock %}
-
 {% block content %}
   {% if user.is_authenticated %}
-    <section class="member-home" aria-labelledby="member-home-title">
-      <div class="member-home__identity">
-        {% if member_photo_url %}
-          <img class="member-home__photo" src="{{ member_photo_url }}" alt="Photo of {{ user.get_full_name }}" width="120" height="120">
-        {% else %}
-          <span class="member-home__photo member-home__photo--blank" aria-hidden="true">{{ user.given_name|slice:":1" }}{{ user.family_name|slice:":1" }}</span>
-        {% endif %}
-        <div>
-          <p class="eyebrow">Build Brighton · Member system</p>
-          <h1 id="member-home-title">Welcome, {{ user.get_short_name }}</h1>
-          <p class="member-home__status">Membership: <strong>{{ user.get_status_display }}</strong></p>
-          <p class="hint">{% if last_visit %}Last in {{ last_visit|date:"j F Y" }}{% else %}No visits recorded yet{% endif %}</p>
+    <div class="home-dashboard">
+      <section class="home-hero" aria-label="Your membership">
+        <div class="home-welcome">
+          <p class="eyebrow">Your Build Brighton membership</p>
+          <h1 id="member-home-title">Hello, {{ user.get_short_name }}</h1>
+          <p class="membership-status"><span class="membership-status__dot" aria-hidden="true"></span>Membership status: <strong>{{ user.get_status_display }}</strong></p>
+          <p class="home-welcome__description">Your space, your tools, your community.</p>
         </div>
-      </div>
-      <a class="button" href="{% url 'members:account' %}">Your account</a>
-    </section>
-
-    <section class="home-links" aria-label="Member tools">
-      <a class="home-link" href="{% url 'access:activity' %}"><span class="home-link__icon" aria-hidden="true">↗</span><strong>Who's in</strong><span>See who's at the space and browse recent activity.</span></a>
-      <a class="home-link" href="{% url 'equipment:index' %}"><span class="home-link__icon" aria-hidden="true">⚙</span><strong>Equipment</strong><span>Find machines, access details and training.</span></a>
-      <a class="home-link" href="{% url 'proposals:index' %}"><span class="home-link__icon" aria-hidden="true">✳</span><strong>Proposals</strong><span>Read proposals and have your say.</span></a>
-      <a class="home-link" href="{% url 'profiles:directory' %}"><span class="home-link__icon" aria-hidden="true">◎</span><strong>Members</strong><span>Meet the people who make the space.</span></a>
-    </section>
+        <aside class="home-presence">
+          <span class="home-presence__icon" aria-hidden="true">◉</span>
+          <h2>Who's in the space?</h2>
+          <p>See who's here and today's activity.</p>
+          <a class="home-presence__button" href="{% url 'access:activity' %}">View today's activity <span aria-hidden="true">→</span></a>
+        </aside>
+      </section>
+      <section class="quick-links-section" aria-labelledby="quick-links-title">
+        <div class="quick-links-heading">
+          <h2 id="quick-links-title">Quick links</h2>
+          <p>Pick up where you need to.</p>
+        </div>
+        <div class="quick-links">
+          <a class="quick-link" href="{% url 'equipment:index' %}">
+            <span class="quick-link__icon" aria-hidden="true">⚒</span>
+            <span class="quick-link__copy"><strong>Equipment</strong><small>Find machines, training and costs</small></span>
+            <span class="quick-link__arrow" aria-hidden="true">→</span>
+          </a>
+          <a class="quick-link" href="{% url 'proposals:index' %}">
+            <span class="quick-link__icon" aria-hidden="true">✦</span>
+            <span class="quick-link__copy"><strong>Proposals</strong><small>See ideas and have your say</small></span>
+            <span class="quick-link__arrow" aria-hidden="true">→</span>
+          </a>
+          <a class="quick-link" href="{% url 'resources' %}">
+            <span class="quick-link__icon" aria-hidden="true">▤</span>
+            <span class="quick-link__copy"><strong>Rules and policies</strong><small>Read how the space works</small></span>
+            <span class="quick-link__arrow" aria-hidden="true">→</span>
+          </a>
+        </div>
+      </section>
+    </div>
   {% else %}
     <section class="welcome-intro" aria-labelledby="welcome-title">
       <div>
