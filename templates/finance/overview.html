@@ -1,42 +1,101 @@
 {% extends "base.html" %}
 {% load money %}
 {% block title %}Finance · {{ SITE_NAME }}{% endblock %}
+{% block page_name %}Finance{% endblock %}
 {% block content %}
-<h1>Finance</h1>
-{% include "finance/_nav.html" %}
+<div class="finance-page">
+  <header class="finance-heading">
+    <div>
+      <p class="eyebrow">Trustee workspace</p>
+      <h1>Finance overview</h1>
+      <p class="hint">Review member credit, incoming payments and money owed to the space.</p>
+    </div>
+  </header>
 
-{% if figures.unmatched_payments or figures.unmatched_lines or figures.withdrawals_waiting %}
-<section class="card">
-  <h2>To do</h2>
-  <ul>
-    {% if figures.unmatched_payments %}<li><a href="{% url 'finance:payments' %}?unmatched=1">{{ figures.unmatched_payments }} payment{{ figures.unmatched_payments|pluralize }} nobody could match to a member</a></li>{% endif %}
-    {% if figures.unmatched_lines %}<li><a href="{% url 'finance:bank-lines' %}?outcome=unmatched">{{ figures.unmatched_lines }} bank line{{ figures.unmatched_lines|pluralize }} not matched yet</a></li>{% endif %}
-    {% if figures.withdrawals_waiting %}<li>{% if user.is_staff %}<a href="{% url 'admin:payments_withdrawalrequest_changelist' %}?status__exact=requested">{% endif %}{{ figures.withdrawals_waiting }} credit withdrawal request{{ figures.withdrawals_waiting|pluralize }} waiting{% if user.is_staff %}</a>{% else %} (handled in the admin site){% endif %}</li>{% endif %}
-  </ul>
-</section>
-{% endif %}
+  {% include "finance/_nav.html" %}
 
-<h2>Member credit</h2>
-<table class="table">
-  <tbody>
-    <tr><th>Held for members (what the space owes)</th><td class="number">{{ figures.credit_held|pounds }}</td><td class="hint">{{ figures.members_in_credit }} member{{ figures.members_in_credit|pluralize }}</td></tr>
-    <tr><th>Owed by members below £0</th><td class="number">{{ figures.credit_owed|pounds }}</td><td class="hint">{{ figures.members_below_zero }} member{{ figures.members_below_zero|pluralize }}</td></tr>
-    <tr><th>Paid into credit, ever</th><td class="number">{{ figures.credit_paid_in|pounds }}</td><td class="hint">top-ups and approved expenses</td></tr>
-    <tr><th>Spent or paid out of credit, ever</th><td class="number">{{ figures.credit_paid_out|pounds }}</td><td></td></tr>
-  </tbody>
-</table>
+  {% if figures.unmatched_payments or figures.unmatched_lines or figures.withdrawals_waiting %}
+    <section class="finance-todo" aria-labelledby="finance-todo-title">
+      <div class="finance-todo__intro">
+        <p class="eyebrow">Needs attention</p>
+        <h2 id="finance-todo-title">Finance tasks</h2>
+        <p class="hint">Open an item to review the records that need action.</p>
+      </div>
+      <div class="finance-task-grid">
+        {% if figures.unmatched_payments %}
+          <a class="finance-task" href="{% url 'finance:payments' %}?unmatched=1">
+            <strong>{{ figures.unmatched_payments }} unmatched payment{{ figures.unmatched_payments|pluralize }}</strong><span>Review <span aria-hidden="true">→</span></span>
+          </a>
+        {% endif %}
+        {% if figures.unmatched_lines %}
+          <a class="finance-task" href="{% url 'finance:bank-lines' %}?outcome=unmatched">
+            <strong>{{ figures.unmatched_lines }} unmatched bank line{{ figures.unmatched_lines|pluralize }}</strong><span>Match <span aria-hidden="true">→</span></span>
+          </a>
+        {% endif %}
+        {% if figures.withdrawals_waiting %}
+          {% if user.is_staff %}
+            <a class="finance-task" href="{% url 'admin:payments_withdrawalrequest_changelist' %}?status__exact=requested">
+              <strong>{{ figures.withdrawals_waiting }} withdrawal request{{ figures.withdrawals_waiting|pluralize }} waiting</strong><span>Review <span aria-hidden="true">→</span></span>
+            </a>
+          {% else %}
+            <div class="finance-task"><strong>{{ figures.withdrawals_waiting }} withdrawal request{{ figures.withdrawals_waiting|pluralize }} waiting</strong><span>Handled in the admin site</span></div>
+          {% endif %}
+        {% endif %}
+      </div>
+    </section>
+  {% endif %}
 
-<h2>Storage and keys</h2>
-<table class="table">
-  <tbody>
-    <tr><th>Box fees collected</th><td class="number">{{ figures.box_fees|pounds }}</td><td></td></tr>
-    <tr><th>Locker rent collected</th><td class="number">{{ figures.locker_rent|pounds }}</td><td></td></tr>
-    <tr><th>Locker rent unpaid</th><td class="number">{{ figures.locker_rent_unpaid|pounds }}</td><td class="hint">{% if figures.locker_rent_unpaid_count %}<a href="{% url 'finance:charges' %}?kind=locker-rent&status=due">{{ figures.locker_rent_unpaid_count }} charge{{ figures.locker_rent_unpaid_count|pluralize }}</a> due or failed{% endif %}</td></tr>
-    <tr><th>Key deposits held</th><td class="number">{{ figures.key_deposits|pounds }}</td><td></td></tr>
-  </tbody>
-</table>
+  <section class="finance-statgrid" aria-label="Member credit totals">
+    <article class="finance-stat card">
+      <span>Credit held for members</span>
+      <strong>{{ figures.credit_held|pounds }}</strong>
+      <small>{{ figures.members_in_credit }} member{{ figures.members_in_credit|pluralize }}</small>
+    </article>
+    <article class="finance-stat card">
+      <span>Owed by members</span>
+      <strong>{{ figures.credit_owed|pounds }}</strong>
+      <small>{{ figures.members_below_zero }} member{{ figures.members_below_zero|pluralize }} below £0</small>
+    </article>
+    <article class="finance-stat card">
+      <span>Paid into credit, ever</span>
+      <strong>{{ figures.credit_paid_in|pounds }}</strong>
+      <small>Top-ups and approved expenses</small>
+    </article>
+    <article class="finance-stat card">
+      <span>Spent or paid out, ever</span>
+      <strong>{{ figures.credit_paid_out|pounds }}</strong>
+      <small>From member credit</small>
+    </article>
+  </section>
 
-<p>See also: <a href="{% url 'finance:income' %}">income and spending by heading</a>, and
-  <a href="{% url 'finance:machines' %}">what each machine has made</a>.</p>
-{% if figures.laser_investment %}<p class="hint">Members' investment in the laser cutter (legacy): {{ figures.laser_investment|pounds }}.</p>{% endif %}
+  <section class="finance-section" aria-labelledby="finance-storage-title">
+    <div class="finance-section__heading">
+      <div>
+        <h2 id="finance-storage-title">Storage and keys</h2>
+        <p class="hint">Fees collected and deposits currently held.</p>
+      </div>
+    </div>
+    <div class="finance-table-wrap">
+      <table class="finance-table">
+        <thead><tr><th scope="col">Finance item</th><th scope="col">Amount</th><th scope="col">Details</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Box fees collected</th><td class="number">{{ figures.box_fees|pounds }}</td><td>Paid box fees</td></tr>
+          <tr><th scope="row">Locker rent collected</th><td class="number">{{ figures.locker_rent|pounds }}</td><td>Rent received to date</td></tr>
+          <tr>
+            <th scope="row">Locker rent unpaid</th><td class="number">{{ figures.locker_rent_unpaid|pounds }}</td>
+            <td>{% if figures.locker_rent_unpaid_count %}<a href="{% url 'finance:charges' %}?kind=locker-rent&status=due">{{ figures.locker_rent_unpaid_count }} charge{{ figures.locker_rent_unpaid_count|pluralize }}</a> due or failed{% else %}No unpaid rent{% endif %}</td>
+          </tr>
+          <tr><th scope="row">Key deposits held</th><td class="number">{{ figures.key_deposits|pounds }}</td><td>Active deposits</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="finance-shortcuts" aria-label="More finance reports">
+    <a class="finance-shortcut" href="{% url 'finance:income' %}"><span class="finance-shortcut__icon" aria-hidden="true">£</span><span><strong>Income and spending</strong><small>Review totals by heading and period.</small></span><span aria-hidden="true">→</span></a>
+    <a class="finance-shortcut" href="{% url 'finance:machines' %}"><span class="finance-shortcut__icon" aria-hidden="true">⚙</span><span><strong>Machine income</strong><small>See what each machine has made.</small></span><span aria-hidden="true">→</span></a>
+  </section>
+
+  {% if figures.laser_investment %}<p class="hint finance-footnote">Members' investment in the laser cutter (legacy): {{ figures.laser_investment|pounds }}.</p>{% endif %}
+</div>
 {% endblock %}
