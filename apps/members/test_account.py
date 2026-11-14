@@ -1,5 +1,6 @@
 """The member's own account page (spec 03 §3.1, §3.7–3.8, 02 §2.3)."""
 
+import re
 from datetime import timedelta
 
 from django.test import TestCase
@@ -68,6 +69,23 @@ class AccountPageTests(TestCase):
         self.member.status = Member.Status.SETTING_UP
         self.member.save()
         self.assertContains(self.client.get("/account/"), "Next steps")
+
+    def test_every_link_opens_for_a_new_member(self):
+        """A member who is still setting up can't open the equipment or expenses pages yet, so the account page
+        doesn't link to them. Pages that explain why they're closed (paying before the email is confirmed) are fine."""
+        self.member.status = Member.Status.SETTING_UP
+        self.member.email_verified_at = None
+        self.member.save()
+        for verified in (False, True):
+            if verified:
+                self.member.email_verified_at = timezone.now()
+                self.member.save()
+            page = self.client.get("/account/").content.decode()
+            links = {link for link in re.findall(r'href="(/[^"#?]*)', page) if not link.startswith("/static/")}
+            self.assertIn("/account/id-documents/", links)
+            for link in links:
+                with self.subTest(verified=verified, link=link):
+                    self.assertNotEqual(self.client.get(link).status_code, 404)
 
 
 class EditDetailsTests(TestCase):
