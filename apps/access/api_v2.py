@@ -171,6 +171,9 @@ def check_in(request):
     reported = data.get("cache_version") or ""
     if not isinstance(firmware, str) or not isinstance(reported, str):
         raise ApiError(400, "bad_field", "firmware_version and cache_version must be strings.")
+    update = data.get("firmware_update")
+    if update is not None and not isinstance(update, dict):
+        raise ApiError(400, "bad_field", "firmware_update must be an object or null.")
 
     now = timezone.now()
     if event == "boot":
@@ -186,8 +189,25 @@ def check_in(request):
     if version and reported != version and "refresh_cache" not in commands:
         commands.append("refresh_cache")
     device.pending_commands = []
+    target = device.target_firmware
+    if target is not None:
+        # The reader says why an update to the wanted version hasn't worked; reaching it clears that.
+        if device.firmware_version == target.version:
+            device.firmware_update_error, device.firmware_update_error_at = "", None
+        elif update and update.get("version") == target.version and update.get("error"):
+            error = str(update["error"])[:250]
+            if error != device.firmware_update_error:
+                device.firmware_update_error, device.firmware_update_error_at = error, now
     device.save(
-        update_fields=["last_boot", "last_heartbeat", "firmware_version", "reported_cache_version", "pending_commands"]
+        update_fields=[
+            "last_boot",
+            "last_heartbeat",
+            "firmware_version",
+            "reported_cache_version",
+            "pending_commands",
+            "firmware_update_error",
+            "firmware_update_error_at",
+        ]
     )
 
     site_settings = SiteSettings.load()
@@ -198,6 +218,8 @@ def check_in(request):
         "cache_version": version,
         "commands": commands,
     }
+    if target is not None:
+        body["firmware"] = {"version": target.version}
     if device.role == Device.Role.EQUIPMENT:
         from apps.equipment.api_v2 import machine_payload
         from apps.equipment.device_api import equipment_for_device
@@ -206,6 +228,36 @@ def check_in(request):
         if equipment is not None:
             body["machine"] = machine_payload(equipment)
     return JsonResponse(body)
+
+
+# --- firmware updates (apps/access/firmware.py) ---
+
+
+def _target_firmware(device):
+    if device.target_firmware_id is None:
+        raise ApiError(404, "no_firmware", "No firmware has been chosen for this device.")
+    return device.target_firmware
+
+
+@require_http_methods(["GET"])
+@device_api_v2
+def firmware_manifest(request):
+    """The files of the firmware this device should run."""
+    from .firmware import manifest
+
+    return JsonResponse(manifest(_target_firmware(request.device)))
+
+
+@require_http_methods(["GET"])
+@device_api_v2
+def firmware_file(request, sha256):
+    """One file of the firmware this device should run, by its SHA-256 from the manifest."""
+    file = _target_firmware(request.device).files.filter(sha256=sha256.lower()).first()
+    if file is None:
+        raise ApiError(404, "no_such_file", "The firmware chosen for this device has no such file.")
+    response = HttpResponse(bytes(file.content), content_type="application/octet-stream")
+    response["ETag"] = f'"{file.sha256}"'
+    return response
 
 
 def _can_list(device) -> bool:

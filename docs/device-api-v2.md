@@ -32,6 +32,7 @@ brief, spec 09.
 | `meter` | every 60 s while the motor runs, and when a session ends |
 | `current` | every 2 s while `machine.meter.report_current` is true |
 | `allowed-fobs` | when check-in returns `refresh_cache` or a `cache_version` you don't hold |
+| `firmware/manifest` | when check-in's `firmware.version` isn't the version you run, and nobody is using the device |
 
 The two intervals are admin settings in BBMS (300 and 60 to start with, limits 60–3600 and 15–600 seconds). Always
 use the values from the latest check-in, and the machine's `minimum_minutes` from the latest `machine` object.
@@ -39,16 +40,19 @@ use the values from the latest check-in, and the machine's `minimum_minutes` fro
 ## `POST check-in`
 
 ```json
-{"event": "boot", "firmware_version": "1.0.3", "cache_version": "9f2c41d0"}
+{"event": "boot", "firmware_version": "1.0.3", "cache_version": "9f2c41d0", "firmware_update": null}
 ```
-`event` is `boot` or `heartbeat`; `cache_version` is `null` if you hold nothing.
+`event` is `boot` or `heartbeat`; `cache_version` is `null` if you hold nothing. `firmware_update` is optional: see
+[Firmware updates](#firmware-updates).
 
 ```json
 {"server_time": 1793914428, "heartbeat_seconds": 300, "session_heartbeat_seconds": 60,
- "cache_version": "9f2c41d0", "commands": ["refresh_cache"], "machine": {"...": "equipment readers only"}}
+ "cache_version": "9f2c41d0", "commands": ["refresh_cache"], "firmware": {"version": "1.0.4"},
+ "machine": {"...": "equipment readers only"}}
 ```
-`commands` can contain `refresh_cache`, `purge_cache`, `reboot`, `disable`. Each admin-queued command is sent once.
-`disable` is sent at every check-in while the device is disabled.
+`commands` can contain `refresh_cache`, `purge_cache`, `reboot`, `retry_firmware`, `disable`. Each admin-queued
+command is sent once. `disable` is sent at every check-in while the device is disabled. `firmware` is only there
+when an admin has chosen a firmware for this device.
 
 ### The `machine` object
 (also in `access`, `end` and `machine-status` responses)
@@ -97,7 +101,10 @@ Body `{}`. Open session:
 Already ended (200, not an error): `{"open": false, "ended_by": "tidy-up", ...the end summary}`; go back to idle.
 
 ## `POST sessions/{id}/end`
-Tap-out `{"card": "..."}` or the end button `{"ended_by": "button"}`.
+Tap-out `{"card": "..."}` or the end button `{"ended_by": "button"}`. If you couldn't reach BBMS when it happened
+and are sending this later, add `"ended_at": 1793913600`: the session ends then, not when the request arrives. A
+time that isn't within the session (before it started, or in the future) is ignored. If BBMS closed the session
+itself in the meantime (an hour without a heartbeat), you get the usual `already_ended: true`.
 ```json
 {"ended": true, "already_ended": false, "duration_seconds": 3720, "fee_pence": 310, "removed": false,
  "session_reason": "", "balance_pence": -310, "machine": {"...": ""}}
@@ -146,6 +153,10 @@ could start a session ignoring credit and machine status. Send `If-None-Match: "
 Response: `{"results": [{"id": "a1b2-17", "result": "recorded"}]}` where result is `recorded`, `duplicate`,
 `unknown_fob`, `overlap` or `invalid`. **Delete every event that has a result**; only a non-200 means try again.
 
+BBMS keeps each event as it was sent, so you can add fields of your own for whoever looks at it later. The ESP32
+machine reader adds `"clock": "estimated"` when it didn't know the time for certain (it started up without BBMS and
+was switched off again before BBMS came back): such times are early by however long the reader was off.
+
 ## `GET qr`
 A QR code for the device's page (raw bytes, `ETag`, `?format=json`). Format: spec 05 §5.4.
 
@@ -172,8 +183,43 @@ may be shown; `400 bad_field` for a bad size or format.
 A working example of a screen using `occupancy` and `photos/{id}` is the fake exit node, `/dev/fake-exit/` on a
 development server (spec 09 §9.8).
 
+## Firmware updates
+
+An admin uploads a firmware release to BBMS and chooses the devices that should run it (admin > Access > Firmware
+releases). A release is a version name and a set of files; BBMS doesn't know or care what is in them.
+
+1. **Check-in** says which version the device should run: `"firmware": {"version": "1.0.4"}`. No `firmware` key
+   means nothing has been chosen: carry on as you are. If the version is the one you report as `firmware_version`,
+   there is nothing to do.
+2. **`GET firmware/manifest`** lists the chosen release's files:
+   ```json
+   {"version": "1.0.4", "files": [{"path": "reader.py", "size": 23771, "sha256": "9c1f…64 hex characters"}]}
+   ```
+   Paths are relative, lower case, `.py` or `.mpy`, and may have folders (`font/big.py`). The list is the whole
+   firmware: a file you hold that isn't in it should be removed.
+3. **`GET firmware/files/{sha256}`** returns one file's bytes (`application/octet-stream`, with `Content-Length`).
+   Fetch only the files whose SHA-256 differs from what you hold, and check each download against the manifest's
+   `size` and `sha256` before using it. Both endpoints answer `404` if nothing is chosen for this device, or the
+   chosen release has no such file (the admin changed the choice while you were downloading: start again at the
+   next check-in).
+4. **Tell BBMS how it went.** Success needs nothing special: once your `firmware_version` at check-in equals the
+   chosen version, BBMS shows the device as up to date. If an update fails, send
+   `"firmware_update": {"version": "1.0.4", "error": "why, in a few words"}` with each check-in until it stops being
+   true. BBMS shows the error to the admin (250 characters at most), and ignores one for any version but the chosen
+   one.
+5. **`retry_firmware`** in `commands` means an admin wants a failed update tried again. A device that refuses to
+   retry a version it has had to roll back should forget that refusal.
+
+What BBMS expects of the device, since it can't enforce it:
+- Update only when nobody is using the device (no open session).
+- Keep the old firmware until the new one has checked in successfully, and go back to it if that doesn't happen.
+- Never let an update replace the code that does the going back.
+
+The ESP32 machine reader does all of this; its loader (`app/main.py` in the firmware repository) describes how.
+
 ## Open questions
 - **Offline machine use:** may trained members start sessions while BBMS is unreachable, given credit can't be
-  checked? The API supports either; the firmware decides whether to start sessions offline.
+  checked? The API supports either; the firmware decides whether to start sessions offline. The ESP32 machine
+  reader does, unless `offline_use` is false in its settings; its README says how it judges that BBMS is unreachable.
 - **Display names:** what readers may show (trustees).
 - **Card format:** which of decimal or hex the new readers give. Both work.

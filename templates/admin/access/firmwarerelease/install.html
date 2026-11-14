@@ -1,0 +1,46 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; <a href="{% url opts|admin_urlname:'change' release.pk %}">{{ release.version }}</a>
+  &rsaquo; Choose readers
+</div>
+{% endblock %}
+{% block content %}
+<p>Tick the readers that should run firmware <strong>{{ release.version }}</strong>. Each updates itself at its next
+  check-in when nobody is using the machine, and restarts. If the new firmware doesn't work on a reader, that reader
+  goes back to its old firmware by itself and says so here.</p>
+<p>Try a new release on one reader first. Unticking a reader stops an update that hasn't happened yet; it doesn't put
+  older firmware back.</p>
+{% if rows %}
+<form method="post">
+  {% csrf_token %}
+  <table>
+    <thead>
+      <tr><th></th><th>Reader</th><th>Role</th><th>Running</th><th>Last heard from</th><th>Update</th></tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td><input type="checkbox" name="devices" value="{{ row.device.pk }}" id="device-{{ row.device.pk }}"
+                   {% if row.ticked %}checked{% endif %}></td>
+        <td><label for="device-{{ row.device.pk }}">{{ row.device.name }}</label></td>
+        <td>{{ row.device.get_role_display }}</td>
+        <td>{{ row.device.firmware_version }}</td>
+        <td>{{ row.device.last_heartbeat|default:"never" }}</td>
+        <td>{% if row.status %}{{ row.status }}{% elif row.other %}chosen for {{ row.other.version }}{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="submit-row">
+    <input type="submit" value="Save" class="default">
+  </div>
+</form>
+{% else %}
+<p>No reader has checked in with firmware that can update itself yet.</p>
+{% endif %}
+{% endblock %}

@@ -194,8 +194,9 @@
   async function checkIn(event) {
     const result = await api("POST", "check-in", {
       event,
-      firmware_version: FIRMWARE_VERSION,
+      firmware_version: flash.get("firmwareVersion", FIRMWARE_VERSION),
       cache_version: flash.get("cacheVersion", null),
+      firmware_update: ram.updateError || null,
     });
     if (!result) return;
     if (!result.ok) {
@@ -217,7 +218,38 @@
     }
     if (data.machine) applyMachine(data.machine);
     draw();
-    if (commands.includes("reboot")) reboot();
+    if (commands.includes("reboot")) return reboot();
+    const wanted = data.firmware && data.firmware.version;
+    if (wanted && wanted !== flash.get("firmwareVersion", FIRMWARE_VERSION) && !ram.session) {
+      await updateFirmware(wanted);
+    }
+  }
+
+  // A firmware update, as far as a web page can pretend one: download every file of the release BBMS has
+  // chosen, check each against the manifest, then "restart" reporting the new version. (The real reader
+  // also keeps its old firmware and goes back to it if the new one doesn't work.)
+  async function updateFirmware(version) {
+    showMessage(["Updating software", "Please wait"], 3600);
+    const fail = (error) => {
+      ram.updateError = { version, error };
+      logNote(`firmware update to ${version} failed: ${error}`);
+      ram.message = null;
+      draw();
+    };
+    const manifest = await api("GET", "firmware/manifest");
+    if (!manifest) return;
+    if (!manifest.ok || manifest.data.version !== version) return fail("no manifest");
+    for (const file of manifest.data.files) {
+      const result = await api("GET", "firmware/files/" + file.sha256, undefined, { binary: true });
+      if (!result) return;
+      if (result.status !== 200 || !result.data) return fail(`${file.path}: ${result.status}`);
+      const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", result.data));
+      const hex = Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
+      if (result.data.length !== file.size || hex !== file.sha256) return fail(`${file.path} arrived damaged`);
+    }
+    logNote(`firmware ${version} downloaded (${manifest.data.files.length} files): restarting`);
+    flash.set("firmwareVersion", version);
+    reboot();
   }
 
   function logNote(text) {

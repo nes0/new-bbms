@@ -104,6 +104,7 @@ AcsNode (devices)   Settings (key/value)   AuditLog
 - **`acs_nodes`**: `name`, `device_id` (matches equipment `slug` for equipment nodes), `api_key`, `entry_device` (door vs equipment; **new:** a `role` of `entry`, `exit` or `equipment`), `monitor_heartbeat`, `last_boot`, `last_heartbeat`, `queued_command` (one pending command delivered on next check-in).
 - **New** (05 §5.1–5.2): `fob_enrolments` (reader, member, opened by, opens at, expires at, captured card number and
   hex id, confirmed by/at); access log events gain a `kind`: `entry`, `check-in`, `exit`, `refused`.
+  **New (2026-11-14):** `target_firmware` (the firmware release an admin has chosen for the device) and `firmware_update_error` (+ `_at`): why the device says its last update failed. `firmware_releases` (`version`, `notes`, uploaded at/by) and `firmware_files` (`release`, `path`, `sha256`, `size`, `content`: the file itself, in the database) hold the releases (05 §5.4).
 - **`access_log`** (`Activity`): `user_id`, `key_fob_id`, `service` (e.g. `main-door`, `status`, device id), `response` (e.g. 402 = refused), `delayed` (event reported late by the device).
 - **`equipment_log`** (usage sessions): `user_id`, `key_fob_id`, `device` (equipment slug), `active`, `started`, `last_update` (heartbeat), `finished`, `removed` (≤ 60 s, ignored), `billed`, `processed`, `reason` (`''`, `training`, `testing`), `notes`.
 

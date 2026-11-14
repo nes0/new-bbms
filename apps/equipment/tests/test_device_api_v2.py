@@ -177,6 +177,32 @@ class SessionEndTests(MachineTestCase):
         self.assertTrue(again["already_ended"])
         self.assertEqual(again["fee_pence"], first["fee_pence"])
 
+    def test_an_end_sent_late_says_when_it_happened(self):
+        # The reader couldn't reach BBMS when the member tapped out an hour ago.
+        session_id = self.start()
+        self.age(session_id, 7320)
+        ended = int(timezone.now().timestamp()) - 3600
+        body = self.call(self.reader, f"sessions/{session_id}/end", {"card": "100", "ended_at": ended}).json()
+        self.assertEqual((body["ended"], body["fee_pence"]), (True, 310))
+        self.assertAlmostEqual(body["duration_seconds"], 3720, delta=1)
+        self.assertEqual(int(UsageSession.objects.get(pk=session_id).ended_at.timestamp()), ended)
+
+    def test_an_end_time_outside_the_session_is_not_believed(self):
+        for card, wrong in (("100", -7200), ("200", 3600)):  # before it started; in the future
+            with self.subTest(wrong):
+                session_id = self.start(card)
+                self.age(session_id, 3720)
+                ended = int(timezone.now().timestamp()) + wrong
+                body = self.call(self.reader, f"sessions/{session_id}/end", {"card": card, "ended_at": ended})
+                self.assertAlmostEqual(body.json()["duration_seconds"], 3720, delta=1)
+
+    def test_an_end_time_that_is_not_a_time_is_400(self):
+        session_id = self.start()
+        for rubbish in ("soon", -5, 1.5, True):
+            response = self.call(self.reader, f"sessions/{session_id}/end", {"card": "100", "ended_at": rubbish})
+            self.assertEqual(response.status_code, 400)
+        self.assertTrue(UsageSession.objects.get(pk=session_id).is_open)
+
     def test_a_session_of_60_seconds_or_less_is_removed_and_free(self):
         session_id = self.start()
         body = self.call(self.reader, f"sessions/{session_id}/end", {"card": "100"}).json()
