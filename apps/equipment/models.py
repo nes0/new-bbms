@@ -5,6 +5,7 @@ All money is in pence.
 """
 
 import uuid
+from datetime import timedelta
 from decimal import Decimal
 
 from django.conf import settings
@@ -77,6 +78,9 @@ class Equipment(models.Model):
         null=True, blank=True, help_text="Current-draw machines only. Empty = off."
     )
     service_interval_hours = models.PositiveIntegerField(null=True, blank=True, help_text="Empty = no reminders.")
+    # While set and in the future, the reader sends its current readings every few seconds, so an admin can watch
+    # them and choose a threshold (05 §5.4, live current). Set from the machine's "Live current" admin page.
+    report_current_until = models.DateTimeField(null=True, blank=True, editable=False)
 
     # Bumped whenever something a reader shows or uses changes, so readers know to re-read it (spec 09 §9.4).
     config_version = models.PositiveIntegerField(default=1, editable=False)
@@ -343,6 +347,26 @@ class MeterReading(models.Model):
 
     def __str__(self):
         return f"{self.equipment} · {self.active_seconds}s · #{self.seq}"
+
+
+class CurrentSample(models.Model):
+    """One current reading, sent while an admin is watching the machine's live current (05 §5.4).
+
+    Only kept for a day: they're for choosing a threshold, not for history.
+    """
+
+    KEEP_FOR = timedelta(days=1)
+
+    equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name="current_samples")
+    device = models.ForeignKey("access.Device", on_delete=models.CASCADE, related_name="+")
+    amps = models.DecimalField(max_digits=7, decimal_places=2)
+    measured_at = models.DateTimeField()
+
+    class Meta:
+        indexes = [models.Index(fields=["equipment", "measured_at"])]
+
+    def __str__(self):
+        return f"{self.equipment} · {self.amps} A · {self.measured_at:%H:%M:%S}"
 
 
 class ServiceRecord(models.Model):

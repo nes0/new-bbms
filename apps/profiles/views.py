@@ -12,12 +12,13 @@ Who sees what:
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group
-from django.db.models import Prefetch, Q
+from django.db.models import Max, Prefetch, Q
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods, require_POST
 
+from apps.access.models import AccessEvent
 from apps.members.models import Member, MemberPhoto
 from apps.site_settings.models import SiteSettings
 
@@ -83,20 +84,56 @@ def directory(request):
         return redirect(f"{reverse('login')}?next={request.path}")
     query = request.GET.get("q", "").strip()
     skill = request.GET.get("skill", "")
+    current_member = is_member(request.user)
+    role = request.GET.get("role", "all") if current_member else "all"
+    sort = request.GET.get("sort", "alphabetical") if current_member else "alphabetical"
+    if role not in {"all", "trustees", "members"}:
+        role = "all"
+    if sort not in {"alphabetical", "last-in"}:
+        sort = "alphabetical"
     if query:
         members = members.filter(Q(given_name__icontains=query) | Q(family_name__icontains=query))
+    if current_member and role == "trustees":
+        members = members.filter(groups__name=TRUSTEE_ROLE).distinct()
+    elif current_member and role == "members":
+        members = members.exclude(groups__name=TRUSTEE_ROLE)
     if skill in skills.BY_KEY:
         # JSON "contains" isn't available on every database, so filter here (a few hundred members at most).
         members = [m for m in _with_photos(members) if skill in _profile(m).skills]
     else:
-        members = _with_photos(members)
-    members = sorted(members, key=lambda m: (m.given_name.lower(), m.family_name.lower()))
+        members = list(_with_photos(members))
+    cards = [_card(request.user, member) for member in members]
+    if current_member and cards:
+        latest_entries = (
+            AccessEvent.objects.filter(
+                kind__in=(AccessEvent.Kind.ENTRY, AccessEvent.Kind.CHECK_IN),
+                member_id__in=[card["member"].pk for card in cards],
+            )
+            .values("member_id")
+            .annotate(last_in=Max("occurred_at"))
+        )
+        last_in_by_member = {row["member_id"]: row["last_in"] for row in latest_entries}
+        for card in cards:
+            card["last_in"] = last_in_by_member.get(card["member"].pk)
+    if sort == "last-in" and current_member:
+        cards.sort(
+            key=lambda card: (
+                card["last_in"] is None,
+                -(card["last_in"].timestamp()) if card["last_in"] else 0,
+                card["member"].given_name.lower(),
+                card["member"].family_name.lower(),
+            )
+        )
+    else:
+        cards.sort(key=lambda card: (card["member"].given_name.lower(), card["member"].family_name.lower()))
     context = {
-        "cards": [_card(request.user, m) for m in members],
+        "cards": cards,
         "q": query,
         "skill": skill,
         "skills": skills.SKILLS,
-        "is_member": is_member(request.user),
+        "is_member": current_member,
+        "role": role,
+        "sort": sort,
     }
     return render(request, "profiles/directory.html", context)
 

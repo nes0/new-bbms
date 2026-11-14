@@ -288,6 +288,12 @@ if it's out of order, that status and note.
       when it's **above a threshold**. The threshold (in amps) is set per machine in the admin panel and sent to the
       reader in the check-in reply (`meter.current_threshold_amps`); changing it bumps `config_version`, so readers
       pick it up within one check-in.
+    - **Live current, for choosing the threshold** (built 2026-11-14): on a machine's *Live current* admin page an
+      admin switches reporting on for 15 minutes (it stops by itself; *Keep going* restarts the 15 minutes). The
+      machine object then says `meter.report_current: true`, and the reader sends its once-a-second readings every
+      2 seconds (`POST current`) and shows the reading on its screen. The page draws the last 5 minutes against the
+      threshold, shows the lowest and highest of the last minute, and saves a new threshold. It works in either mode,
+      so a threshold can be chosen before a machine is switched to current draw. Readings are kept for a day.
     - **Tapped-in time** (`mode: "session"`): running time is the time a member is tapped in. The reader doesn't
       need a current sensor and doesn't send meter readings; BBMS works it out from session start and end times.
 - In current mode the reader reports `POST meter` with `{active_seconds (since its last report), seq (a counter

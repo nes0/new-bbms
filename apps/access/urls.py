@@ -27,6 +27,7 @@ urlpatterns = [
     path("api/devices/v2/sessions/<int:session_id>/end", machine_api.session_end, name="v2-end"),
     path("api/devices/v2/machine-status", machine_api.machine_status, name="v2-machine-status"),
     path("api/devices/v2/meter", machine_api.meter, name="v2-meter"),
+    path("api/devices/v2/current", machine_api.current, name="v2-current"),
     # Activity and who's in the space (06 §6.7)
     path("activity/", activity_views.activity_page, name="activity"),
     path("activity/in-now/", activity_views.in_now, name="in-now"),

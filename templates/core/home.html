@@ -1,13 +1,66 @@
 {% extends "base.html" %}
 
+{% block title %}{% if user.is_authenticated %}Your member home{% else %}Welcome · {{ SITE_NAME }}{% endif %}{% endblock %}
+
 {% block content %}
-  <h1>{{ SITE_NAME }} members</h1>
   {% if user.is_authenticated %}
-    <p>Hello {{ user.get_short_name }}. Your membership status is <strong>{{ user.get_status_display }}</strong>.</p>
-    <p><a href="{% url 'access:activity' %}">Who's in the space, and today's activity</a></p>
+    <section class="member-home" aria-labelledby="member-home-title">
+      <div class="member-home__identity">
+        {% if member_photo_url %}
+          <img class="member-home__photo" src="{{ member_photo_url }}" alt="Photo of {{ user.get_full_name }}" width="120" height="120">
+        {% else %}
+          <span class="member-home__photo member-home__photo--blank" aria-hidden="true">{{ user.given_name|slice:":1" }}{{ user.family_name|slice:":1" }}</span>
+        {% endif %}
+        <div>
+          <p class="eyebrow">Build Brighton · Member system</p>
+          <h1 id="member-home-title">Welcome, {{ user.get_short_name }}</h1>
+          <p class="member-home__status">Membership: <strong>{{ user.get_status_display }}</strong></p>
+          <p class="hint">{% if last_visit %}Last in {{ last_visit|date:"j F Y" }}{% else %}No visits recorded yet{% endif %}</p>
+        </div>
+      </div>
+      <a class="button" href="{% url 'members:account' %}">Your account</a>
+    </section>
+
+    <section class="home-links" aria-label="Member tools">
+      <a class="home-link" href="{% url 'access:activity' %}"><span class="home-link__icon" aria-hidden="true">↗</span><strong>Who's in</strong><span>See who's at the space and browse recent activity.</span></a>
+      <a class="home-link" href="{% url 'equipment:index' %}"><span class="home-link__icon" aria-hidden="true">⚙</span><strong>Equipment</strong><span>Find machines, access details and training.</span></a>
+      <a class="home-link" href="{% url 'proposals:index' %}"><span class="home-link__icon" aria-hidden="true">✳</span><strong>Proposals</strong><span>Read proposals and have your say.</span></a>
+      <a class="home-link" href="{% url 'profiles:directory' %}"><span class="home-link__icon" aria-hidden="true">◎</span><strong>Members</strong><span>Meet the people who make the space.</span></a>
+    </section>
   {% else %}
-    <p>This is the new membership system, under construction. <a href="{% url 'login' %}">Log in</a> to continue,
-      or <a href="{% url 'members:register' %}">join</a>.</p>
+    <section class="welcome-intro" aria-labelledby="welcome-title">
+      <div>
+        <p class="eyebrow">Build Brighton · Member system</p>
+        <h1 id="welcome-title">Welcome to the Build Brighton Member System</h1>
+        <p class="welcome-lead">Sign up to Build Brighton, manage your subscription and take care of the other parts of your membership — all in one place.</p>
+      </div>
+      <aside class="welcome-note" aria-label="What you can do here">
+        <h2>Your membership, in one place</h2>
+        <ul>
+          <li><span class="welcome-tick" aria-hidden="true">✓</span><span>Join the Build Brighton community</span></li>
+          <li><span class="welcome-tick" aria-hidden="true">✓</span><span>Manage your membership and subscription</span></li>
+          <li><span class="welcome-tick" aria-hidden="true">✓</span><span>Find member tools and workshop information</span></li>
+        </ul>
+      </aside>
+    </section>
+    <section class="welcome-pathways" aria-label="Choose your next step">
+      <article class="welcome-card welcome-card--join">
+        <span class="welcome-icon" aria-hidden="true">+</span>
+        <h2>New to Build Brighton?</h2>
+        <p>Find out about membership and take the first step towards joining our makerspace.</p>
+        <a class="button button--light" href="{% url 'members:register' %}">Become a member <span aria-hidden="true">→</span></a>
+      </article>
+      <article class="welcome-card">
+        <span class="welcome-icon" aria-hidden="true">↗</span>
+        <h2>Already a member?</h2>
+        <p>Sign in to manage your subscription and the other parts of your membership.</p>
+        <a class="button" href="{% url 'login' %}">Member log in <span aria-hidden="true">→</span></a>
+      </article>
+    </section>
+    <section class="welcome-secondary" aria-label="More information">
+      <p>Want to know more about the workshop?</p>
+      <a href="https://www.buildbrighton.com/" target="_blank" rel="noopener">Visit buildbrighton.com ↗</a>
+    </section>
     {% if in_space is not None %}
       <p class="occupancy">{% if in_space %}{{ in_space }} {{ in_space|pluralize:"person is,people are" }} in the space now.{% else %}Nobody is in the space just now.{% endif %}</p>
     {% endif %}
