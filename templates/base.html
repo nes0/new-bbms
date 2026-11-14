@@ -76,7 +76,7 @@
     </script>
   {% else %}
     <header class="site-header">
-      <a class="site-name" href="{% url 'home' %}"><img class="logo" src="{% static 'img/logo.png' %}" alt="{{ SITE_NAME }}" width="40" height="40"></a>
+      <a class="site-name" href="{% url 'home' %}"><img class="logo" src="/static/img/logo.png" alt="{{ SITE_NAME }}" width="40" height="40"></a>
       <nav><a href="{% url 'members:register' %}">Join</a><a href="{% url 'login' %}">Log in</a></nav>
     </header>
     {% if messages %}<ul class="messages">{% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}</ul>{% endif %}
