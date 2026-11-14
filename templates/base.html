@@ -65,10 +65,6 @@
           </div>
         </header>
         {% if messages %}<ul class="messages">{% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}</ul>{% endif %}
-        <main class="portal-main">{% block content %}{% endblock %}</main>
-        <footer class="portal-footer"><a href="{% url 'resources' %}">Rules and policies</a>{% if IS_MEMBER %}<a href="{% url 'feedback' %}">Feedback</a>{% endif %}</footer>
-      </div>
-    </div>
     <script>
       (() => {
         const sidebar = document.querySelector("#portal-sidebar");
@@ -87,7 +83,12 @@
       <nav><a href="{% url 'members:register' %}">Join</a><a href="{% url 'login' %}">Log in</a></nav>
     </header>
     {% if messages %}<ul class="messages">{% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}</ul>{% endif %}
-    <main>{% block content %}{% endblock %}</main>
+  <main class="{% if user.is_authenticated %}portal-main{% endif %}">{% block content %}{% endblock %}</main>
+  {% if user.is_authenticated %}
+    <footer class="portal-footer"><a href="{% url 'resources' %}">Rules and policies</a>{% if IS_MEMBER %}<a href="{% url 'feedback' %}">Feedback</a>{% endif %}</footer>
+    </div>
+  </div>
+  {% else %}
     <footer class="site-footer"><a href="{% url 'resources' %}">Rules and policies</a></footer>
   {% endif %}
 </body>
