@@ -2,56 +2,51 @@
 {% load money %}
 
 {% block title %}Retired equipment · {{ SITE_NAME }}{% endblock %}
-{% block body_class %}wide{% endblock %}
+{% block body_class %}equipment-retired-page wide{% endblock %}
 
 {% block content %}
-  <p class="hint"><a href="{% url 'equipment:index' %}">Equipment</a></p>
-  <h1>Retired equipment</h1>
-  <p>Machines that have been disposed of, with what each brought in over its life and what it cost. The one-off
-    access fee is meant to go towards replacing a machine, so <strong>Net</strong> shows whether its fees covered its
-    price (where we know it) and the expenses claimed for it. A machine is retired from the admin (Equipment →
-    action "Retire"), which keeps all of this.</p>
-
-  {% if lives %}
-    <div class="scroll">
-      <table class="table">
-        <thead><tr>
-          <th>Machine</th><th>In service</th><th class="number">Hours run</th><th class="number">Sessions</th>
-          <th class="number">Trained</th><th class="number">Bought for</th><th class="number">Access fees</th>
-          <th class="number">Usage fees</th><th class="number">Expenses</th><th class="number">Net</th>
-        </tr></thead>
-        <tbody>
-          {% for life in lives %}
-            {% with machine=life.machine %}
-            <tr>
-              <td><a href="{% url 'equipment:detail' machine.slug %}">{{ machine.name }}</a>
-                {% if life.shares_access_with %}<br><span class="hint">Access fee shared with
-                  {% for other in life.shares_access_with %}{{ other.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}</td>
-              <td class="nowrap">{{ machine.obtained_at|date:"M Y"|default:"?" }} – {{ machine.removed_at|date:"M Y"|default:"?" }}
-                {% if life.years is not None %}<br><span class="hint">{{ life.years|floatformat:1 }} years</span>{% endif %}</td>
-              <td class="number">{{ life.hours|floatformat:0 }}</td>
-              <td class="number">{{ life.sessions }}<br><span class="hint">{{ life.users }} member{{ life.users|pluralize }}</span></td>
-              <td class="number">{% if machine.requires_induction %}{{ life.trained }}{% else %}—{% endif %}</td>
-              <td class="number">{% if machine.purchase_price_pence is not None %}{{ machine.purchase_price_pence|pounds }}{% else %}<span class="hint">not known</span>{% endif %}</td>
-              <td class="number">{{ life.access_fees|pounds }}</td>
-              <td class="number">{{ life.usage_fees|pounds }}</td>
-              <td class="number">{{ life.expenses|pounds }}</td>
-              <td class="number"><strong{% if life.net < 0 %} class="error"{% endif %}>{{ life.net|pounds }}</strong></td>
-            </tr>
-            {% endwith %}
-          {% endfor %}
-        </tbody>
-        <tfoot><tr>
-          <th colspan="5">All retired equipment</th>
-          <td class="number">{{ totals.bought|pounds }}</td><td class="number">{{ totals.access_fees|pounds }}</td>
-          <td class="number">{{ totals.usage_fees|pounds }}</td><td class="number">{{ totals.expenses|pounds }}</td>
-          <td class="number"><strong>{{ totals.net|pounds }}</strong></td>
-        </tr></tfoot>
-      </table>
-    </div>
-    <p class="hint">Access fees are counted by induction, so machines that share one induction show the same access
-      fees. Money is counted as on the finance pages: paid and withdrawn payments, and approved expenses.</p>
-  {% else %}
-    <p>No equipment has been retired yet.</p>
-  {% endif %}
+  <div class="equipment-page equipment-retired">
+    <div class="equipment-breadcrumb"><a href="{% url 'equipment:index' %}">Equipment</a><span aria-hidden="true">/</span><span>Retired equipment</span></div>
+    <header class="equipment-heading equipment-retired__heading">
+      <div><p class="equipment-eyebrow">Equipment records</p><h1>Retired equipment</h1>
+        <p class="equipment-intro">Review each machine’s service life, use, fees and costs. These records stay available after equipment is retired.</p></div>
+    </header>
+    {% if lives %}
+      <section class="equipment-summary equipment-retired__summary" aria-label="Retired equipment totals">
+        <div><span class="equipment-summary__icon" aria-hidden="true">⚙</span><span><strong>{{ lives|length }}</strong><small>Machines retired</small></span></div>
+        <div><span class="equipment-summary__icon" aria-hidden="true">£</span><span><strong>{{ totals.net|pounds }}</strong><small>Fees less costs</small></span></div>
+      </section>
+      <div class="equipment-table-card">
+        <div class="equipment-table-card__heading"><div><p class="equipment-eyebrow">Lifetime figures</p><h2>Equipment performance</h2></div><span>Trustee view</span></div>
+        <div class="scroll equipment-scroll">
+          <table class="table equipment-table">
+            <thead><tr>
+              <th>Machine</th><th>In service</th><th class="number">Hours</th><th class="number">Sessions</th>
+              <th class="number">Trained</th><th class="number">Bought for</th><th class="number">Access fees</th>
+              <th class="number">Usage fees</th><th class="number">Expenses</th><th class="number">Net</th>
+            </tr></thead>
+            <tbody>{% for life in lives %}{% with machine=life.machine %}
+              <tr>
+                <td><a class="equipment-table__machine" href="{% url 'equipment:detail' machine.slug %}">{{ machine.name }}</a>
+                  {% if life.shares_access_with %}<small>Shared induction:
+                    {% for other in life.shares_access_with %}{{ other.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</small>{% endif %}</td>
+                <td>{{ machine.obtained_at|date:"M Y"|default:"?" }} – {{ machine.removed_at|date:"M Y"|default:"?" }}{% if life.years is not None %}<small>{{ life.years|floatformat:1 }} years</small>{% endif %}</td>
+                <td class="number">{{ life.hours|floatformat:0 }}</td><td class="number">{{ life.sessions }}<small>{{ life.users }} member{{ life.users|pluralize }}</small></td>
+                <td class="number">{% if machine.requires_induction %}{{ life.trained }}{% else %}—{% endif %}</td>
+                <td class="number">{% if machine.purchase_price_pence is not None %}{{ machine.purchase_price_pence|pounds }}{% else %}<span class="hint">Not known</span>{% endif %}</td>
+                <td class="number">{{ life.access_fees|pounds }}</td><td class="number">{{ life.usage_fees|pounds }}</td>
+                <td class="number">{{ life.expenses|pounds }}</td><td class="number"><strong{% if life.net < 0 %} class="error"{% endif %}>{{ life.net|pounds }}</strong></td>
+              </tr>
+            {% endwith %}{% endfor %}</tbody>
+            <tfoot><tr><th colspan="5">All retired equipment</th><td class="number">{{ totals.bought|pounds }}</td>
+              <td class="number">{{ totals.access_fees|pounds }}</td><td class="number">{{ totals.usage_fees|pounds }}</td>
+              <td class="number">{{ totals.expenses|pounds }}</td><td class="number"><strong>{{ totals.net|pounds }}</strong></td></tr></tfoot>
+          </table>
+        </div>
+      </div>
+      <p class="equipment-footnote">Access fees are counted by induction, so machines sharing one induction show the same fee. Figures use paid and withdrawn payments and approved expenses, as on the finance pages.</p>
+    {% else %}
+      <div class="equipment-empty-panel"><span class="equipment-summary__icon" aria-hidden="true">✓</span><h2>No retired equipment yet</h2><p>When a machine is retired, its lifetime use and financial history will appear here.</p></div>
+    {% endif %}
+  </div>
 {% endblock %}
