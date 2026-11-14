@@ -278,7 +278,9 @@ class MeterTests(MachineTestCase):
 
     def test_threshold_is_sent_as_a_string(self):
         body = self.call(self.reader, "check-in", {"event": "boot"}).json()
-        self.assertEqual(body["machine"]["meter"], {"mode": "current", "current_threshold_amps": "2.50"})
+        self.assertEqual(
+            body["machine"]["meter"], {"mode": "current", "current_threshold_amps": "2.50", "report_current": False}
+        )
 
 
 class RunningHoursTests(MachineTestCase):

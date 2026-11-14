@@ -1,12 +1,18 @@
+from decimal import Decimal, InvalidOperation
+
 from django import forms
 from django.contrib import admin, messages
-from django.urls import reverse
+from django.core.exceptions import PermissionDenied
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect
+from django.template.response import TemplateResponse
+from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
 
 from apps.payments import services
 
-from . import lifetime, notices, photos, rules
+from . import lifetime, live_current, notices, photos, rules
 from .models import (
     Equipment,
     EquipmentPhoto,
@@ -112,6 +118,13 @@ class MachineStatusChangeInline(admin.TabularInline):
         return False
 
 
+def reader_for(equipment):
+    """The machine's fob reader, if it has one: its device id is the machine's slug (05 §5.3)."""
+    from apps.access.models import Device
+
+    return Device.objects.filter(device_id=equipment.slug, role=Device.Role.EQUIPMENT).first()
+
+
 @admin.register(Equipment)
 class EquipmentAdmin(admin.ModelAdmin):
     list_display = ("name", "slug", "status", "requires_induction", "usage_cost_pence_per_hour", "team", "archived")
@@ -144,6 +157,7 @@ class EquipmentAdmin(admin.ModelAdmin):
                 "fields": (
                     "meter_mode",
                     "current_threshold_amps",
+                    "live_current_link",
                     "idle_auto_end_minutes",
                     "service_interval_hours",
                     "total_hours",
@@ -174,6 +188,7 @@ class EquipmentAdmin(admin.ModelAdmin):
     )
     readonly_fields = (
         "legacy_id",
+        "live_current_link",
         "total_hours",
         "hours_since_service_display",
         "service_due_display",
@@ -211,6 +226,76 @@ class EquipmentAdmin(admin.ModelAdmin):
         actions = super().get_actions(request)
         actions.pop("delete_selected", None)  # it would skip the history check above
         return actions
+
+    @admin.display(description="Live current")
+    def live_current_link(self, equipment):
+        if not equipment.pk:
+            return "Save the machine first."
+        url = reverse("admin:equipment_equipment_live_current", args=[equipment.pk])
+        return format_html(
+            '<a href="{}">Watch the reader\'s current readings</a> to choose the threshold.{}',
+            url,
+            " Reporting now." if live_current.is_reporting(equipment) else "",
+        )
+
+    def get_urls(self):
+        view = self.admin_site.admin_view
+        return [
+            path("<int:pk>/current/", view(self.live_current_view), name="equipment_equipment_live_current"),
+            path(
+                "<int:pk>/current/readings/",
+                view(self.live_current_readings),
+                name="equipment_equipment_live_current_readings",
+            ),
+            *super().get_urls(),
+        ]
+
+    def _machine_to_change(self, request, pk):
+        equipment = get_object_or_404(Equipment, pk=pk)
+        if not self.has_change_permission(request, equipment):
+            raise PermissionDenied
+        return equipment
+
+    def live_current_view(self, request, pk):
+        """Switch live current on or off, watch it, and set the threshold (05 §5.4)."""
+        from apps.site_settings.models import SiteSettings
+
+        equipment = self._machine_to_change(request, pk)
+        if request.method == "POST":
+            action = request.POST.get("action")
+            if action == "start":
+                live_current.start_reporting(equipment)
+            elif action == "stop":
+                live_current.stop_reporting(equipment)
+            elif action == "threshold":
+                raw = request.POST.get("threshold", "").strip()
+                try:
+                    value = Decimal(raw) if raw else None
+                    if value is not None and not (0 <= value < 10000):
+                        raise InvalidOperation
+                except InvalidOperation:
+                    messages.error(request, "The threshold must be a number of amps, such as 2.5.")
+                else:
+                    equipment.current_threshold_amps = None if value is None else value.quantize(Decimal("0.01"))
+                    equipment.save()  # bumps config_version, so the reader picks it up at its next check-in
+                    messages.success(request, f"Threshold saved: {equipment.current_threshold_amps or 'none'}.")
+            return redirect("admin:equipment_equipment_live_current", pk=pk)
+        context = {
+            **self.admin_site.each_context(request),
+            "opts": self.model._meta,
+            "original": equipment,
+            "title": f"Live current: {equipment.name}",
+            "equipment": equipment,
+            "reporting": live_current.is_reporting(equipment),
+            "report_minutes": int(live_current.REPORT_FOR.total_seconds() // 60),
+            "readings_url": reverse("admin:equipment_equipment_live_current_readings", args=[pk]),
+            "reader": reader_for(equipment),
+            "check_in_minutes": max(1, round(SiteSettings.load().reader_check_in_seconds / 60)),
+        }
+        return TemplateResponse(request, "admin/equipment/equipment/live_current.html", context)
+
+    def live_current_readings(self, request, pk):
+        return JsonResponse(live_current.snapshot(self._machine_to_change(request, pk)))
 
     @admin.display(description="Running hours (total)")
     def total_hours(self, equipment):

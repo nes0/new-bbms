@@ -16,6 +16,8 @@
   const API = "/api/devices/v2/";
   const FIRMWARE_VERSION = "fake-0.1";
   const METER_REPORT_SECONDS = 60;
+  const CURRENT_REPORT_SECONDS = 2; // while an admin watches the live current (spec 05 §5.4)
+  const MAX_CURRENT_SAMPLES = 60;
   const RETRY_SECONDS = 15;
   const MESSAGE_SECONDS = 4;
 
@@ -65,6 +67,8 @@
       activeSeconds: 0, // motor-on seconds since the last meter reading was queued
       nextMeterQueue: Date.now() + METER_REPORT_SECONDS * 1000,
       nextMeterSend: 0,
+      currentSamples: [], // one a second while BBMS asks for live current; sent every CURRENT_REPORT_SECONDS
+      nextCurrentSend: 0,
       message: null, // {lines, until}
       qr: null, // Uint8Array in the raw format
     };
@@ -381,6 +385,22 @@
     return ram.machine && ram.machine.meter && ram.machine.meter.mode === "current";
   }
 
+  // ---- Live current: while an admin is choosing the threshold, send every reading -------------------------------
+  function reportingCurrent() {
+    return Boolean(ram.machine && ram.machine.meter && ram.machine.meter.report_current);
+  }
+
+  async function sendCurrent() {
+    ram.nextCurrentSend = Date.now() + CURRENT_REPORT_SECONDS * 1000;
+    const amps = ram.currentSamples;
+    ram.currentSamples = [];
+    const result = await api("POST", "current", { amps });
+    // Not 200: those readings are lost, which doesn't matter; they're only for watching.
+    if (result && result.ok && result.data.report_current === false && ram.machine) {
+      ram.machine.meter.report_current = false; // BBMS has stopped watching
+    }
+  }
+
   // Queue a reading (kept in flash) and try to send everything queued.
   async function flushMeter(force) {
     ram.nextMeterQueue = Date.now() + METER_REPORT_SECONDS * 1000;
@@ -418,6 +438,12 @@
     const now = Date.now();
     const threshold = ram.machine && ram.machine.meter ? parseFloat(ram.machine.meter.current_threshold_amps) : NaN;
     if (meteringByCurrent() && measuredAmps() > threshold) ram.activeSeconds += 1;
+    if (reportingCurrent()) {
+      ram.currentSamples.push(Math.round(measuredAmps() * 100) / 100);
+      ram.currentSamples = ram.currentSamples.slice(-MAX_CURRENT_SAMPLES);
+    } else {
+      ram.currentSamples = [];
+    }
     if (ram.message && now > ram.message.until) ram.message = null;
     draw();
 
@@ -429,6 +455,7 @@
       else if (ram.pendingEnd && now >= ram.nextEndRetry) await retryPendingEnd();
       else if (now >= ram.nextMeterQueue) await flushMeter(false);
       else if (flash.get("meterQueue", []).length && now >= ram.nextMeterSend) await sendMeterQueue();
+      else if (reportingCurrent() && ram.currentSamples.length && now >= ram.nextCurrentSend) await sendCurrent();
     } finally {
       busy = false;
     }
@@ -541,12 +568,37 @@
       const lines = ram.message.lines;
       const top = H / 2 - (lines.length - 1) * 13 + 7;
       lines.forEach((line, i) => text(line, W / 2, top + i * 26, i === 0 ? 20 : 17, { bold: i === 0, align: "center" }));
+    } else if (reportingCurrent()) {
+      drawCurrent();
     } else if (ram.session) {
       drawSession();
     } else {
       drawIdle();
     }
     toOneBit();
+  }
+
+  // While an admin watches the live current: the reading, big, against the threshold.
+  function drawCurrent() {
+    const meter = ram.machine.meter;
+    const amps = measuredAmps();
+    const threshold = parseFloat(meter.current_threshold_amps);
+    text(ram.machine.name, 6, 16, 13);
+    text("LIVE CURRENT", W - 6, 16, 11, { bold: true, align: "right" });
+    ctx.fillRect(0, 22, W, 1);
+    text(`${amps.toFixed(1)} A`, W / 2, 66, 36, { bold: true, align: "center" });
+    text(
+      Number.isNaN(threshold)
+        ? "No threshold set"
+        : `Threshold ${threshold.toFixed(2)} A: ${amps > threshold ? "running" : "idle"}`,
+      W / 2,
+      92,
+      14,
+      { align: "center" },
+    );
+    text(ram.session ? "Tap fob or press Stop to end" : "Tap in to switch the machine on", W / 2, 118, 12, {
+      align: "center",
+    });
   }
 
   function drawSession() {

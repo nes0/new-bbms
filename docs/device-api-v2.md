@@ -30,6 +30,7 @@ brief, spec 09.
 | `check-in` | at boot, then every `heartbeat_seconds` (300) |
 | session `heartbeat` | straight after a tap-in, then every `session_heartbeat_seconds` (60) |
 | `meter` | every 60 s while the motor runs, and when a session ends |
+| `current` | every 2 s while `machine.meter.report_current` is true |
 | `allowed-fobs` | when check-in returns `refresh_cache` or a `cache_version` you don't hold |
 
 The two intervals are admin settings in BBMS (300 and 60 to start with, limits 60–3600 and 15–600 seconds). Always
@@ -56,10 +57,12 @@ use the values from the latest check-in, and the machine's `minimum_minutes` fro
 {"name": "Red laser", "config_version": 7, "hourly_rate_pence": 300, "minimum_minutes": 15,
  "status": "working", "status_note": "", "status_since": 1793900000,
  "in_use_by": "Kim K.", "session_id": 1234,
- "meter": {"mode": "current", "current_threshold_amps": "2.50"}}
+ "meter": {"mode": "current", "current_threshold_amps": "2.50", "report_current": false}}
 ```
 `status` is `working` or `out_of_order`. `in_use_by` and `session_id` are `null` when idle. The threshold is a decimal
 **string**, and `null` in `session` mode. `config_version` goes up whenever anything you show or use changes.
+`report_current` is true while an admin is watching the machine's live current (see `POST current`); it doesn't
+change `config_version`.
 
 ## `POST access`
 `{"card": "0001234567"}`. Always `200` with `{"allowed", "reason", "display_name"}` (`display_name` is `null` for an
@@ -114,6 +117,16 @@ Responses: `{"accepted": true}`, `{"accepted": false, "reason": "duplicate"}` (s
 out of order is fine), `{"accepted": false, "reason": "session_metered"}` (that machine times tap-in instead; stop
 sending). Keep `seq` increasing across reboots and resend unsent readings. If `idle_auto_end_minutes` is set, BBMS
 ends a session whose motor has been still that long, at the last moment it ran.
+
+## `POST current` (live current, any machine reader)
+While `machine.meter.report_current` is true, measure the current once a second, as for the hour meter, and send what
+you measured since the last report every 2 seconds, oldest first: `{"amps": [0.12, 3.41]}` (1-60 numbers, amps,
+0-1000). The last is taken as measured just now and the others a second apart. Send it in `session` mode too: an admin
+may be choosing a threshold before switching the machine to `current`. Show the reading on the screen meanwhile.
+Responses: `{"accepted": true, "report_current": true}`, or `{"accepted": false, "report_current": false}` once the
+admin has stopped or the 15 minutes they switched it on for are up: stop sending. Readings that fail to send are
+dropped; don't queue them. Reporting is switched on in the admin, so a reader learns of it at its next check-in or the
+next tap.
 
 ## `GET allowed-fobs`
 ```json

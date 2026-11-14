@@ -15,7 +15,7 @@ from django.views.decorators.http import require_http_methods
 
 from apps.access.api_v2 import ApiError, device_api_v2, equipment_or_error, int_field, json_body, resolve_card, unix
 
-from . import rules
+from . import live_current, rules
 from .models import Equipment, MachineStatusChange, MeterReading, UsageSession
 
 RECENT_SESSION = timedelta(hours=1)  # a meter reading may still be credited to a session that ended this recently
@@ -39,6 +39,7 @@ def machine_payload(equipment: Equipment) -> dict:
         "meter": {
             "mode": equipment.meter_mode,
             "current_threshold_amps": str(threshold) if current_mode and threshold is not None else None,
+            "report_current": live_current.is_reporting(equipment),
         },
     }
 
@@ -252,6 +253,28 @@ def meter(request):
         return JsonResponse({"accepted": False, "reason": "duplicate"})
     rules.auto_end_idle_sessions(now)
     return JsonResponse({"accepted": True})
+
+
+@require_http_methods(["POST"])
+@device_api_v2
+def current(request):
+    """Current readings while an admin watches the machine's live current (05 §5.4). The reply says whether to go on."""
+    equipment = equipment_or_error(request.device)
+    amps = json_body(request).get("amps")
+    if (
+        not isinstance(amps, list)
+        or not 1 <= len(amps) <= live_current.MAX_SAMPLES
+        or not all(
+            isinstance(v, int | float) and not isinstance(v, bool) and 0 <= v <= live_current.MAX_AMPS for v in amps
+        )
+    ):
+        raise ApiError(
+            400, "bad_field", f"amps must be a list of 1-{live_current.MAX_SAMPLES} numbers, 0-{live_current.MAX_AMPS}."
+        )
+    if not live_current.is_reporting(equipment):
+        return JsonResponse({"accepted": False, "report_current": False})
+    live_current.record(equipment, request.device, amps)
+    return JsonResponse({"accepted": True, "report_current": True})
 
 
 def record_offline_session(device, fob, event) -> str:
