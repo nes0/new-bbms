@@ -17,7 +17,7 @@
 set -euo pipefail
 
 RESET=${1:-}
-HOST=${DEMO_HOST:?set DEMO_HOST to the droplet's address}
+HOST=${DEMO_HOST:?set DEMO_HOST to the droplet address}
 PORT=${DEMO_PORT:-8443}
 KEY=${DEMO_SSH_KEY:?set DEMO_SSH_KEY to the ssh key for the droplet}
 OUT=${DEMO_OUT:-$HOME/bbms-demo}
