@@ -508,3 +508,7 @@ body[data-theme="night"] .demo-banner { background:#3b301c; color:#f0bf64; borde
   .portal-main .finance-shortcuts { grid-template-columns:1fr; }
   .portal-main .finance-todo { padding:14px; }
 }
+
+
+.portal-sidebar .badge { display:inline-grid; place-items:center; min-width:19px; height:19px; margin-left:auto; padding:0 5px; border-radius:999px; background:#e69a61; color:#202725; font-size:10px; font-weight:850; line-height:1; }
+.portal-brand .logo { flex:none; width:40px; height:40px; object-fit:contain; }
