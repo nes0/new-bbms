@@ -102,6 +102,8 @@ class PageTests(TestCase):
         clock = mock.patch("django.utils.timezone.now", return_value=now)
         clock.start()
         self.addCleanup(clock.stop)
+        # setUp puts the reset three hours before the real time, which in the afternoon is after these taps.
+        settings(occupancy_reset_hour=4)
         tap(self.kim, ENTRY, now - timedelta(minutes=30))
         tap(self.sam, CHECK_IN, now - timedelta(minutes=20), delayed=True)
         tap(self.sam, REFUSED, now - timedelta(minutes=10), reason="not a keyholder")
