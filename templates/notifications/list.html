@@ -3,9 +3,10 @@
 {% block title %}Notifications · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
-  <h1>Notifications</h1>
+  <div class="member-page member-page--notifications">
+  <header class="member-page__header"><div><p class="member-eyebrow">Your account · updates</p><h1>Notifications</h1><p class="member-page__intro">Membership and space updates, all in one place.</p></div>{% if unread_notifications %}<span class="member-count">{{ unread_notifications }} unread</span>{% endif %}</header>
 
-  <div class="actions">
+  <div class="actions member-page__actions">
     {% if only_unread %}<a href="{% url 'notifications:list' %}">Show all</a>
     {% else %}<a href="{% url 'notifications:list' %}?show=unread">Show only unread</a>{% endif %}
     {% if unread_notifications %}
@@ -17,12 +18,12 @@
   </div>
 
   {% for notification in page %}
-    <div class="card notification{% if notification.unread %} unread{% endif %}">
+    <div class="card notification member-notification{% if notification.unread %} unread{% endif %}">
       <p>
         {% if notification.unread %}<strong>{{ notification.message }}</strong>{% else %}{{ notification.message }}{% endif %}
         {% if notification.url %}<br><a href="{% url 'notifications:open' notification.pk %}">Open</a>{% endif %}
       </p>
-      <div class="hint">{{ notification.created_at|date:"j F Y, H:i" }} ·
+      <div class="hint member-notification__meta"><time datetime="{{ notification.created_at|date:'c' }}">{{ notification.created_at|date:"j F Y, H:i" }} ·</time>
         <form method="post" action="{% url 'notifications:mark' notification.pk 'read' %}" class="inline">
           {% csrf_token %}<input type="hidden" name="page" value="{{ page.number }}">
           {% if notification.unread %}<button type="submit" class="link">Mark as read</button>{% endif %}
@@ -44,4 +45,5 @@
       {% if page.has_next %}<a href="?page={{ page.next_page_number }}{% if only_unread %}&show=unread{% endif %}">Older</a>{% endif %}
     </div>
   {% endif %}
+  </div>
 {% endblock %}
