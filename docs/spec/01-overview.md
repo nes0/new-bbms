@@ -123,7 +123,15 @@ same, so MySQL saves nothing. Django is also built and tested primarily against 
 14. ~~Attendance threshold for the trusted-status review list~~: decided 2026-11-10: **no threshold**. Trust and a key
     are an admin's decision once the checks are met; to help, admins see each member's visits, hours in and the
     trusted members who were in at the same time (who will have seen them at work). Nothing else counts (05 §5.10).
-    Built.
+    Built. **Changed 2026-11-15:** active members can now also vouch (Q18). It still only advises: there's no
+    automatic trust.
+18. ~~Vouching~~ (05 §5.10): decided 2026-11-15. Active members (fob activity within a set number of days) vouch
+    for members waiting for trusted status, or discreetly raise a concern (−1). When the score reaches a set
+    threshold the trustees are notified, but trust stays their decision and keys are handed over in person. Trustees
+    see the names of everyone who vouched or raised a concern. Also decided: **30 days** and a **score of 3** to
+    start with (settings); a concern doesn't notify the trustees straight away (it shows in the review); a concern
+    can carry an optional private note; members with a private profile still appear on the vouching list with their
+    name and photo (only members see the page); a waiting member doesn't see how many vouches they have.
 15. Moodle (06 §6.12): who may log in to Moodle (built as: any non-banned account with a confirmed email address, 03 §3.1); online training expiry (suggested none); members already signed off when a course is added (suggested they keep access).
 16. Reports (04 §4.9, 06 §6.13): who sees membership statistics (suggested all members; money figures finance and admins only); whether to build expenditure tracking later. (Built with the suggestion, 2026-11-09.)
 17. Proof of identity (03 §3.1): ~~whether an unchecked ID blocks anything~~ (decided 2026-11-10: a checked ID is

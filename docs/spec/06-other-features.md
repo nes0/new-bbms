@@ -283,6 +283,7 @@ superusers and the `admin` role). Choices made while building:
   | A member claims an expense (§6.4) | everyone who can approve expenses, except the claimant | `<id>-expense_submitted` |
   | An expense is approved or declined (§6.4) | the member | `<id>-expense_approved` / `<id>-expense_declined` (legacy's) |
   | A trainer or admin signs a member off on a machine (05 §5.8) | the member | none |
+  | A waiting member's vouching score reaches the threshold (05 §5.10; added 2026-11-15, not built) | the `trustees` role and the admins | `<member id>-vouch_threshold`, once per member |
 
 - Proposals don't use notifications: voters are emailed when voting opens, and the bot posts on Discord (§6.3).
   The account page lists open proposals the member hasn't voted on.
@@ -413,7 +414,9 @@ emailed the original developer rather than the trustees.
 - **Physical keys** (admin): record the key deposit and the key issued and returned.
 - **Trust and key review** (admin): members without a key, with their visits, hours in, the trusted members who
   were in at the same time and the checks a key needs; no threshold (05 §5.10). **Built** (2026-11-09; reworked
-  2026-11-10).
+  2026-11-10). To add: the vouches column (05 §5.10).
+- **Vouching** (members, added 2026-11-15, not built): active members vouch for, or raise a concern about, members
+  waiting for trusted status; trustees are told at a threshold and see who vouched (05 §5.10).
 - **Log viewer**: dropped; replaced by hosted logging and error tracking (01 §1.8).
 - **Settings** (admin only): prices, limits, grace periods and names listed in 02 §2.8.
 

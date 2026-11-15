@@ -540,8 +540,47 @@ door (keyholder entry or non-keyholder check-in) or starting a session on a mach
 - **Decided 2026-11-10 (01 §1.7 Q14): no threshold.** Nothing but the admin's judgement decides; once the checks for
   a key are met (5.2), it's discretionary. Trusted members must have seen the member at work, so the review shows,
   for each member, their **total hours in**, their **visits**, and the **trusted members who were in the space at
-  the same time** (and for how long). There's no vouching button: the overlap is worked out from fob activity.
+  the same time** (and for how long). *(2026-11-15: this said "there's no vouching button"; vouching by active
+  members has since been added, see "Vouching" below. The overlap is still shown alongside it.)*
 - Attendance is derived from the access log and usage sessions; nothing extra is stored.
+
+### Vouching by active members (added 2026-11-15; not built yet)
+
+Members who are in the space regularly are the ones who've seen a newcomer at work, so they can vouch for members
+waiting for trusted status. Vouching is **advice to the trustees, not a vote**: reaching the threshold only tells the
+trustees, granting trusted status stays their discretionary decision (above), and keys are still handed over in
+person (5.2).
+
+- **Who can vouch: an "active" member.** That means a current member (active or honorary, not banned) whose fob was
+  used (door tap, check-in, exit tap or machine session, as a visit above) within the last **N days**, where N is an
+  admin setting, **"vouching: days since last fob activity"** (02 §2.8; 30 to start with). Trusted status isn't needed to
+  vouch. A member who's no longer active can't vouch or change their vouches, but the ones they've already made
+  still count while they're a current member. They stop counting if the voucher leaves or is banned.
+- **Who is waiting:** current members (active or honorary, not banned) who aren't trusted yet and have visited at
+  least once. A member never sees themselves on the list. Leaving and suspended members aren't listed.
+- **The vouching page** (`/vouching/`, linked from the account page for active members; others are told why they
+  can't vouch yet). It lists the waiting members with their name and approved photo, so they can be recognised
+  (members with a private profile too, decided 01 §1.7 Q18), and their first visit. Each member has these buttons:
+  - **Vouch**: "I've seen them at work and I'm happy for them to be trusted" (+1);
+  - **Withdraw**: takes back the vouch or the concern, so they no longer count;
+  - **I have a concern**: a discreet −1, shown as a small secondary action. It's not shown to the member or to
+    other vouchers. An optional private note goes to the trustees only. A concern doesn't notify anyone; it shows in the review.
+  A voucher sees only their own choice for each member: no counts and no other names, so nobody piles on and a
+  concern can't be traced. The waiting member sees nothing about vouches.
+- **One vouch or concern per voucher per member**, changeable at any time while the voucher is active. Each change
+  (vouch, concern, withdraw, with who and when) is kept in a history that only trustees see.
+- **Score = vouches − concerns**, counting only vouchers who are still current members. When a member's score first
+  reaches the **vouching threshold**, an admin setting (02 §2.8; 3 to start with), the `trustees` role and the admins are
+  notified (06 §6.5) with a link to the member's row in the trust and key review. It happens once per member: if the
+  score falls back and reaches the threshold again, there's no new notification. Raising the threshold doesn't send
+  any, and lowering it notifies members who now meet it the next time their score changes.
+- **Trustees see everything** in the trust and key review and on the member's admin page: the score, the names of
+  everyone who vouched and everyone who raised a concern (with any notes), with dates, and the history.
+- **Once a member is made trusted** they leave the vouching list, and their vouches are kept as the record of who
+  vouched. If trusted status is later removed, they reappear with their existing vouches.
+- **Not stored per vouch:** whether the voucher was in at the same time; the review already shows the overlap.
+- **Abuse:** vouches are only advice, so a group vouching for each other gets nothing automatically. The names are
+  visible to trustees for exactly that reason.
 
 **Built (2026-11-09)** in `apps/access/attendance.py`:
 - A visit is a UK calendar day with a keyholder entry, a check-in, a tap on the exit reader, or the start of a
@@ -563,3 +602,5 @@ door (keyholder entry or non-keyholder check-in) or starting a session on a mach
 - **Checks for a key**, each ticked or crossed: email confirmed, ID checked, general induction confirmed, photo
   (approved or on the wall), an active fob, trusted, key deposit paid (or a pending Direct Debit).
 - It's worked out when the page is opened; nothing extra is stored.
+- **To add with vouching (2026-11-15):** a "Vouches" column (score, and "N for, M concerns" with the names) and a
+  filter "reached the vouching threshold".

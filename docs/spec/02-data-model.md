@@ -150,6 +150,10 @@ AcsNode (devices)   Settings (key/value)   AuditLog
   New (`expenses.Expense`): `member`, `category`, `description`, `amount_pence`, `spent_on`, `receipt` (private),
   `legacy_receipt`, `submitted_at`, `status` (waiting / approved / declined), `decided_by`, `decided_at`,
   `decline_reason`, `payment` (the credit paid), `legacy_id`.
+- **New: `Vouch`** (05 §5.10, added 2026-11-15): `member` (the one waiting), `voucher`, `value` (+1 vouch / −1
+  concern), `note` (concerns only, trustees only), `created_at`, `updated_at`; one per member and voucher, deleted on
+  withdraw. **`VouchChange`** (the history, trustees only): member, voucher, action (vouch / concern / withdraw),
+  note, at. On members, **`vouch_threshold_notified_at`**, so the trustees are told only once.
 - **`settings`**: key/value. Legacy's only key, `emergency_door_key_storage_pin`, is defunct and is not migrated. See §2.8 for the new system's settings.
 - **`roles`**, **`role_user`**: see 01 §1.3.
 - **`detected_devices`**: `type`, `mac_address`, `display_name`. **Dropped**; not migrated.
@@ -178,6 +182,8 @@ row a new field whose default is the starting value.
 | Occupancy timeout (no tap-out) | new; default 4 hours after last fob activity (1–24), everyone cleared at 4am (the hour is a setting too). **Built** |
 | Public occupancy count on the website | new; on/off, off to start with. **Built** |
 | ~~Attendance threshold for the trusted-status review list~~ | Removed 2026-11-10: there's no threshold (05 §5.10, 01 §1.7 Q14). The two settings built on 2026-11-09 were taken out. |
+| Vouching: days since last fob activity for a member to count as active and vouch | new (2026-11-15, 05 §5.10); 30 days, 1–365 |
+| Vouching threshold (score of vouches minus concerns that notifies the trustees) | new (2026-11-15, 05 §5.10); 3, 1–50. It only notifies; trust stays the trustees' decision |
 | Box fee (one-off, non-refundable) | £15 (charged outside BBMS today). **Built** |
 | Lockers allowed per member (admins can override per member) | new; ❓ suggested 1, so it starts at 1 (0–20). **Built** |
 | Locker rents | a default per **size and location**, in Storage → Default rents (06 §6.2), not on this page. **Built** |
