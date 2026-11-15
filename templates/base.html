@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="{% static 'css/site.css' %}">
   <script src="{% static 'js/htmx.min.js' %}" defer></script>
 </head>
-<body class="{% block body_class %}{% endblock %}" data-theme="night" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+<body class="{% block body_class %}{% endblock %}" data-theme="{{ THEME }}" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
   {% if DEMO_SITE %}<p class="demo-banner" role="note"><strong>Demo site.</strong> Everyone here is made up, payments are pretend and no emails are sent. Try anything.</p>{% endif %}
   {% if user.is_authenticated %}
     <div class="portal">

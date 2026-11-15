@@ -15,6 +15,7 @@ urlpatterns = [
     path("resources/", core_views.resources, name="resources"),
     path("resources/policy/<slug:name>/", core_views.policy, name="policy"),
     path("feedback/", core_views.feedback, name="feedback"),
+    path("theme/", core_views.set_theme, name="set_theme"),
     # Our login and password reset come first, so they're used instead of Django's (06 §6.11).
     path("accounts/login/", signin_views.LoginView.as_view(), name="login"),
     path("accounts/password_reset/", signin_views.PasswordResetView.as_view(), name="password_reset"),
