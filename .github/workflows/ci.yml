@@ -23,8 +23,8 @@ jobs:
       SECRET_KEY: ci-only-not-secret-ci-only-not-secret-0123456789-abcdefghijklmnop
       DATABASE_URL: postgres://bbms:bbms@localhost:5432/bbms
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -47,5 +47,5 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: docker build -t bbms .
