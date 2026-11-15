@@ -257,6 +257,7 @@ class MemberAdmin(UserAdmin):
         "box_paid_at",
         "box_payment",
         "attendance",
+        "vouches",
     )
 
     fieldsets = (
@@ -294,7 +295,7 @@ class MemberAdmin(UserAdmin):
             {
                 "description": "Changes here are written to the audit log at the bottom of the page. Making someone "
                 "trusted emails them.",
-                "fields": ("attendance", "trusted", "key_holder", "photo_approved", "photo_on_wall"),
+                "fields": ("attendance", "vouches", "trusted", "key_holder", "photo_approved", "photo_on_wall"),
             },
         ),
         ("Storage", {"fields": ("box_paid", "box_paid_at", "box_payment", "box_reason")}),
@@ -328,6 +329,21 @@ class MemberAdmin(UserAdmin):
             f"{hours:.0f}",
         )
 
+    @admin.display(description="Vouches")
+    def vouches(self, member):
+        """Who vouched for or raised a concern about this member, and the history (05 §5.10)."""
+        from django.template.loader import render_to_string
+
+        from apps.vouching import vouching  # not at the top: apps.vouching uses this app's models
+
+        if member.pk is None:
+            return "-"
+        summary = vouching.summaries([member.pk])[member.pk]
+        history = list(vouching.history(member))
+        if not summary and not history:
+            return "None"
+        return render_to_string("admin/members/member/_vouches.html", {"summary": summary, "history": history})
+
     def get_urls(self):
         review = path("key-review/", self.admin_site.admin_view(self.key_review), name="members_member_key_review")
         return [review, *super().get_urls()]
@@ -339,11 +355,22 @@ class MemberAdmin(UserAdmin):
 
         if not self.has_change_permission(request):
             raise PermissionDenied
+        from apps.vouching import vouching
+
+        candidates = attendance.review_list()
+        reached_only = request.GET.get("reached") == "1"
+        if reached_only:
+            reached = vouching.reached_threshold()
+            candidates = [candidate for candidate in candidates if candidate.member.pk in reached]
+        summaries = vouching.summaries([candidate.member.pk for candidate in candidates])
+        for candidate in candidates:
+            candidate.vouches = summaries[candidate.member.pk]
         context = {
             **self.admin_site.each_context(request),
             "opts": self.model._meta,
             "title": "Trust and key review",
-            "candidates": attendance.review_list(),
+            "candidates": candidates,
+            "reached_only": reached_only,
             "config": SiteSettings.load(),
         }
         return TemplateResponse(request, "admin/members/member/key_review.html", context)

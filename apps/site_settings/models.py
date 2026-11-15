@@ -95,6 +95,22 @@ class SiteSettings(models.Model):
         "/occupancy.json for the space's website. Logged-in members always see who's in.",
     )
 
+    # --- vouching for trusted status (05 §5.10) ---
+    vouch_active_days = models.PositiveSmallIntegerField(
+        "members can vouch if their fob was used within (days)",
+        default=30,
+        validators=[MinValueValidator(1), MaxValueValidator(365)],
+        help_text="A door tap, check-in, exit tap or machine session this recently makes a member active, so they "
+        "can vouch for members waiting for trusted status. Vouches they've already made keep counting.",
+    )
+    vouch_threshold = models.PositiveSmallIntegerField(
+        "tell the trustees when a member's vouching score reaches",
+        default=3,
+        validators=[MinValueValidator(1), MaxValueValidator(50)],
+        help_text="The score is vouches minus concerns. Reaching it only notifies the trustees (once per member); "
+        "trusted status stays their decision.",
+    )
+
     # --- expenses (06 §6.4) ---
     expense_maximum_pence = models.PositiveIntegerField(
         "largest expense a member can claim",
@@ -284,6 +300,7 @@ class SiteSettings(models.Model):
         ("Proposals", ("proposal_quorum_percent",)),
         ("Expenses", ("expense_maximum_pence",)),
         ("Who's in", ("occupancy_timeout_hours", "occupancy_reset_hour", "public_occupancy_count")),
+        ("Vouching", ("vouch_active_days", "vouch_threshold")),
         ("Privacy", ("id_document_max_age_days", "public_member_directory")),
         ("Logging in", ("admins_need_two_factor",)),
         ("Discord", ("discord_welcome_message",)),

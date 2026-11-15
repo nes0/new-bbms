@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block page_name %}Vouching{% endblock %}
+{% block title %}Vouching · {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<section class="page-heading">
+  <p class="eyebrow">Community</p>
+  <h1>Vouching</h1>
+  <p class="welcome-lead">Members who come in regularly are the ones who've seen newcomers at work. Vouch for the
+    members you're happy to see trusted with a key.</p>
+</section>
+<p class="hint">Vouching is advice to the trustees, not a vote: when enough members vouch for someone the trustees
+  are told, but trust stays their decision, and keys are handed over in person. Only you see your choices here; the
+  trustees see who vouched or raised a concern. The member doesn't see either.</p>
+{% if why_not %}
+  <section class="card"><p>{{ why_not }}</p></section>
+{% elif rows %}
+  <ul class="vouch-list">
+    {% for row in rows %}{% include "vouching/_row.html" with card=row.card vouch=row.vouch first_visit=row.first_visit note_length=row.note_length %}{% endfor %}
+  </ul>
+{% else %}
+  <p>Nobody is waiting for trusted status at the moment.</p>
+{% endif %}
+{% endblock %}

@@ -23,6 +23,16 @@
     </section>
   {% endif %}
 
+  {% if vouching %}
+    <section class="card">
+      <h2>Vouching</h2>
+      {% if vouching.why_not %}<p class="hint">{{ vouching.why_not }}</p>
+      {% elif vouching.to_see %}<p>{{ vouching.to_see }} member{{ vouching.to_see|pluralize:" is,s are" }} waiting for trusted status
+        that you haven't vouched for. <a href="{% url 'vouching:index' %}">Have a look</a> if you've seen them at work.</p>
+      {% else %}<p class="hint">Nobody new is waiting for you to vouch. <a href="{% url 'vouching:index' %}">See the list</a>.</p>{% endif %}
+    </section>
+  {% endif %}
+
   {% if member.status == "setting-up" %}
     <section class="card">
       <h2>Next steps</h2>

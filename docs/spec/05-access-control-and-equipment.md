@@ -544,7 +544,7 @@ door (keyholder entry or non-keyholder check-in) or starting a session on a mach
   members has since been added, see "Vouching" below. The overlap is still shown alongside it.)*
 - Attendance is derived from the access log and usage sessions; nothing extra is stored.
 
-### Vouching by active members (added 2026-11-15; not built yet)
+### Vouching by active members (added and built 2026-11-15)
 
 Members who are in the space regularly are the ones who've seen a newcomer at work, so they can vouch for members
 waiting for trusted status. Vouching is **advice to the trustees, not a vote**: reaching the threshold only tells the
@@ -582,6 +582,20 @@ person (5.2).
 - **Abuse:** vouches are only advice, so a group vouching for each other gets nothing automatically. The names are
   visible to trustees for exactly that reason.
 
+**Built (2026-11-15)** in `apps/vouching` (`vouching.py` holds the rules):
+- `/vouching/` (in the menu for members, and a card on the account page saying how many waiting members you haven't
+  made a choice about) lists waiting members alphabetically with their photo (or initials) and first visit. **Vouch**
+  and **Withdraw** are buttons; **I have a concern** opens a small form with the optional note. Each row updates in
+  place (HTMX) and works without JavaScript too. A member who isn't active is told how to become so.
+- "Fob activity" for being active is a door entry, check-in or exit tap (not a refused one), or the start of a machine
+  session. Repeating the same choice adds nothing to the history; withdrawing when there's nothing to take back does
+  nothing.
+- The trustees' notification links to the member's row in the trust and key review, which has a **Vouches** column
+  (score, who vouched, concerns with their notes, vouches from members who have since left or been banned shown as not
+  counted, and when the trustees were told) and a link to show only members at or above the threshold. The member's
+  admin page shows the same, with the history. Admin → Vouching → Vouch changes lists the whole history, read only.
+- The two settings are in Settings → Vouching.
+
 **Built (2026-11-09)** in `apps/access/attendance.py`:
 - A visit is a UK calendar day with a keyholder entry, a check-in, a tap on the exit reader, or the start of a
   machine session. Refused taps don't count. (Corrected 2026-11-09: exit taps were left out at first.)
@@ -602,5 +616,5 @@ person (5.2).
 - **Checks for a key**, each ticked or crossed: email confirmed, ID checked, general induction confirmed, photo
   (approved or on the wall), an active fob, trusted, key deposit paid (or a pending Direct Debit).
 - It's worked out when the page is opened; nothing extra is stored.
-- **To add with vouching (2026-11-15):** a "Vouches" column (score, and "N for, M concerns" with the names) and a
-  filter "reached the vouching threshold".
+- **With vouching (built 2026-11-15):** a "Vouches" column and a link to show only members who have reached the
+  vouching threshold (below).

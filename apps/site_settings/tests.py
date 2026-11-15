@@ -44,6 +44,8 @@ DEFAULTS = {
     "expense_maximum_pounds": "1000.00",
     "occupancy_timeout_hours": "4",
     "occupancy_reset_hour": "4",
+    "vouch_active_days": "30",
+    "vouch_threshold": "3",
 }
 
 
