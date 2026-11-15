@@ -2,12 +2,10 @@
 {% load money %}
 {% block title %}Expenses · {{ SITE_NAME }}{% endblock %}
 {% block content %}
-<h1>{% if see_all %}Expenses{% else %}Your expenses{% endif %}</h1>
-<p>Spent your own money on something for the space? Claim it back: once a trustee approves it, it's added to your
-  credit, to spend or <a href="{% url 'payments:credit' %}">withdraw</a>.
-  {% if can_claim %}<a href="{% url 'expenses:claim' %}">Claim an expense</a>{% endif %}</p>
+<header class="member-page__header"><div><p class="member-eyebrow">{% if see_all %}Trustee workspace · expense review{% else %}Your account · reimbursement{% endif %}</p><h1>{% if see_all %}Expenses{% else %}Your expenses{% endif %}</h1><p class="member-page__intro">{% if see_all %}Review member expense claims and record decisions.{% else %}Spent your own money on something for the space? Approved expenses are added to your member credit, to spend or <a href="{% url 'payments:credit' %}">withdraw</a>.{% endif %}</p></div>{% if can_claim %}<a class="member-button member-button--primary" href="{% url 'expenses:claim' %}">+ Claim an expense</a>{% endif %}</header>
 
-<form method="get" class="filters">
+
+<form method="get" class="filters member-filter-bar">
   {% if see_all %}
   <label>Member <select name="member">
     <option value="">Everyone</option>
@@ -29,7 +27,7 @@
 </form>
 
 {% if page.object_list %}
-<div class="scroll"><table class="table">
+<div class="scroll member-expenses-table"><table class="table">
   <thead><tr><th>Claimed</th>{% if see_all %}<th>Member</th>{% endif %}<th>Category</th><th>Description</th><th class="number">Amount</th><th>Status</th></tr></thead>
   <tbody>
   {% for expense in page %}
