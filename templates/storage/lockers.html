@@ -4,12 +4,12 @@
 {% block title %}Lockers · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
-  <h1>Lockers</h1>
+  <header class="member-page__header"><div><p class="member-eyebrow">Your account · storage</p><h1>Lockers</h1><p class="member-page__intro">Your rented space and lockers available around the workshop.</p></div></header>
 
-  <section>
-    <h2>Your lockers</h2>
+  <section class="card member-locker-panel">
+    <div class="member-section-heading"><div><p class="member-eyebrow">Your storage</p><h2>Your lockers</h2></div></div>
     {% if mine %}
-      <ul class="plain">
+      <ul class="plain member-locker-list">
         {% for rental, rent, upcoming in mine %}
           <li><strong>{{ rental.locker }}</strong> ({{ rental.locker.size }}): {{ rent|pounds }} a month, since
             {{ rental.started_at|date:"j F Y" }}{% if upcoming %}; {{ upcoming.0|pounds }} a month from
@@ -24,8 +24,8 @@
       day, with your subscription.</p>
   </section>
 
-  <section>
-    <h2>Available to rent</h2>
+  <section class="card member-locker-panel">
+    <div class="member-section-heading"><div><p class="member-eyebrow">More space</p><h2>Available to rent</h2></div></div>
     {% if by_location and problem %}
       <p class="notice">{{ problem }}{% if set_up_payment %}
         <a href="{% url 'billing:payment' %}">Set up your payment</a>{% endif %}</p>
@@ -33,7 +33,7 @@
     {% for location, sizes in by_location %}
       <h3>{{ location }}</h3>
       {% if location.description %}<p class="hint">{{ location.description }}</p>{% endif %}
-      <table class="table">
+      <div class="scroll"><table class="table member-locker-table">
         <thead><tr><th>Locker</th><th>Size</th><th>Monthly rent</th><th></th></tr></thead>
         <tbody>
           {% for size, items in sizes %}
@@ -47,7 +47,7 @@
             {% endfor %}
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% empty %}
       <p>No lockers are free at the moment.</p>
     {% endfor %}
