@@ -2,6 +2,7 @@
 {% load money %}
 {% block title %}Expenses · {{ SITE_NAME }}{% endblock %}
 {% block content %}
+  <div class="account-destination">
 <h1>{% if see_all %}Expenses{% else %}Your expenses{% endif %}</h1>
 <p>Spent your own money on something for the space? Claim it back: once a trustee approves it, it's added to your
   credit, to spend or <a href="{% url 'payments:credit' %}">withdraw</a>.
@@ -55,4 +56,5 @@
 {% else %}
 <p>No expenses{% if filters.status or filters.member or filters.machine %} match{% else %} yet{% endif %}.</p>
 {% endif %}
+  </div>
 {% endblock %}
