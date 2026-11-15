@@ -41,6 +41,18 @@
           </a>
         </div>
       </section>
+      <section class="theme-switch" aria-labelledby="theme-switch-title">
+        <h2 id="theme-switch-title">Theme</h2>
+        <form method="post" action="{% url 'set_theme' %}">
+          {% csrf_token %}
+          {% for key, theme in themes.items %}
+            <button type="submit" name="theme" value="{{ key }}" aria-pressed="{% if key == THEME %}true{% else %}false{% endif %}">
+              <span class="theme-switch__swatch" aria-hidden="true">{% for colour in theme.1 %}<span style="background:{{ colour }}"></span>{% endfor %}</span>
+              {{ theme.0 }}
+            </button>
+          {% endfor %}
+        </form>
+      </section>
     </div>
   {% else %}
     <section class="welcome-intro" aria-labelledby="welcome-title">

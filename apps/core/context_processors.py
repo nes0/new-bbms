@@ -1,5 +1,6 @@
 from django.conf import settings
 
+from apps.core import themes
 from apps.site_settings.models import SiteSettings
 
 
@@ -15,6 +16,7 @@ def site(request):
     user = getattr(request, "user", None)
     member = bool(user and is_member(user))
     return {
+        "THEME": themes.current(request),
         "SITE_NAME": config.space_name,
         "DEMO_SITE": settings.DEMO_SITE,
         "IS_MEMBER": member,

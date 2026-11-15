@@ -112,3 +112,42 @@ class HeaderLinkTests(TestCase):
         links = self.links(make_member(status=Member.Status.SETTING_UP))
         self.assertIn(reverse("profiles:directory"), links)
         self.assertNotIn(reverse("proposals:index"), links)
+
+
+class ThemeTests(TestCase):
+    def setUp(self):
+        self.member = Member.objects.create_user(
+            "kim@example.com", "a-good-password", given_name="Kim", family_name="K"
+        )
+        self.client.force_login(self.member)
+
+    def test_black_and_lime_unless_another_theme_is_chosen(self):
+        response = self.client.get(reverse("home"))
+        self.assertContains(response, 'data-theme="night"')
+        self.assertContains(response, 'name="theme" value="night" aria-pressed="true"')
+        self.assertContains(response, 'name="theme" value="forest" aria-pressed="false"')
+
+    def test_choosing_a_theme_keeps_it_on_every_page(self):
+        response = self.client.post(reverse("set_theme"), {"theme": "forest"})
+        self.assertRedirects(response, reverse("home"))
+        cookie = response.cookies["theme"]
+        self.assertEqual(cookie.value, "forest")
+        self.assertTrue(cookie["httponly"])
+        self.assertContains(self.client.get(reverse("home")), 'name="theme" value="forest" aria-pressed="true"')
+        self.assertContains(self.client.get(reverse("resources")), 'data-theme="forest"')
+
+    def test_an_unknown_theme_is_ignored(self):
+        response = self.client.post(reverse("set_theme"), {"theme": "<script>"})
+        self.assertNotIn("theme", response.cookies)
+        self.client.cookies["theme"] = "<script>"
+        self.assertContains(self.client.get(reverse("home")), 'data-theme="night"')
+
+    def test_only_a_post_changes_the_theme(self):
+        self.assertEqual(self.client.get(reverse("set_theme")).status_code, 405)
+
+    def test_every_theme_has_its_colours_in_the_stylesheet(self):
+        from apps.core import themes
+
+        css = open(finders.find("css/site.css")).read()
+        for key in themes.THEMES:
+            self.assertIn(f'body[data-theme="{key}"] {{', css)

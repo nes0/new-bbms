@@ -19,6 +19,9 @@ def home(request):
         in_space = activity.count()
     context = {"in_space": in_space}
     if request.user.is_authenticated:
+        from . import themes
+
+        context["themes"] = themes.THEMES
         current_photo = MemberPhoto.objects.filter(member=request.user, kind=MemberPhoto.Kind.CURRENT).exists()
         visits = attendance.attendance(request.user)
         context.update(
@@ -98,3 +101,21 @@ def feedback(request):
         messages.success(request, "Thank you: your feedback has gone to the trustees.")
         return redirect("feedback")
     return render(request, "core/feedback.html", {"form": form})
+
+
+def set_theme(request):
+    """The theme switch on the member home page: remember the chosen theme in a cookie for a year, then go back home."""
+    from django.http import HttpResponseNotAllowed
+    from django.shortcuts import redirect
+
+    from . import themes
+
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    response = redirect("home")
+    theme = request.POST.get("theme", "")
+    if theme in themes.THEMES:
+        response.set_cookie(
+            themes.COOKIE, theme, max_age=365 * 24 * 3600, secure=request.is_secure(), httponly=True, samesite="Lax"
+        )
+    return response
