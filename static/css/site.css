@@ -606,3 +606,13 @@ body[data-theme="night"] .demo-banner { background:#3b301c; color:#f0bf64; borde
 body[data-theme="night"] .equipment-status--ready { background:#24372c; color:#8fe0b0; }
 body[data-theme="night"] .equipment-status--out { background:#3d2523; color:#ff9a92; }
 body[data-theme="night"] .equipment-button:not(.equipment-button--quiet) { color:#151a19; }
+
+/* Vouching (05 §5.10): one row per waiting member; the concern is a quiet secondary action. */
+.vouch-list { list-style: none; padding: 0; margin: 0; }
+.vouch-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; padding: .75rem 0; border-bottom: 1px solid var(--border); }
+.vouch-row .avatar.small { width: 3rem; margin: 0; }
+.vouch-row__who { flex: 1 1 14rem; display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
+.vouch-row__actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
+.vouch-row__concern summary { cursor: pointer; color: var(--muted); font-size: .9em; }
+.vouch-row__concern form { display: flex; flex-direction: column; gap: .35rem; margin-top: .4rem; max-width: 24rem; }
+.vouch-row__concern textarea { width: 100%; box-sizing: border-box; }

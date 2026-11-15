@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     "oauth2_provider",
     "apps.moodle",
     "apps.group_email",
+    "apps.vouching",
 ]
 
 MIDDLEWARE = [

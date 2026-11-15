@@ -46,6 +46,19 @@ def _trained_on(member):
     return sorted((m for m in machines if m.induction_key in categories), key=lambda m: m.name)
 
 
+def _vouching(member):
+    """Whether a current member can vouch, and how many waiting members they haven't made a choice about yet."""
+    from apps.vouching import vouching  # not at the top: apps.vouching uses this app's models
+
+    if member.banned or member.status not in (member.Status.ACTIVE, member.Status.HONORARY):
+        return None
+    why_not = vouching.why_cant_vouch(member)
+    if why_not:
+        return {"why_not": why_not}
+    chosen = vouching.my_choices(member)
+    return {"to_see": vouching.waiting_members(member).exclude(pk__in=chosen).count()}
+
+
 @login_required
 def account(request):
     member = request.user
@@ -69,6 +82,7 @@ def account(request):
         "discord_enabled": discord.enabled(),
         "proposals_to_vote_on": proposals_waiting_for(member),
         "can_group_email": bool(group_email.allowed(member)),  # 06 §6.6
+        "vouching": _vouching(member),  # 05 §5.10
     }
     return render(request, "members/account.html", context)
 

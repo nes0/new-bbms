@@ -25,6 +25,7 @@
               <a class="portal-nav__link" href="{% url 'access:activity' %}"><span aria-hidden="true">◉</span>Who's in</a>
               <a class="portal-nav__link" href="{% url 'equipment:index' %}"><span aria-hidden="true">⚒</span>Equipment</a>
               <a class="portal-nav__link" href="{% url 'proposals:index' %}"><span aria-hidden="true">✦</span>Proposals</a>
+              <a class="portal-nav__link" href="{% url 'vouching:index' %}"><span aria-hidden="true">☆</span>Vouching</a>
             {% endif %}
           </section>
           {% if perms.finance.see_finance or perms.finance.manage_finance or perms.expenses.approve_expense or perms.expenses.see_all_expenses or perms.members.review_id_documents or perms.members.confirm_general_inductions %}

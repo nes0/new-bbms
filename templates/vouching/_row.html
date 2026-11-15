@@ -1,0 +1,44 @@
+{# One waiting member on the vouching page, with the viewer's own choice. Swaps itself in place (HTMX). #}
+{% with member=card.member %}
+<li class="vouch-row" id="member-{{ member.pk }}">
+  {% include "profiles/_avatar.html" with small=True %}
+  <div class="vouch-row__who">
+    <a href="{% url 'profiles:member' member.pk %}"><strong>{{ member.full_name }}</strong></a>
+    {% if first_visit %}<span class="hint">first in {{ first_visit|date:"j M Y" }}</span>{% endif %}
+    <span class="vouch-row__state" role="status">
+      {% if vouch.value == 1 %}<span class="ok">✓ You vouched for them.</span>
+      {% elif vouch.value == -1 %}<span class="hint">You raised a concern{% if vouch.note %} (with a note){% endif %}. Only the trustees can see it.</span>
+      {% elif saved %}<span class="hint">Nothing from you counts for them now.</span>{% endif %}
+      {% if error %}<span class="error" role="alert">{{ error }}</span>{% endif %}
+    </span>
+  </div>
+  <div class="vouch-row__actions">
+    {% if vouch.value != 1 %}
+      <form method="post" action="{% url 'vouching:choose' member.pk %}" class="inline"
+            hx-post="{% url 'vouching:choose' member.pk %}" hx-target="#member-{{ member.pk }}" hx-swap="outerHTML">
+        {% csrf_token %}<input type="hidden" name="action" value="vouch">
+        <button type="submit" title="I've seen them at work and I'm happy for them to be trusted">Vouch</button>
+      </form>
+    {% endif %}
+    {% if vouch %}
+      <form method="post" action="{% url 'vouching:choose' member.pk %}" class="inline"
+            hx-post="{% url 'vouching:choose' member.pk %}" hx-target="#member-{{ member.pk }}" hx-swap="outerHTML">
+        {% csrf_token %}<input type="hidden" name="action" value="withdraw">
+        <button type="submit" class="link">Withdraw</button>
+      </form>
+    {% endif %}
+    {% if vouch.value != -1 %}
+      <details class="vouch-row__concern">
+        <summary>I have a concern</summary>
+        <form method="post" action="{% url 'vouching:choose' member.pk %}"
+              hx-post="{% url 'vouching:choose' member.pk %}" hx-target="#member-{{ member.pk }}" hx-swap="outerHTML">
+          {% csrf_token %}<input type="hidden" name="action" value="concern">
+          <label for="note-{{ member.pk }}">A note for the trustees (optional; never shown to {{ member.given_name }})</label>
+          <textarea id="note-{{ member.pk }}" name="note" rows="2" maxlength="{{ note_length }}"></textarea>
+          <button type="submit" class="link">Send my concern to the trustees</button>
+        </form>
+      </details>
+    {% endif %}
+  </div>
+</li>
+{% endwith %}

@@ -34,6 +34,7 @@ urlpatterns = [
     path("", include("apps.profiles.urls")),
     path("", include("apps.discord.urls")),
     path("", include("apps.proposals.urls")),
+    path("", include("apps.vouching.urls")),
     path("", include("apps.expenses.urls")),
     path("", include("apps.finance.urls")),
     path("", include("apps.equipment.urls")),

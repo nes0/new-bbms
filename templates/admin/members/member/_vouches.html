@@ -1,0 +1,12 @@
+{# Who vouched for a waiting member, for the trustees (05 §5.10). `summary` from vouching.summaries; `history` optional. #}
+<div class="vouches">
+  <strong>Score {{ summary.score }}</strong>{% if summary.notified_at %} <span class="help">(trustees told {{ summary.notified_at|date:"j M Y" }})</span>{% endif %}
+  {% if summary.vouches %}<div>Vouched: {% for vouch in summary.vouches %}{{ vouch.voucher.full_name }} <span class="help">{{ vouch.updated_at|date:"j M" }}</span>{% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+  {% if summary.concerns %}<div class="concerns">Concerns: {% for vouch in summary.concerns %}{{ vouch.voucher.full_name }} <span class="help">{{ vouch.updated_at|date:"j M" }}</span>{% if vouch.note %}: “{{ vouch.note }}”{% endif %}{% if not forloop.last %}; {% endif %}{% endfor %}</div>{% endif %}
+  {% if summary.lapsed %}<div class="help">Not counted (left or banned since): {% for vouch in summary.lapsed %}{{ vouch.voucher.full_name }} ({{ vouch.get_value_display|lower }}){% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+  {% if history %}
+    <details><summary>History</summary>
+      <ul>{% for change in history %}<li>{{ change.at|date:"j M Y H:i" }}: {{ change.voucher.full_name }} {{ change.get_action_display|lower }}{% if change.note %}: “{{ change.note }}”{% endif %}</li>{% endfor %}</ul>
+    </details>
+  {% endif %}
+</div>
