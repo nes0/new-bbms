@@ -115,7 +115,7 @@ body.wide main { max-width: 72rem; }
 .stack.wide { max-width: 36rem; }
 
 /* Two-factor setup (06 §6.11) */
-.qr svg { display: block; width: 12rem; height: auto; margin: 0.5rem 0; border-radius: 4px; }
+.qr svg { display: block; width: 14rem; max-width: 100%; height: auto; aspect-ratio: 1; margin: 0.5rem 0; border-radius: 4px; }
 .codes { display: grid; grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); gap: 0.25rem 1rem; }
 
 /* A demo site (DEMO_SITE) says so on every page. */
@@ -616,3 +616,18 @@ body[data-theme="night"] .equipment-button:not(.equipment-button--quiet) { color
 .vouch-row__concern summary { cursor: pointer; color: var(--muted); font-size: .9em; }
 .vouch-row__concern form { display: flex; flex-direction: column; gap: .35rem; margin-top: .4rem; max-width: 24rem; }
 .vouch-row__concern textarea { width: 100%; box-sizing: border-box; }
+
+/* Log out: a nav-style button in the sidebar, an icon in the top bar, and a dialog to confirm */
+.portal-logout { margin: 0; }
+.portal-logout button[type="submit"].portal-nav__link { min-height:41px; padding:8px 10px; border-radius:10px; background:transparent; color:#a9b4ad; font-weight:inherit; justify-content:flex-start; }
+.portal-logout button[type="submit"].portal-nav__link:hover, .portal-logout button[type="submit"].portal-nav__link:focus-visible { background:#282f2c; color:#f0f3ec; }
+.portal-logout button[type="submit"].portal-topbar__logout { min-height:39px; min-width:39px; padding:0 10px; border:1px solid #3b4741; border-radius:11px; background:#202725; color:#f0f3ec; font-weight:inherit; }
+.portal-logout button[type="submit"].portal-topbar__logout:hover { background:#282f2c; }
+.confirm-dialog { max-width: min(24rem, calc(100vw - 32px)); padding: 1.25rem 1.5rem; border: 1px solid #3b4741; border-radius: 16px; background: #202725; color: #f0f3ec; }
+.confirm-dialog::backdrop { background: rgba(0, 0, 0, .55); }
+.confirm-dialog h2 { margin: 0 0 .5rem; font-size: 1.25rem; }
+.confirm-dialog p { margin: 0 0 1rem; color: #a9b4ad; }
+.confirm-dialog__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+.confirm-dialog__cancel { min-height: 44px; padding: .65rem 1rem; border: 1px solid #3b4741; border-radius: 10px; background: transparent; color: #f0f3ec; font: inherit; cursor: pointer; }
+.confirm-dialog__cancel:hover { background: #282f2c; }
+.logout-icon { display:block; }

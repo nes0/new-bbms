@@ -137,7 +137,8 @@ def admin_login(request):
 
 
 def _qr_svg(uri: str) -> str:
-    return qr.make(uri).svg_inline(scale=5, dark="#000", light="#fff")
+    # omitsize: a viewBox instead of a fixed width and height, so CSS scales the code rather than cropping it
+    return qr.make(uri).svg_inline(scale=5, dark="#000", light="#fff", omitsize=True)
 
 
 @login_required

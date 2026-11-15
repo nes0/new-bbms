@@ -166,6 +166,11 @@ class TwoFactorSetupTests(TestCase):
         self.assertTrue(two_factor.is_on(self.kim))
         self.assertContains(self.client.get(self.url), "You have 10 recovery codes left.")
 
+    def test_the_qr_code_scales_instead_of_being_cropped(self):
+        svg = self.client.get(self.url).content.decode().split('<div class="qr"><svg', 1)[1].split(">", 1)[0]
+        self.assertIn("viewBox=", svg)  # sized by the CSS; a fixed width and height got cut off in a smaller box
+        self.assertNotIn("width=", svg)
+
     def test_the_account_page_links_here(self):
         self.assertContains(self.client.get("/account/"), self.url)
 
@@ -265,6 +270,67 @@ class AdminSiteTests(TestCase):
         self.client.post(url, {"action": "switch_off", "_selected_action": [device.pk]})
         self.assertFalse(two_factor.is_on(kim))
         self.assertEqual(two_factor.recovery_codes_left(kim), 0)
+
+
+class AdminSwitchOffTests(TestCase):
+    """A member who has lost their phone and their recovery codes: an admin switches it off from their page."""
+
+    def setUp(self):
+        self.boss = member(is_staff=True, is_superuser=True)
+        self.kim = member()
+        turn_on(self.kim)
+        self.client.force_login(self.boss)
+        self.page = reverse("admin:members_member_change", args=[self.kim.pk])
+        self.url = reverse("admin:members_member_two_factor_off", args=[self.kim.pk])
+
+    def test_the_members_page_says_its_on_and_links_to_switch_it_off(self):
+        response = self.client.get(self.page)
+        self.assertContains(response, "On, 10 recovery codes left.")
+        self.assertContains(response, self.url)
+
+    def test_it_asks_first_then_switches_it_off_and_tells_the_member(self):
+        from django.contrib.admin.models import LogEntry
+
+        from apps.notifications.models import Notification
+
+        self.assertContains(self.client.get(self.url), "Yes, switch it off")
+        self.assertTrue(two_factor.is_on(self.kim))  # looking at the page changes nothing
+        self.assertRedirects(self.client.post(self.url), self.page, fetch_redirect_response=False)
+        self.assertFalse(two_factor.is_on(self.kim))
+        self.assertEqual(two_factor.recovery_codes_left(self.kim), 0)
+        self.assertEqual([message.to for message in mail.outbox], [[self.kim.email]])
+        self.assertIn("switched off", mail.outbox[0].subject)
+        self.assertTrue(Notification.objects.filter(member=self.kim, kind="two_factor_off").exists())
+        entry = LogEntry.objects.get(object_id=str(self.kim.pk))
+        self.assertEqual((entry.user, entry.change_message), (self.boss, "Switched off two-factor login."))
+        self.assertContains(self.client.get(self.page), "Off")
+
+    def test_when_its_already_off(self):
+        two_factor.turn_off(self.kim)
+        self.assertRedirects(self.client.get(self.url), self.page, fetch_redirect_response=False)
+        self.client.post(self.url)
+        self.assertEqual(mail.outbox, [])
+
+    def test_only_admins_who_can_change_members(self):
+        from django.contrib.auth.models import Permission
+
+        viewer = member(is_staff=True)
+        viewer.user_permissions.add(Permission.objects.get(codename="view_member"))
+        self.client.force_login(viewer)
+        self.assertEqual(self.client.get(self.url).status_code, 403)
+        self.assertEqual(self.client.post(self.url).status_code, 403)
+        self.assertTrue(two_factor.is_on(self.kim))
+
+
+class LogOutTests(TestCase):
+    def test_every_page_has_log_out_that_asks_first(self):
+        kim = member()
+        self.client.force_login(kim)
+        page = self.client.get("/account/").content.decode()
+        self.assertEqual(page.count('action="/accounts/logout/" class="portal-logout" data-confirm-logout'), 2)
+        self.assertIn('<dialog class="confirm-dialog" id="logout-dialog"', page)
+        self.client.post("/accounts/logout/")
+        self.assertEqual(self.client.get("/account/").status_code, 302)
 
 
 class DeployCheckTests(TestCase):

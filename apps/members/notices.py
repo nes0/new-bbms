@@ -52,3 +52,15 @@ def id_checked(check):
             kind="id_rejected",
             url=reverse("members:id-documents"),
         )
+
+
+def two_factor_switched_off(member):
+    """An admin switched off the member's two-factor login (lost phone): tell them, in case it wasn't them asking."""
+    emails.send(member, "members/emails/two_factor_off")
+    notify(
+        member,
+        "An admin has switched off your two-factor login, so you log in with just your password. "
+        "Turn it back on from your account when you have your phone.",
+        kind="two_factor_off",
+        url=reverse("signin:manage"),
+    )

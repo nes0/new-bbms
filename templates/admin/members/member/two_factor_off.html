@@ -1,0 +1,22 @@
+{% extends "admin/base_site.html" %}
+{# Confirm before switching off a member's two-factor login (06 §6.11). #}
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Home</a> › <a href="{% url 'admin:app_list' opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    › <a href="{% url 'admin:members_member_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+    › <a href="{{ back }}">{{ original }}</a> › Switch off two-factor login
+  </div>
+{% endblock %}
+{% block content %}
+  <p>Switch off two-factor login for <strong>{{ original.full_name }}</strong> ({{ original.email }})?</p>
+  <ul>
+    <li>They'll log in with just their password until they turn it on again. Their unused recovery codes stop working.</li>
+    <li>Only do this once you're sure it's really them asking, for example in person at the space. Someone who has
+      their password but not their phone would get in.</li>
+    <li>They'll be emailed to say it's been switched off.</li>
+  </ul>
+  <form method="post">{% csrf_token %}
+    <input type="submit" value="Yes, switch it off">
+    <a href="{{ back }}" class="button cancel-link">No, go back</a>
+  </form>
+{% endblock %}
