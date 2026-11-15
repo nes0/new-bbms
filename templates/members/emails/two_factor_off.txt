@@ -1,0 +1,10 @@
+{% autoescape off %}Your two-factor login has been switched off
+Hello {{ member.given_name }},
+
+An admin has switched off two-factor login for your {{ site_name }} account, so for now you log in with just your
+password. This is usually because you've lost your phone.
+
+When you have your phone again, you can turn it back on from your account (Your account → Two-factor login).
+
+If you didn't ask for this, please tell a trustee straight away and change your password.
+{% endautoescape %}

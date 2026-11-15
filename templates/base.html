@@ -42,6 +42,8 @@
             <a class="portal-nav__link" href="{% url 'notifications:list' %}"><span aria-hidden="true">♧</span>Notifications{% if unread_notifications %}<span class="badge" title="Unread">{{ unread_notifications }}</span>{% endif %}</a>
             <a class="portal-nav__link" href="{% url 'members:account' %}"><span aria-hidden="true">●</span>{{ user.get_short_name }}'s account</a>
             {% if user.is_staff %}<a class="portal-nav__link" href="{% url 'admin:index' %}"><span aria-hidden="true">⚙</span>Admin</a>{% endif %}
+            <form method="post" action="{% url 'logout' %}" class="portal-logout" data-confirm-logout>{% csrf_token %}
+              <button type="submit" class="portal-nav__link"><span><svg class="logout-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></span>Log out</button></form>
           </section>
           </nav></div>
         <div class="portal-sidebar__bottom">
@@ -60,9 +62,34 @@
               <span aria-hidden="true">♧</span>{% if unread_notifications %}<span class="portal-notifications__dot" aria-hidden="true"></span>{% endif %}
             </a>
             <a class="portal-account" href="{% url 'members:account' %}"><span class="portal-account__avatar" aria-hidden="true">{{ user.get_short_name|slice:":1" }}</span><span>{{ user.get_short_name }}</span><span aria-hidden="true">⌄</span></a>
+            <form method="post" action="{% url 'logout' %}" class="portal-logout" data-confirm-logout>{% csrf_token %}
+              <button type="submit" class="portal-topbar__logout" title="Log out"><svg class="logout-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg><span class="visually-hidden">Log out</span></button></form>
           </div>
         </header>
         {% if messages %}<ul class="messages">{% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}</ul>{% endif %}
+    {# Log out asks first. Without JavaScript the buttons above log out straight away. #}
+    <dialog class="confirm-dialog" id="logout-dialog" aria-labelledby="logout-dialog-title">
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+        <h2 id="logout-dialog-title">Log out?</h2>
+        <p>You'll need your password to log in again.</p>
+        <div class="confirm-dialog__actions">
+          <button type="button" class="confirm-dialog__cancel" value="cancel" autofocus>Stay logged in</button>
+          <button type="submit">Log out</button>
+        </div>
+      </form>
+    </dialog>
+    <script>
+      (() => {
+        const dialog = document.querySelector("#logout-dialog");
+        if (!dialog || typeof dialog.showModal !== "function") return;
+        document.querySelectorAll("form[data-confirm-logout]").forEach(form => form.addEventListener("submit", event => {
+          event.preventDefault();
+          dialog.showModal();
+        }));
+        dialog.querySelector(".confirm-dialog__cancel").addEventListener("click", () => dialog.close());
+        dialog.addEventListener("click", event => { if (event.target === dialog) dialog.close(); });  // the backdrop
+      })();
+    </script>
     <script>
       (() => {
         const sidebar = document.querySelector("#portal-sidebar");

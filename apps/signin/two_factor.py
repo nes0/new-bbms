@@ -2,8 +2,8 @@
 Two-factor login (spec 06 §6.11, "optional 2FA for admins"): a code from an authenticator app as well as the password.
 
 Any member can turn it on; a setting can require it for the admin site. Each member also gets ten one-off recovery
-codes, for when their phone is lost. An admin can switch a member's two-factor off in the admin (Logging in →
-Two-factor logins → delete) once they've checked who's asking.
+codes, for when their phone is lost. If they've lost those too, an admin can switch it off from the member's page in
+the admin (Two-factor login → Switch it off) once they've checked who's asking; the member is emailed.
 """
 
 import hashlib

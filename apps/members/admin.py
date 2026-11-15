@@ -5,8 +5,10 @@ from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 from django.core.exceptions import PermissionDenied
+from django.http import Http404
+from django.shortcuts import redirect
 from django.template.response import TemplateResponse
-from django.urls import path
+from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
 
@@ -258,10 +260,11 @@ class MemberAdmin(UserAdmin):
         "box_payment",
         "attendance",
         "vouches",
+        "two_factor_login",
     )
 
     fieldsets = (
-        (None, {"fields": ("email", "email_confirmed", "email_verified_at", "password")}),
+        (None, {"fields": ("email", "email_confirmed", "email_verified_at", "password", "two_factor_login")}),
         ("Personal details", {"fields": ("given_name", "family_name", "phone", "emergency_contact")}),
         (
             "Membership",
@@ -344,9 +347,57 @@ class MemberAdmin(UserAdmin):
             return "None"
         return render_to_string("admin/members/member/_vouches.html", {"summary": summary, "history": history})
 
+    @admin.display(description="Two-factor login")
+    def two_factor_login(self, member):
+        from apps.signin import two_factor
+
+        if not member.pk or not two_factor.is_on(member):
+            return "Off"
+        left = two_factor.recovery_codes_left(member)
+        return format_html(
+            'On, {} recovery code{} left. <a href="{}">Switch it off</a> if they\'ve lost their phone.',
+            left,
+            "" if left == 1 else "s",
+            reverse("admin:members_member_two_factor_off", args=[member.pk]),
+        )
+
     def get_urls(self):
         review = path("key-review/", self.admin_site.admin_view(self.key_review), name="members_member_key_review")
-        return [review, *super().get_urls()]
+        two_factor_off = path(
+            "<path:object_id>/two-factor-off/",
+            self.admin_site.admin_view(self.two_factor_off),
+            name="members_member_two_factor_off",
+        )
+        return [review, two_factor_off, *super().get_urls()]
+
+    def two_factor_off(self, request, object_id):
+        """Switch off a member's two-factor login when they've lost their phone and their recovery codes (06 §6.11).
+        A page to confirm first, as it lets someone log in with the password alone. The member is told."""
+        from apps.signin import two_factor
+
+        member = self.get_object(request, object_id)
+        if member is None:
+            raise Http404
+        if not self.has_change_permission(request, member):
+            raise PermissionDenied
+        back = reverse("admin:members_member_change", args=[member.pk])
+        if not two_factor.is_on(member):
+            self.message_user(request, f"Two-factor login is already off for {member.full_name}.", messages.WARNING)
+            return redirect(back)
+        if request.method == "POST":
+            two_factor.turn_off(member)
+            self.log_change(request, member, "Switched off two-factor login.")
+            notices.two_factor_switched_off(member)
+            self.message_user(request, f"Two-factor login is off for {member.full_name}. They've been emailed.")
+            return redirect(back)
+        context = {
+            **self.admin_site.each_context(request),
+            "opts": self.model._meta,
+            "original": member,
+            "title": "Switch off two-factor login?",
+            "back": back,
+        }
+        return TemplateResponse(request, "admin/members/member/two_factor_off.html", context)
 
     def key_review(self, request):
         """Members without a key, with their attendance and the checks a key needs (05 §5.10, 06 §6.10)."""
