@@ -84,7 +84,7 @@ class LifetimeTests(TestCase):
     def test_a_shared_access_fee_is_noted(self):
         Equipment.objects.create(name="Blue laser", slug="blue", requires_induction=True, induction_category="laser")
         self.client.force_login(self.boss)
-        self.assertContains(self.client.get(reverse("equipment:retired")), "Access fee shared with")
+        self.assertContains(self.client.get(reverse("equipment:retired")), "Shared induction:")
 
 
 class RetiringInTheAdminTests(TestCase):

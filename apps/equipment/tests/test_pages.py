@@ -73,9 +73,9 @@ class WhoSeesThemTests(PagesTestCase):
 class ListTests(PagesTestCase):
     def test_machines_are_split_by_whether_they_need_training_and_show_where_you_are(self):
         response = self.client.get(reverse("equipment:index"))
-        self.assertContains(response, "Needs training")
+        self.assertContains(response, "Training required")
         self.assertContains(response, "Access fee £25.00")
-        self.assertContains(response, "£3.00 an hour")
+        self.assertContains(response, "£3.00 per hour")
         self.assertContains(response, "No training needed")
         trained(self.kim, self.machine)
         self.assertContains(self.client.get(reverse("equipment:index")), "You're trained")

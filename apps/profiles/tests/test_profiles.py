@@ -2,6 +2,7 @@
 
 import io
 import tempfile
+from unittest.mock import patch
 
 from django.contrib.auth.models import Group, Permission
 from django.core import mail
@@ -71,7 +72,7 @@ class ProfileEditTests(ProfileTestCase):
         page = self.client.get(f"/members/{self.kim.pk}/")
         self.assertContains(page, "https://github.com/kim-lee")
         self.assertContains(page, "Lasers.<br>And lathes.")
-        self.assertContains(page, "img/skills/welding.svg")
+        self.assertRegex(page.content.decode(), r"img/skills/welding(?:\.[a-f0-9]+)?\.svg")
 
     def test_bad_links(self):
         self.client.force_login(self.kim)
@@ -285,7 +286,8 @@ class GroupTests(ProfileTestCase):
 class CameraTests(ProfileTestCase):
     """The photo boxes offer the camera (static/js/camera.js): the front one for a selfie, the rear one for ID."""
 
-    def test_boxes_ask_for_the_camera(self):
+    @patch("apps.members.views.id_documents.encryption_ready", return_value=True)
+    def test_boxes_ask_for_the_camera(self, _encryption_ready):
         self.client.force_login(self.kim)
         profile = self.client.get("/account/profile/")
         self.assertContains(profile, 'data-camera="user"')
