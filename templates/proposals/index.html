@@ -1,15 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Proposals · {{ SITE_NAME }}{% endblock %}
 {% block content %}
-<h1>Proposals</h1>
-<p>Have your say in what happens at {{ SITE_NAME }}.
-  {% if can_add %}<a href="{% url 'admin:proposals_proposal_add' %}">Write a proposal</a>{% endif %}</p>
-
+<div class="member-page member-page--proposals">
+<header class="member-page__header"><div><p class="member-eyebrow">Community · decisions</p><h1>Proposals</h1><p class="member-page__intro">Have your say in what happens at {{ SITE_NAME }}.</p></div>
+  {% if can_add %}<a class="member-button member-button--primary" href="{% url 'admin:proposals_proposal_add' %}">+ Write a proposal</a>{% endif %}
+</header>
+<div class="member-proposal-sections">
 {% for name, proposals in sections.items %}{% if proposals %}
-  <h2>{% if name == "open" %}Open for voting{% elif name == "upcoming" %}Coming up{% else %}Closed{% endif %}</h2>
-  <ul class="proposals">
+  <section class="member-proposal-group">
+  <h2 class="member-section-title">{% if name == "open" %}Open for voting{% elif name == "upcoming" %}Coming up{% else %}Closed{% endif %}</h2>
+  <ul class="proposals member-proposals">
   {% for proposal in proposals %}
-    <li><a href="{% url 'proposals:detail' proposal.pk %}">{{ proposal.title }}</a>
+    <li class="member-proposal-card"><a class="member-proposal-card__title" href="{% url 'proposals:detail' proposal.pk %}">{{ proposal.title }}</a>
       <span class="hint">
       {% if name == "open" %}until the end of {{ proposal.end_date|date:"l j F" }}.
         {% if proposal.has_voted %}<span class="ok">You've voted.</span>{% elif can_vote %}<strong>You haven't voted yet.</strong>{% endif %}
@@ -18,10 +20,13 @@
       </span></li>
   {% endfor %}
   </ul>
+  </section>
 {% endif %}{% empty %}{% endfor %}
 {% if not sections.open and not sections.upcoming and not sections.closed %}<p>No proposals yet.</p>{% endif %}
 
-<p class="hint">A proposal passes if more members vote for it than against it{% if quorum %}, and enough members vote{% endif %}.
+</div>
+<p class="hint member-page__note">A proposal passes if more members vote for it than against it{% if quorum %}, and enough members vote{% endif %}.
   Neutral votes and abstentions don't count either way. Your vote is secret: other members see only the totals,
   once voting has closed.</p>
+  </div>
 {% endblock %}
