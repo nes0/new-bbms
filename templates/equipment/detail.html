@@ -3,15 +3,21 @@
 
 {% block title %}{{ equipment.name }} · {{ SITE_NAME }}{% endblock %}
 
+{% block body_class %}equipment-detail-page{% endblock %}
+
 {% block content %}
-  <p class="hint"><a href="{% url 'equipment:index' %}">Equipment</a>{% if equipment.archived %} ·
-    <a href="{% url 'equipment:retired' %}">Retired equipment</a>{% endif %}</p>
-  <h1>{{ equipment.name }}</h1>
+  <div class="equipment-page equipment-detail">
+  <header class="equipment-detail__heading">
+    <div class="equipment-breadcrumb"><a href="{% url 'equipment:index' %}">Equipment</a>{% if equipment.archived %}<span aria-hidden="true">/</span><a href="{% url 'equipment:retired' %}">Retired equipment</a>{% endif %}</div>
+    <p class="equipment-eyebrow">{% if equipment.archived %}Machine history{% else %}Machine details{% endif %}{% if equipment.room %} · {{ equipment.room }}{% endif %}</p>
+    <div class="equipment-detail__title"><div><h1>{{ equipment.name }}</h1>{% if equipment.manufacturer or equipment.model_number %}<p>{{ equipment.manufacturer }} {{ equipment.model_number }}</p>{% endif %}</div>
+    {% if equipment.status == "out_of_order" %}<span class="equipment-status equipment-status--out">Out of order</span>{% else %}<span class="equipment-status equipment-status--ready">{% if equipment.archived %}Retired{% else %}Available{% endif %}</span>{% endif %}</div>
+  </header>
 
   {% if life %}
-    <section class="card">
+    <section class="card equipment-panel">
       <h2>Retired{% if equipment.removed_at %} on {{ equipment.removed_at|date:"j F Y" }}{% endif %}</h2>
-      <dl class="details">
+      <dl class="details equipment-facts">
         <dt>In service</dt><dd>{{ equipment.obtained_at|date:"j F Y"|default:"?" }} to {{ equipment.removed_at|date:"j F Y"|default:"?" }}{% if life.years is not None %} ({{ life.years|floatformat:1 }} years){% endif %}</dd>
         <dt>Bought for</dt><dd>{% if equipment.purchase_price_pence is not None %}{{ equipment.purchase_price_pence|pounds }}{% else %}Not known{% endif %}</dd>
         <dt>Access fees</dt><dd>{{ life.access_fees|pounds }}{% if life.shares_access_with %} <span class="hint">(shared induction)</span>{% endif %}</dd>
@@ -98,7 +104,7 @@
   </section>
 
   {% if can_report %}
-    <section id="report"{% if awaiting_reason %} class="card"{% endif %}>
+    <section id="report" class="equipment-panel{% if awaiting_reason %} card{% endif %}">
       <h2>{% if awaiting_reason %}What's wrong with it?{% else %}Report a problem{% endif %}</h2>
       {% if awaiting_reason %}<p>You marked it out of order with the button on its reader. Please tell the team what's
         wrong, so they know what to fix.</p>{% endif %}
@@ -126,7 +132,7 @@
   {% endif %}
 
   {% if status_changes %}
-    <section>
+    <section class="equipment-panel">
       <h2>Status history</h2>
       <ul class="plain">
         {% for change in status_changes %}

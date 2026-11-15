@@ -2,19 +2,47 @@
 {% load money %}
 
 {% block title %}Equipment · {{ SITE_NAME }}{% endblock %}
+{% block body_class %}equipment-index-page{% endblock %}
 
 {% block content %}
-  <h1>Equipment</h1>
-  <p>The space's tools and machines. Some need training before you can use them: pay the one-off access fee, take any online
-    course, then a trainer signs you off. <a href="{% url 'moodle:training' %}">Your online training</a></p>
+  <div class="equipment-page">
+    <header class="equipment-heading">
+      <div>
+        <p class="equipment-eyebrow">Your tools &amp; workshop</p>
+        <h1>Equipment</h1>
+        <p class="equipment-intro">Explore machines, check access and training, and read the guidance before you get started.</p>
+      </div>
+      <a class="equipment-button equipment-button--quiet" href="{% url 'moodle:training' %}">Online training <span aria-hidden="true">↗</span></a>
+    </header>
 
-  <section>
-    <h2>Needs training</h2>
-    {% include "equipment/_list.html" with rows=needs_training %}
-  </section>
-  <section>
-    <h2>No training needed</h2>
-    {% include "equipment/_list.html" with rows=open_to_all %}
-  </section>
-  {% if can_review %}<p><a href="{% url 'equipment:retired' %}">Retired equipment</a>: lifetime fees, use and costs.</p>{% endif %}
+    <div class="equipment-summary" aria-label="Equipment summary">
+      <div><span class="equipment-summary__icon" aria-hidden="true">⚒</span><span><strong>{{ needs_training|length }}</strong><small>Machines need training</small></span></div>
+      <div><span class="equipment-summary__icon" aria-hidden="true">✓</span><span><strong>{{ open_to_all|length }}</strong><small>Open to all members</small></span></div>
+    </div>
+
+    <aside class="equipment-notice">
+      <span class="equipment-notice__icon" aria-hidden="true">i</span>
+      <p>Each machine page shows current status, cost, safety guidance, training and servicing. Check it before you use the equipment.</p>
+    </aside>
+
+    <section class="equipment-section" aria-labelledby="training-machines">
+      <header class="equipment-section__heading">
+        <div><p class="equipment-eyebrow">Get signed off before use</p><h2 id="training-machines">Training required</h2></div>
+        <span class="equipment-section__count">{{ needs_training|length }}</span>
+      </header>
+      {% include "equipment/_list.html" with rows=needs_training %}
+    </section>
+
+    <section class="equipment-section" aria-labelledby="open-machines">
+      <header class="equipment-section__heading">
+        <div><p class="equipment-eyebrow">Ready for members</p><h2 id="open-machines">No training needed</h2></div>
+        <span class="equipment-section__count">{{ open_to_all|length }}</span>
+      </header>
+      {% include "equipment/_list.html" with rows=open_to_all %}
+    </section>
+
+    {% if can_review %}
+      <a class="equipment-retired-link" href="{% url 'equipment:retired' %}"><span>Retired equipment</span><span>Lifetime costs, fees and usage →</span></a>
+    {% endif %}
+  </div>
 {% endblock %}
