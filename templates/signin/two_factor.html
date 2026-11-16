@@ -5,10 +5,10 @@
 {% block body_class %}backdrop{% endblock %}
 
 {% block content %}
-  <h1>Enter your code</h1>
+  <header class="page-heading"><p class="eyebrow">Account security</p><h1>Enter your code</h1></header>
   <p>{% if logging_in %}Your password was right.{% else %}The admin site needs your two-factor code.{% endif %}
     Open your authenticator app and enter the 6-digit code for {{ SITE_NAME }}.</p>
-  <form method="post" class="stack">
+  <form method="post" class="stack card">
     {% csrf_token %}
     <label for="id_code">Code</label>
     <input name="code" id="id_code" autocomplete="one-time-code" inputmode="numeric" maxlength="20" required autofocus>

@@ -3,14 +3,14 @@
 {% block title %}General inductions · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
-  <h1>General inductions to confirm</h1>
+  <header class="page-heading"><p class="eyebrow">Trustee workspace</p><h1>General inductions to confirm</h1></header>
   <p>Members who have read the guidance for members and the rules online, and said they agree to follow them.
     Confirm each one when you've shown them round. If you're with someone who has just done it, reload this page to
     see their name.</p>
   <p class="hint">To do it, a member logs in and opens <strong>Your account</strong>, then <strong>Complete the
     general induction</strong> ({{ request.scheme }}://{{ request.get_host }}{% url 'members:induction' %}).</p>
   {% if waiting %}
-    <table class="table">
+    <div class="scroll"><table class="table">
       <thead><tr><th>Member</th><th>Email</th><th>Status</th><th>Joined</th><th></th></tr></thead>
       <tbody>
         {% for member in waiting %}
@@ -28,7 +28,7 @@
           </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   {% else %}
     <p>Nobody waiting.</p>
   {% endif %}

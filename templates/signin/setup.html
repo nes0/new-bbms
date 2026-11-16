@@ -4,7 +4,7 @@
 
 {% block content %}
   <p class="hint"><a href="{% url 'members:account' %}">Your account</a></p>
-  <h1>Two-factor login</h1>
+  <header class="page-heading"><p class="eyebrow">Account security</p><h1>Two-factor login</h1></header>
   <p>With two-factor login, logging in needs a code from an app on your phone as well as your password, so a stolen
     password isn't enough. Any authenticator app works, for example Google Authenticator, Microsoft Authenticator,
     Aegis or 1Password.</p>
@@ -13,7 +13,7 @@
       <div class="qr">{{ qr|safe }}</div>
       <p class="hint">Can't scan it? Type in this key: <code>{{ secret }}</code></p></li>
     <li>Enter the 6-digit code the app shows:
-      <form method="post" class="stack">
+      <form method="post" class="stack card">
         {% csrf_token %}
         <label for="id_code">Code</label>
         <input name="code" id="id_code" autocomplete="one-time-code" inputmode="numeric" maxlength="20" required>

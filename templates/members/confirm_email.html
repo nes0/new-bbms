@@ -3,9 +3,9 @@
 {% block title %}Confirm your email address · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
-  <h1>Confirm your email address</h1>
+  <header class="page-heading"><p class="eyebrow">Account security</p><h1>Confirm your email address</h1></header>
   {% if outcome == "confirmed" %}
-    <p class="ok">Thank you: your email address is confirmed.</p>
+    <section class="card"><p class="ok">Thank you: your email address is confirmed.</p>
   {% elif outcome == "changed" %}
     <p class="ok">Done: you now log in with <strong>{{ confirmed.email }}</strong>, and it's confirmed.</p>
   {% elif outcome == "already" %}
@@ -24,5 +24,5 @@
       <p>Log in and we can send you a new one from your account page.</p>
     {% endif %}
   {% endif %}
-  <p>{% if user.is_authenticated %}<a href="{% url 'members:account' %}">Your account</a>{% else %}<a href="{% url 'login' %}">Log in</a>{% endif %}</p>
+  <p>{% if user.is_authenticated %}<a href="{% url 'members:account' %}">Your account</a>{% else %}<a href="{% url 'login' %}">Log in</a>{% endif %}</p></section>
 {% endblock %}
