@@ -2,6 +2,7 @@
 {% load money %}
 {% block title %}Your payments · {{ SITE_NAME }}{% endblock %}
 {% block content %}
+  <div class="account-destination">
 <h1>Your monthly payment</h1>
 
 <dl class="details">
@@ -127,4 +128,5 @@
   <p>None yet.</p>
 {% endif %}
 <p><a href="{% url 'members:account' %}">Back to your account</a></p>
+  </div>
 {% endblock %}

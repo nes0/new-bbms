@@ -2,6 +2,7 @@
 {% load money static %}
 {% block title %}Stats · {{ SITE_NAME }}{% endblock %}
 {% block content %}
+  <div class="account-destination">
 <h1>Membership stats</h1>
 {% if finance_link %}{% include "finance/_nav.html" %}{% endif %}
 <p><strong>{{ members }}</strong> member{{ members|pluralize }} (active or leaving){% if honorary %}, and {{ honorary }} honorary{% endif %}.
@@ -55,4 +56,5 @@
   {% endfor %}</tbody>
 </table>
 <p class="hint">Amounts are rounded to the nearest £5.</p>
+  </div>
 {% endblock %}

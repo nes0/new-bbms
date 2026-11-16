@@ -3,6 +3,7 @@
 {% block title %}Group email · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
+  <div class="account-destination">
   <h1>Group email</h1>
   <p>Email a group of members. Everyone gets it by blind copy, so nobody sees anyone else's address. A line at the end
     says it's from you and why they got it, and replies come to you at {{ user.email }}.</p>
@@ -52,4 +53,5 @@
       </table>
     </div>
   {% endif %}
+  </div>
 {% endblock %}

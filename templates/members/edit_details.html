@@ -3,6 +3,7 @@
 {% block title %}Edit your details · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
+  <div class="account-destination">
   <h1>Edit your details</h1>
   <form method="post" class="stack form" novalidate>
     {% csrf_token %}
@@ -15,4 +16,5 @@
     <button type="submit">Save</button>
   </form>
   <p><a href="{% url 'members:account' %}">Back to your account</a></p>
+  </div>
 {% endblock %}

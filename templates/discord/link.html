@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Discord · {{ SITE_NAME }}{% endblock %}
 {% block content %}
+  <div class="account-destination">
 <h1>Our Discord server</h1>
 <p>Discord is where {{ SITE_NAME }} talks: news, questions, and a channel for each topic and machine (#laser, #kiln,
   #woodwork and more), which you can choose once you're on the server.</p>
@@ -23,4 +24,5 @@
   <form method="post" action="{% url 'discord:connect' %}">{% csrf_token %}<button type="submit">Link Discord</button></form>
 {% endif %}
 <p><a href="{% url 'members:account' %}">Back to your account</a></p>
+  </div>
 {% endblock %}

@@ -3,6 +3,7 @@
 {% block title %}Online training · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
+  <div class="account-destination">
   <h1>Online training</h1>
   <p>Some machines need an online course before a trainer can sign you off. Take the course on our training site
     (use <strong>Log in with BBMS</strong>), then come back and press <em>check now</em>.</p>
@@ -30,4 +31,5 @@
   {% empty %}
     <p>None of our machines need an online course at the moment.</p>
   {% endfor %}
+  </div>
 {% endblock %}

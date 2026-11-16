@@ -3,6 +3,7 @@
 {% block title %}Proof of identity · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
+  <div class="account-destination">
   {% include "core/_camera.html" %}
   <h1>Proof of identity</h1>
   <p>We ask every new member for two documents:</p>
@@ -53,4 +54,5 @@
     {% endif %}
   {% endif %}
   <p><a href="{% url 'members:account' %}">Back to your account</a></p>
+  </div>
 {% endblock %}

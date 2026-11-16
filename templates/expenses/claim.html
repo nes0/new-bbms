@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Claim an expense · {{ SITE_NAME }}{% endblock %}
 {% block content %}
+  <div class="account-destination">
 {% include "core/_camera.html" %}
 <p><a href="{% url 'expenses:index' %}">← Expenses</a></p>
 <h1>Claim an expense</h1>
@@ -21,4 +22,5 @@
   </fieldset>
   <p><button type="submit">Send the claim</button></p>
 </form>
+  </div>
 {% endblock %}
