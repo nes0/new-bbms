@@ -4,16 +4,16 @@
 {% block title %}Rent a locker · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
-  <h1>Rent {{ locker }}</h1>
-  <p>{{ locker.size }}{% if locker.size.description %} ({{ locker.size.description }}){% endif %},
-    {{ monthly|pounds }} a month.</p>
+  <div class="member-page member-page--locker-rent">
+  <p class="member-page__back"><a class="member-button" href="{% url 'storage:lockers' %}">← All lockers</a></p>
+  <header class="member-page__header member-page__header--stack"><div><p class="member-eyebrow">Storage · rent a locker</p><h1>Rent {{ locker }}</h1><p class="member-page__intro">{{ locker.size }}{% if locker.size.description %} ({{ locker.size.description }}){% endif %}, {{ monthly|pounds }} a month.</p></div><span class="member-price">{{ monthly|pounds }}<small> / month</small></span></header>
 
   {% if problem %}
-    <p class="notice">{{ problem }}</p>
+    <section class="card member-page__panel"><p class="notice">{{ problem }}</p>
     {% if top_up %}<p><a href="{% url 'payments:credit' %}">Top up your credit</a></p>
-    {% elif set_up_payment %}<p><a href="{% url 'billing:payment' %}">Set up your payment</a></p>{% endif %}
+    {% elif set_up_payment %}<p><a href="{% url 'billing:payment' %}">Set up your payment</a></p>{% endif %}</section>
   {% else %}
-    <p>
+    <section class="card member-page__panel member-rent-confirmation"><p>
       {% if first %}
         You pay <strong>{{ first|pounds }}</strong> now, for the days until your next payment day
         ({{ next_day|date:"j F Y" }}),
@@ -25,10 +25,10 @@
       Then it's {{ monthly|pounds }} on each payment day, with your subscription, until you give it up.
     </p>
     <p class="hint">If you give it up, rent stops from that day. Rent already paid isn't refunded.</p>
-    <form method="post">
+    <form method="post" class="member-rent-form">
       {% csrf_token %}
       <button type="submit">Rent it{% if first %} and pay {{ first|pounds }}{% endif %}</button>
-    </form>
+    </form></section>
   {% endif %}
-  <p><a href="{% url 'storage:lockers' %}">Back to lockers</a></p>
+  </div>
 {% endblock %}

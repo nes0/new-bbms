@@ -3,11 +3,9 @@
 {% block content %}
   <div class="account-destination">
 {% include "core/_camera.html" %}
-<p><a href="{% url 'expenses:index' %}">← Expenses</a></p>
-<h1>Claim an expense</h1>
-<p>For something you bought for the space. A trustee checks it against the receipt; once it's approved, the amount is
-  added to your credit.</p>
-<form method="post" enctype="multipart/form-data" class="stack form" novalidate>
+<p class="member-page__back"><a class="member-button" href="{% url 'expenses:index' %}">← Your expenses</a></p>
+<header class="member-page__header member-page__header--stack"><div><p class="member-eyebrow">Expenses · reimbursement</p><h1>Claim an expense</h1><p class="member-page__intro">For something you bought for the space. A trustee checks the receipt; approved amounts go into your member credit.</p></div></header>
+<form method="post" enctype="multipart/form-data" class="stack form member-expense-form" novalidate>
   {% csrf_token %}
   <fieldset>
     <legend>What you bought</legend>
