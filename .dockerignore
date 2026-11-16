@@ -10,3 +10,5 @@ docs
 migration
 tests
 media
+.coverage
+htmlcov

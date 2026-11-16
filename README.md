@@ -1,5 +1,12 @@
 # BBMS: Build Brighton Member System (rebuild)
 
+[![CI](https://github.com/nes0/new-bbms/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/nes0/new-bbms/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/nes0/new-bbms/python-coverage-comment-action-data/endpoint.json)](https://htmlpreview.github.io/?https://github.com/nes0/new-bbms/blob/python-coverage-comment-action-data/htmlcov/index.html)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/)
+[![Django 5.2](https://img.shields.io/badge/django-5.2-0c4b33)](https://www.djangoproject.com/)
+[![Licence: MIT](https://img.shields.io/badge/licence-MIT-green)](LICENSE)
+
 The membership system for Build Brighton: members, payments, door and machine access, and more. This is the
 **new Django version**, replacing the legacy Laravel/PHP system. What it must do is described in
 [`docs/spec/`](docs/spec/README.md); start there.
@@ -132,6 +139,14 @@ Then open <http://127.0.0.1:8000>. The admin site is at <http://127.0.0.1:8000/a
 ```
 
 GitHub Actions runs the same checks, against PostgreSQL, on every push (`.github/workflows/ci.yml`).
+
+To see which lines the tests cover:
+
+```bash
+.venv/bin/coverage run manage.py test --parallel 1 && .venv/bin/coverage report   # or: coverage html, then open htmlcov/index.html
+```
+
+CI measures coverage on every push; the README's coverage badge and the full report come from the last push to `main`.
 
 The front-door compatibility suite talks to a real server over SSH, so it isn't part of `manage.py test`; see
 [`tests/door_compat/README.md`](tests/door_compat/README.md).
