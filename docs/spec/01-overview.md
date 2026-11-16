@@ -104,6 +104,21 @@ same, so MySQL saves nothing. Django is also built and tested primarily against 
   indexes, e.g. "one open charge per member per month").
 - First-class JSON fields and full-text search, and reliable row locking for the billing jobs.
 
+**Look and feel** (built 2026-11-15/16). The member and trustee pages share one plain-CSS design (no build step):
+- Each page opens with a heading and a short label above it saying where you are, such as "Trustee workspace" or "Membership".
+- Content sits in cards.
+- Wide tables scroll sideways on a phone instead of stretching the page.
+
+The account page leads with the member's name, status and "member since" date. Below that, summary tiles show the
+subscription, the paid-until date and the payment method. The pages it links to share its layout.
+
+Two colour themes are available: **black and lime** (the default) and **green and peach** (the earlier look).
+A member switches between them on their home page, and the choice is kept in a cookie in their browser, not on their record.
+Adding a theme takes a block of colour variables in `site.css` and a line in `apps/core/themes.py`.
+
+**Licence:** the code is open source under the **MIT licence** (2026-11-16). The copyright holders are
+Jon Paterson, Neil Stainton and BBMS contributors.
+
 ## 1.7 Open decisions (for trustees)
 
 1. Door access by an explicit list of membership statuses rather than the `active` flag (05 §5.2).
