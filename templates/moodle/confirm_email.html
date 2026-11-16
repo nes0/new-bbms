@@ -4,6 +4,7 @@
 
 {% block content %}
   <header class="page-heading"><p class="eyebrow">Online training</p><h1>Confirm your email address first</h1></header>
+  <section class="card">
   <p>Before you log in to the online training site we need to know that <strong>{{ user.email }}</strong> is really your
     address. We emailed you a link when you joined (check your spam folder). Follow it, then try the training site again.</p>
   <form method="post" action="{% url 'members:resend-confirmation' %}">

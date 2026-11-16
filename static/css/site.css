@@ -650,3 +650,53 @@ body[data-theme] .equipment-button:not(.equipment-button--quiet) { color:var(--o
 .confirm-dialog__cancel { min-height: 44px; padding: .65rem 1rem; border: 1px solid var(--border); border-radius: 10px; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
 .confirm-dialog__cancel:hover { background: var(--raised); }
 .logout-icon { display:block; }
+
+
+/* Account dashboard and destination screens use one consistent portal layout. */
+.portal-main .account-page,.portal-main .account-destination{display:grid;gap:14px}
+.portal-main .account-page__heading{margin:0 0 2px}
+.portal-main .account-page__heading h1{margin:0 0 5px}
+.portal-main .account-page__heading>p:last-child{margin:0;color:#a9b4ad}
+.portal-main .account-profile,.portal-main .account-summary,.portal-main .account-page .account-panel{border:1px solid #3b4741;border-radius:15px;background:#202725}
+.portal-main .account-profile{display:grid;grid-template-columns:58px minmax(0,1fr) auto;align-items:center;gap:14px;padding:17px;background:radial-gradient(ellipse at 100% 0%,rgba(195,237,82,.08),transparent 48%),#202725}
+.portal-main .account-avatar{display:grid;place-items:center;width:58px;height:58px;border-radius:50%;background:#303b20;color:#c3ed52;font-size:22px;font-weight:850}
+.portal-main .account-profile h2{margin:0;font-size:21px}
+.portal-main .account-profile p{margin:3px 0}
+.portal-main .account-profile .eyebrow{color:#c3ed52;font-size:10px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
+.portal-main .account-profile__meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;color:#a9b4ad;font-size:12px}
+.portal-main .account-profile__button,.portal-main .account-summary a{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:38px;padding:8px 12px;border-radius:9px;background:#c3ed52;color:#151a19;font-size:12px;font-weight:800;text-decoration:none}
+.portal-main .account-profile__button:hover,.portal-main .account-summary a:hover{background:#d5f77d;color:#151a19}
+.portal-main .account-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.portal-main .account-summary{display:grid;align-content:start;gap:7px;min-width:0;padding:15px}
+.portal-main .account-summary>span,.portal-main .account-summary small{color:#a9b4ad;font-size:11px}
+.portal-main .account-summary strong{color:#f0f3ec;font-size:22px;line-height:1.2}
+.portal-main .account-summary a{justify-content:space-between;margin-top:2px;border:1px solid #3b4741;background:#151a19;color:#f0f3ec}
+.portal-main .account-page .account-panel{min-width:0;margin:0;padding:18px}
+.portal-main .account-page .account-panel h2{margin:0 0 10px}
+.portal-main .account-page .account-panel .details{grid-template-columns:minmax(110px,.65fr) minmax(0,1.35fr);gap:0 12px}
+.portal-main .account-page .account-panel .details dt,.portal-main .account-page .account-panel .details dd{padding:8px 0;border-bottom:1px solid #3b4741}
+.portal-main .account-page .account-panel .details dt{color:#a9b4ad;font-size:12px;font-weight:700}
+.portal-main .account-page .account-panel .details dd{min-width:0;color:#f0f3ec;overflow-wrap:anywhere}
+.portal-main .account-page .account-panel .actions{gap:7px;margin-top:13px}
+.portal-main .account-page .account-panel a,.portal-main .account-page .account-profile__copy>a{display:inline-flex;align-items:center;min-height:32px;margin:2px 3px 2px 0;padding:5px 8px;border:1px solid #3b4741;border-radius:8px;background:#151a19;color:#f0f3ec;font-size:11px;font-weight:700;text-decoration:none}
+.portal-main .account-page .account-panel a:hover,.portal-main .account-page .account-profile__copy>a:hover{border-color:#c3ed52;background:#282f2c;color:#d5f77d}
+.portal-main .account-page .account-panel .eyebrow{margin:0 0 4px;color:#c3ed52;font-size:10px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
+.portal-main .account-page .account-profile__button{border:0;background:#c3ed52;color:#151a19}
+.portal-main .account-page .account-panel.account-leaving{border-left:4px solid #e69a61}
+.portal-main .account-destination{align-content:start;gap:16px}
+.portal-main .account-destination>h1{margin:0 0 2px}
+.portal-main .account-destination>p{max-width:70ch;color:#a9b4ad}
+.portal-main .account-destination>section{padding:16px;border:1px solid #3b4741;border-radius:14px;background:#202725}
+.portal-main .account-destination>section h2{margin-top:0}
+.portal-main .account-destination>.card{padding:16px}
+.portal-main .account-destination .form{max-width:42rem}
+.portal-main .account-destination .form fieldset{background:#202725}
+.portal-main .account-destination .stack{gap:10px}
+.portal-main .account-destination input,.portal-main .account-destination select,.portal-main .account-destination textarea{width:100%;max-width:100%}
+.portal-main .account-destination input[type=checkbox],.portal-main .account-destination input[type=radio]{width:auto}
+.portal-main .account-destination .table,.portal-main .account-destination table{min-width:620px}
+.portal-main .account-destination .scroll{max-width:100%}
+.portal-main .account-destination .actions a,.portal-main .account-destination>p>a{display:inline-flex;align-items:center;min-height:36px;margin:3px 5px 3px 0;padding:7px 10px;border:1px solid #3b4741;border-radius:9px;background:#151a19;color:#f0f3ec;font-size:12px;font-weight:750;text-decoration:none}
+.portal-main .account-destination .actions a:hover,.portal-main .account-destination>p>a:hover{border-color:#c3ed52;color:#d5f77d}
+@media(max-width:760px){.portal-main .account-summary-grid{grid-template-columns:1fr}.portal-main .account-profile{grid-template-columns:50px minmax(0,1fr);padding:14px}.portal-main .account-avatar{width:50px;height:50px}.portal-main .account-profile__button{grid-column:1/-1;justify-self:start}}
+@media(max-width:480px){.portal-main .account-page .account-panel .details{grid-template-columns:1fr}.portal-main .account-page .account-panel .details dt{padding:9px 0 0;border:0}.portal-main .account-page .account-panel .details dd{padding:0 0 8px}}

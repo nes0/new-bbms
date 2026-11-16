@@ -1,14 +1,16 @@
 {% extends "base.html" %}
 {% block title %}{{ proposal.title }} · Proposals · {{ SITE_NAME }}{% endblock %}
 {% block content %}
-<p><a href="{% url 'proposals:index' %}">← Proposals</a></p>
-<h1>{{ proposal.title }}</h1>
-<p class="hint">Voting {% if proposal.status == "upcoming" %}opens{% elif proposal.status == "open" %}opened{% else %}ran from{% endif %}
+<div class="member-page member-page--proposal-detail">
+  <p class="member-page__back"><a class="member-button" href="{% url 'proposals:index' %}">← All proposals</a></p>
+  <header class="member-page__header member-page__header--stack"><div><p class="member-eyebrow">Proposal · {{ proposal.status }}</p><h1>{{ proposal.title }}</h1></div></header>
+  <section class="member-page__panel member-proposal-meta"><p class="hint">Voting {% if proposal.status == "upcoming" %}opens{% elif proposal.status == "open" %}opened{% else %}ran from{% endif %}
   {{ proposal.start_date|date:"l j F Y" }}{% if proposal.status == "closed" %} to the end of {{ proposal.end_date|date:"l j F Y" }}{% else %}
   and closes at the end of {{ proposal.end_date|date:"l j F Y" }}{% endif %}.
-  {% if can_change %}<a href="{% url 'admin:proposals_proposal_change' proposal.pk %}">{% if proposal.status == "upcoming" %}Edit{% else %}See in the admin{% endif %}</a>{% endif %}</p>
+  {% if can_change %}<a href="{% url 'admin:proposals_proposal_change' proposal.pk %}">{% if proposal.status == "upcoming" %}Edit{% else %}See in the admin{% endif %}</a>{% endif %}</p></section>
 
-<div class="proposal-text">{{ description }}</div>
+<section class="member-page__panel member-proposal-copy"><h2>The proposal</h2><div class="proposal-text">{{ description }}</div></section>
 
-{% include "proposals/_vote.html" %}
+<section class="member-page__panel member-vote-panel"><h2>Your vote</h2>{% include "proposals/_vote.html" %}</section>
+</div>
 {% endblock %}

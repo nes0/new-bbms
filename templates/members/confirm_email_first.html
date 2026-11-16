@@ -4,6 +4,7 @@
 
 {% block content %}
   <header class="page-heading"><p class="eyebrow">Account security</p><h1>Confirm your email address first</h1></header>
+  <section class="card">
   <p>Before you can {{ what }} we need to know that <strong>{{ user.email }}</strong> is really your address. We
     emailed you a link when you joined (check your spam folder). Follow it, then come back.</p>
   <form method="post" action="{% url 'members:resend-confirmation' %}">

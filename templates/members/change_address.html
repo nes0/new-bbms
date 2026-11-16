@@ -3,6 +3,7 @@
 {% block title %}Change your address · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
+  <div class="account-destination">
   <h1>Change your address</h1>
   {% if address %}<p>We have: {{ address.lines|join:", " }}.</p>{% endif %}
   <p>A trustee checks a new address before it replaces the old one.</p>
@@ -16,4 +17,5 @@
     <button type="submit">Send for checking</button>
   </form>
   <p><a href="{% url 'members:account' %}">Back to your account</a></p>
+  </div>
 {% endblock %}

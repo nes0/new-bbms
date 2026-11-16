@@ -3,6 +3,7 @@
 {% block title %}Feedback · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
+  <div class="account-destination">
   <h1>Feedback</h1>
   {% if not_member %}
     <p>Feedback is for members. If you have a question about your account, please contact the trustees.</p>
@@ -20,4 +21,5 @@
       <button type="submit">Send</button>
     </form>
   {% endif %}
+  </div>
 {% endblock %}

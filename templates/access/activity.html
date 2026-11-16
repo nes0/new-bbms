@@ -1,20 +1,22 @@
 {% extends "base.html" %}
 {% block title %}Who's in · {{ SITE_NAME }}{% endblock %}
 {% block content %}
-<h1>Who's in</h1>
-{% include "access/_in_now.html" %}
-
-<h2 id="day">{% if date == today %}Today{% else %}{{ date|date:"l j F Y" }}{% endif %}</h2>
-<form method="get" action="#day" class="filters">
+<div class="member-page member-page--activity">
+<header class="member-page__header"><div><p class="member-eyebrow">Your space · live access</p><h1>Who's in</h1><p class="member-page__intro">See who is at the workshop and browse recent fob activity.</p></div><span class="member-live-status"><i></i>Live activity</span></header>
+<section class="member-page__panel member-now-panel">{% include "access/_in_now.html" %}</section>
+<section class="member-page__panel member-activity-panel">
+<div class="member-section-heading"><div><p class="member-eyebrow">Door and machine access</p><h2 id="day">{% if date == today %}Today{% else %}{{ date|date:"l j F Y" }}{% endif %}</h2><p class="hint">Review visits for a day or move through recent activity.</p></div>
+<form method="get" action="#day" class="filters member-filter-bar">
   <a href="?date={{ previous|date:'Y-m-d' }}#day">← {{ previous|date:"D j M" }}</a>
   <label>Day <input type="date" name="date" value="{{ date|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}"></label>
   <button type="submit">Show</button>
   {% if next %}<a href="?date={{ next|date:'Y-m-d' }}#day">{{ next|date:"D j M" }} →</a>{% endif %}
 </form>
+</div>
 
 {% if moments %}
   <p class="hint">{{ visitors }} member{{ visitors|pluralize }} used {{ visitors|pluralize:"their fob,their fobs" }} at the space.</p>
-  <ul class="timeline">
+  <ul class="timeline member-timeline">
   {% for row in moments %}{% with card=row.card moment=row.moment %}
     <li><time datetime="{{ moment.at|date:'c' }}">{{ moment.at|time:"H:i" }}</time>
       {% include "profiles/_avatar.html" with small=True %}
@@ -26,4 +28,6 @@
 {% else %}
   <p>Nobody used their fob at the space{% if date == today %} yet today{% else %} that day{% endif %}.</p>
 {% endif %}
+</section>
+</div>
 {% endblock %}

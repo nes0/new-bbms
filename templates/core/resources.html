@@ -3,6 +3,7 @@
 {% block title %}Resources · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
+  <div class="account-destination">
   <h1>Resources</h1>
 
   <section>
@@ -26,4 +27,5 @@
       <p>Comments or ideas about this site? <a href="{% url 'feedback' %}">Send us feedback</a>.</p>
     </section>
   {% endif %}
+  </div>
 {% endblock %}

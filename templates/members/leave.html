@@ -3,6 +3,7 @@
 {% block title %}Leave · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
+  <div class="account-destination">
   <h1>Leave {{ SITE_NAME }}</h1>
   {% if can_delete %}
     <p>Your membership hasn't started yet, so leaving deletes your account straight away, along with your address
@@ -18,4 +19,5 @@
     {% else %}<p>To leave, please contact the trustees.</p>{% endif %}
   {% endif %}
   <p><a href="{% url 'members:account' %}">Back to your account</a></p>
+  </div>
 {% endblock %}

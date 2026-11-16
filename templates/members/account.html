@@ -4,16 +4,43 @@
 {% block title %}Your account · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
-  <h1>Your account</h1>
-  <p>{{ member.full_name }} · {{ member.email }}
-    {% if member.email_verified %}<span class="ok" title="Confirmed">✓ confirmed</span>
-    {% else %}<span class="error">not confirmed</span>
-      <form method="post" action="{% url 'members:resend-confirmation' %}" class="inline">
-        {% csrf_token %}<button type="submit" class="link">Email me a link to confirm it</button>
-      </form>{% endif %}
-    · <a href="{% url 'members:change-email' %}">Change</a></p>
-
-  {% if proposals_to_vote_on %}
+  <div class="account-page">
+    <header class="account-page__heading">
+      <p class="eyebrow">Your space · account</p>
+      <h1>Your account</h1>
+      <p>Membership, access and personal details in one place.</p>
+    </header>
+    <section class="account-profile" aria-label="Member profile">
+      <div class="account-avatar" aria-hidden="true">{{ member.full_name|slice:":1" }}</div>
+      <div class="account-profile__copy">
+        <p class="eyebrow">Member profile</p>
+        <h2>{{ member.full_name }}</h2>
+        <p class="account-email-row">{{ member.email }}
+          {% if member.email_verified %}<span class="ok" title="Confirmed">✓ confirmed</span>
+          {% else %}<span class="error">not confirmed</span>
+            <form method="post" action="{% url 'members:resend-confirmation' %}" class="inline">
+              {% csrf_token %}<button type="submit" class="link">Email me a link to confirm it</button>
+            </form>{% endif %}
+          · <a href="{% url 'members:change-email' %}">Change email</a>
+        </p>
+        <p class="account-profile__meta"><span class="membership-status">{{ member.get_status_display }}</span><span>Member since {{ member.date_joined|date:"j F Y" }}</span></p>
+      </div>
+      <a class="account-profile__button" href="{% url 'profiles:edit' %}">Your profile and photo <span aria-hidden="true">→</span></a>
+    </section>
+    <div class="account-summary-grid" aria-label="Membership summary">
+      <article class="account-summary"><span>Monthly subscription</span>
+        <strong>{% if member.monthly_subscription_pence %}{{ member.monthly_subscription_pence|pounds }}{% else %}Not set{% endif %}</strong>
+        <a href="{% url 'members:change-subscription' %}">Manage subscription <span aria-hidden="true">→</span></a>
+      </article>
+      <article class="account-summary"><span>Paid until</span>
+        <strong>{% if member.subscription_expires %}{{ member.subscription_expires|date:"j M Y" }}{% else %}—{% endif %}</strong>
+        <small>{{ member.get_payment_method_display|default:"Payment not set up" }}{% if member.payment_day %} · payment day {{ member.payment_day }}{% endif %}</small>
+      </article>
+      <article class="account-summary"><span>Available credit</span><strong>{{ credit_pence|pounds }}</strong>
+        <a href="{% url 'payments:credit' %}">Top up or view history <span aria-hidden="true">→</span></a>
+      </article>
+    </div>
+    {% if proposals_to_vote_on %}
     <section class="card">
       <h2>Have your say</h2>
       <ul>{% for proposal in proposals_to_vote_on %}
@@ -68,7 +95,7 @@
     </section>
   {% endif %}
 
-  <section>
+  <section class="account-panel">
     <h2>Membership</h2>
     <dl class="details">
       <dt>Status</dt><dd><strong>{{ member.get_status_display }}</strong>{% if member.banned %} <span class="error">(banned)</span>{% endif %}</dd>
@@ -109,7 +136,7 @@
     </dl>
   </section>
 
-  <section>
+  <section class="account-panel">
     <h2>Access</h2>
     <dl class="details">
       <dt>Front door</dt>
@@ -136,7 +163,7 @@
     </dl>
   </section>
 
-  <section>
+  <section class="account-panel">
     <h2>Your details</h2>
     <dl class="details">
       <dt>Phone</dt><dd>{{ member.phone|default:"—" }}</dd>
@@ -159,7 +186,7 @@
     </p>
   </section>
 
-  <section>
+  <section class="account-panel">
     {% if member.status == "left" %}
       <h2>Rejoin</h2>
       <form method="post" action="{% url 'billing:rejoin' %}">{% csrf_token %}<button type="submit">Rejoin {{ SITE_NAME }}</button></form>
@@ -172,4 +199,5 @@
       <p><a href="{% url 'members:leave' %}">Leave {{ SITE_NAME }}</a></p>
     {% endif %}
   </section>
+  </div>
 {% endblock %}

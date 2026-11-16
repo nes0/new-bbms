@@ -2,12 +2,14 @@
 {% load money %}
 {% block title %}Expenses · {{ SITE_NAME }}{% endblock %}
 {% block content %}
+  <div class="account-destination">
 <h1>{% if see_all %}Expenses{% else %}Your expenses{% endif %}</h1>
 <p>Spent your own money on something for the space? Claim it back: once a trustee approves it, it's added to your
   credit, to spend or <a href="{% url 'payments:credit' %}">withdraw</a>.
   {% if can_claim %}<a href="{% url 'expenses:claim' %}">Claim an expense</a>{% endif %}</p>
 
-<form method="get" class="filters">
+
+<form method="get" class="filters member-filter-bar">
   {% if see_all %}
   <label>Member <select name="member">
     <option value="">Everyone</option>
@@ -29,7 +31,7 @@
 </form>
 
 {% if page.object_list %}
-<div class="scroll"><table class="table">
+<div class="scroll member-expenses-table"><table class="table">
   <thead><tr><th>Claimed</th>{% if see_all %}<th>Member</th>{% endif %}<th>Category</th><th>Description</th><th class="number">Amount</th><th>Status</th></tr></thead>
   <tbody>
   {% for expense in page %}
@@ -55,4 +57,5 @@
 {% else %}
 <p>No expenses{% if filters.status or filters.member or filters.machine %} match{% else %} yet{% endif %}.</p>
 {% endif %}
+  </div>
 {% endblock %}

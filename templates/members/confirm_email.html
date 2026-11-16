@@ -4,8 +4,9 @@
 
 {% block content %}
   <header class="page-heading"><p class="eyebrow">Account security</p><h1>Confirm your email address</h1></header>
+  <section class="card">
   {% if outcome == "confirmed" %}
-    <section class="card"><p class="ok">Thank you: your email address is confirmed.</p>
+    <p class="ok">Thank you: your email address is confirmed.</p>
   {% elif outcome == "changed" %}
     <p class="ok">Done: you now log in with <strong>{{ confirmed.email }}</strong>, and it's confirmed.</p>
   {% elif outcome == "already" %}
