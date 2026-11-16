@@ -16,3 +16,14 @@ extend-exclude = ["BBMSDoorEntry", "*/migrations/*"]
 [tool.ruff.lint]
 # pycodestyle, pyflakes, import order, bugbear, pyupgrade, Django-specific checks
 select = ["E", "W", "F", "I", "B", "UP", "DJ"]
+
+[tool.coverage.run]
+# CI: coverage run manage.py test, then coverage report. Paths are kept relative so the CI badge action can read them.
+source = ["apps", "bbms"]
+omit = ["*/migrations/*", "*/tests/*", "*/tests.py"]
+branch = true
+relative_files = true
+
+[tool.coverage.report]
+skip_covered = true
+show_missing = true

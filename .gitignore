@@ -17,3 +17,6 @@ BBMSDoorEntry/
 .fake-gocardless.json
 .fake-stripe.json
 .fake-discord.json
+.coverage
+.coverage.*
+htmlcov/
