@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block title %}{{ member.full_name }} · {{ SITE_NAME }}{% endblock %}
 {% block content %}
-<h1>{{ member.full_name }}</h1>
+<header class="page-heading"><p class="eyebrow">Community profile</p><h1>{{ member.full_name }}</h1></header>
 {% if is_own %}
   <p class="actions"><a href="{% url 'profiles:edit' %}">Edit your profile</a>
     {% if pending %}<span class="hint">Your new photo is waiting for a trustee to check it.</span>{% endif %}
     {% if member.status != "active" and member.status != "honorary" %}<span class="hint">Only you can see this page: it's listed once you're an active member.</span>{% endif %}</p>
 {% endif %}
-<div class="profile">
+<div class="card profile">
   <div>
     {% if full_photo_url %}<img class="avatar" src="{{ full_photo_url }}" alt="Photo of {{ member.full_name }}" width="500" height="500">{% else %}{% include "profiles/_avatar.html" with card=card %}{% endif %}
   </div>

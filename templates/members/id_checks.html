@@ -3,11 +3,11 @@
 {% block title %}ID checks · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
-  <h1>ID checks</h1>
+  <header class="page-heading"><p class="eyebrow">Trustee workspace</p><h1>ID checks</h1></header>
   <p>Members' proofs of identity waiting to be checked, oldest first. Checking them deletes them, whatever you
     decide. Anything not checked within {{ max_age_days }} days is deleted automatically.</p>
   {% if waiting %}
-    <table class="table">
+    <div class="scroll"><table class="table">
       <thead><tr><th>Member</th><th>Status</th><th>Documents</th><th>First sent</th></tr></thead>
       <tbody>
         {% for member in waiting %}
@@ -19,7 +19,7 @@
           </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   {% else %}
     <p>Nothing waiting.</p>
   {% endif %}

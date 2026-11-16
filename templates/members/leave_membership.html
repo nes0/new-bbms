@@ -3,7 +3,7 @@
 {% block title %}Leave · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
-  <h1>Leave {{ SITE_NAME }}</h1>
+  <header class="page-heading"><p class="eyebrow">Membership</p><h1>Leave {{ SITE_NAME }}</h1></header>
   <p>We'll stop your monthly payments{% if member.mandate_id %} and cancel your Direct Debit{% endif %}.
     {% if member.subscription_expires %}You can keep using the space until {{ member.subscription_expires|date:"j F Y" }},
     when your membership ends.{% else %}Your membership ends tomorrow morning.{% endif %}
@@ -13,7 +13,7 @@
       or PayPal keeps taking payments.</p>
   {% endif %}
   <p>You're welcome to rejoin at any time.</p>
-  <form method="post" class="stack form" novalidate>
+  <form method="post" class="stack form card" novalidate>
     {% csrf_token %}
     {% include "members/_field.html" with field=form.confirm %}
     <button type="submit" class="danger">Leave</button>

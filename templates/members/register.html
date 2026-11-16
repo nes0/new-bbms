@@ -5,11 +5,11 @@
 {% block body_class %}backdrop{% endblock %}
 
 {% block content %}
-  <h1>Join {{ SITE_NAME }}</h1>
+  <header class="page-heading"><p class="eyebrow">Join Build Brighton</p><h1>Join {{ SITE_NAME }}</h1></header>
   <p>Fill this in to create your account. You'll set up your monthly payment on the next page.
     Already a member? <a href="{% url 'login' %}">Log in</a>.</p>
 
-  <form method="post" class="stack form" novalidate>
+  <form method="post" class="stack form card" novalidate>
     {% csrf_token %}
     {% if form.non_field_errors %}<div class="error">{{ form.non_field_errors }}</div>{% endif %}
 

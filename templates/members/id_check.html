@@ -3,8 +3,8 @@
 {% block title %}ID check: {{ subject.full_name }} · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
-  <h1>ID check: {{ subject.full_name }}</h1>
-  <dl class="details">
+  <header class="page-heading"><p class="eyebrow">Trustee workspace</p><h1>ID check: {{ subject.full_name }}</h1></header>
+  <dl class="details card">
     <dt>Email</dt><dd>{{ subject.email }}</dd>
     <dt>Status</dt><dd>{{ subject.get_status_display }}</dd>
     <dt>Address given</dt>
