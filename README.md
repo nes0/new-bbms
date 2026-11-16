@@ -210,3 +210,8 @@ sent to GoCardless or emailed).
 | nightly | `manage.py sync_discord` (Discord member / former-member roles; welcome messages that failed) |
 | hourly | `manage.py tidy_equipment_sessions` |
 | hourly | `manage.py update_proposals` (opens proposals and emails voters, counts closed ones, posts both on Discord; `--dry-run` only) |
+
+## Licence
+
+Copyright (c) 2026 Jon Paterson, Neil Stainton and BBMS contributors. Released under the
+[MIT licence](LICENSE).

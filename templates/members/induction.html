@@ -3,6 +3,7 @@
 {% block title %}General induction · {{ SITE_NAME }}{% endblock %}
 
 {% block content %}
+  <div class="account-destination">
   <h1>General induction</h1>
   {% if member.general_induction_status == "confirmed" %}
     <p class="ok">Done: confirmed{% if member.inducted_at %} on {{ member.inducted_at|date:"j F Y" }}{% endif %}.
@@ -32,4 +33,5 @@
     </form>
   {% endif %}
   <p><a href="{% url 'members:account' %}">Back to your account</a></p>
+  </div>
 {% endblock %}

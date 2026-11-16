@@ -2,6 +2,7 @@
 {% load money %}
 {% block title %}Your credit · {{ SITE_NAME }}{% endblock %}
 {% block content %}
+  <div class="account-destination">
 <h1>Your credit</h1>
 <p class="balance">You have <strong>{{ balance|pounds }}</strong> in credit.</p>
 <p class="muted">Credit pays for machine time and can pay for inductions, the key deposit and a box.
@@ -61,4 +62,5 @@
 {% else %}
   <p>You have no credit to withdraw.</p>
 {% endif %}
+  </div>
 {% endblock %}

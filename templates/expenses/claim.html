@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Claim an expense · {{ SITE_NAME }}{% endblock %}
 {% block content %}
+  <div class="account-destination">
 {% include "core/_camera.html" %}
 <p class="member-page__back"><a class="member-button" href="{% url 'expenses:index' %}">← Your expenses</a></p>
 <header class="member-page__header member-page__header--stack"><div><p class="member-eyebrow">Expenses · reimbursement</p><h1>Claim an expense</h1><p class="member-page__intro">For something you bought for the space. A trustee checks the receipt; approved amounts go into your member credit.</p></div></header>
@@ -19,4 +20,5 @@
   </fieldset>
   <p><button type="submit">Send the claim</button></p>
 </form>
+  </div>
 {% endblock %}
